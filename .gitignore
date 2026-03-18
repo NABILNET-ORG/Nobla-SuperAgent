@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# Flutter
+.dart_tool/
+.packages
+.pub/
+build/
+*.g.dart
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Secrets & Config
+.env
+.env.local
+*.key
+*.pem
+secrets/
+
+# Large Model Files
+*.bin
+*.ggml
+*.onnx
+*.pt
+*.pth
+*.safetensors
+models/
+
+# Database & Storage
+*.db
+*.sqlite
+*.sqlite3
+data/
+logs/
+*.log
+
+# Docker
+docker-compose.override.yml
+
+# OS
+.DS_Store
+Thumbs.db

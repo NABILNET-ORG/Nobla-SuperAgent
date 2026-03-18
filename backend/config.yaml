@@ -1,0 +1,29 @@
+server:
+  host: "0.0.0.0"
+  port: 8000
+  debug: false
+  cors_origins: ["*"]
+
+llm:
+  default_provider: "gemini"
+  fallback_chain: ["gemini", "groq", "ollama"]
+  providers:
+    gemini:
+      enabled: true
+      model: "gemini-2.0-flash"
+    ollama:
+      enabled: true
+      model: "llama3.1"
+      base_url: "http://localhost:11434"
+    groq:
+      enabled: true
+      model: "llama-3.1-70b-versatile"
+
+database:
+  postgres_url: "postgresql+asyncpg://nobla:nobla@localhost:5432/nobla"
+  redis_url: "redis://localhost:6379/0"
+
+memory:
+  context_window_messages: 20
+  max_context_tokens: 8000
+  store_embeddings: false
