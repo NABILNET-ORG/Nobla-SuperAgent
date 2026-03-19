@@ -23,8 +23,11 @@ from nobla.gateway.websocket import (
     set_cost_tracker,
     set_permission_checker,
     set_sandbox_manager,
+    set_memory_orchestrator,
     get_kill_switch,
 )
+from nobla.memory.orchestrator import MemoryOrchestrator
+from nobla.db.engine import Database
 from nobla.config import load_settings
 from nobla.brain.router import LLMRouter
 from nobla.security import (
@@ -114,16 +117,26 @@ async def lifespan(app: FastAPI):
     set_permission_checker(permission_checker)
     set_sandbox_manager(sandbox_mgr)
 
+    # --- Database & Memory System ---
+    db = Database(settings)
+    memory_orchestrator = MemoryOrchestrator(
+        session_factory=db.session_factory,
+        settings=settings,
+    )
+    set_memory_orchestrator(memory_orchestrator)
+
     logger.info(
         "nobla_started",
         providers=list(providers.keys()),
-        phase="1B",
+        phase="2A",
         security="enabled",
+        memory="enabled",
     )
 
     yield
 
     # Cleanup
+    await db.close()
     await sandbox_mgr.cleanup()
     logger.info("nobla_shutdown")
 

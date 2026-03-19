@@ -191,6 +191,18 @@ def get_sandbox_manager():
     return _sandbox_manager
 
 
+_memory_orchestrator = None
+
+
+def set_memory_orchestrator(orch) -> None:
+    global _memory_orchestrator
+    _memory_orchestrator = orch
+
+
+def get_memory_orchestrator():
+    return _memory_orchestrator
+
+
 # ---------------------------------------------------------------------------
 # Built-in RPC Handlers
 # ---------------------------------------------------------------------------
@@ -389,15 +401,52 @@ async def handle_code_execute(params: dict, state: ConnectionState) -> dict:
 @rpc_method("chat.send")
 async def handle_chat_send(params: dict, state: ConnectionState) -> dict:
     message = params.get("message", "")
-    conversation_id = params.get("conversation_id")
+    conversation_id = params.get("conversation_id", str(uuid.uuid4()))
+    conv_uuid = uuid.UUID(conversation_id)
 
+    # 1. Hot path: store user message + extract
+    memory = get_memory_orchestrator()
+    if memory:
+        await memory.process_message(
+            conversation_id=conv_uuid,
+            role="user",
+            content=message,
+        )
+
+    # 2. Retrieve memory context
+    memory_context = ""
+    if memory and state.user_id:
+        memory_context = await memory.get_memory_context(
+            user_id=uuid.UUID(state.user_id),
+            query=message,
+        )
+
+    # 3. Build messages for LLM
     router = get_router()
     if not router:
         raise RuntimeError("LLM router not initialized")
 
-    messages = [LLMMessage(role="user", content=message)]
-    response = await router.route(messages)
+    llm_messages = []
+    if memory_context:
+        llm_messages.append(LLMMessage(role="system", content=f"[Memory] {memory_context}"))
+    llm_messages.append(LLMMessage(role="user", content=message))
 
+    # 4. Route to LLM
+    response = await router.route(llm_messages)
+
+    # 5. Hot path: store assistant response
+    if memory:
+        await memory.process_message(
+            conversation_id=conv_uuid,
+            role="assistant",
+            content=response.content,
+            model_used=response.model,
+            tokens_input=response.tokens_input,
+            tokens_output=response.tokens_output,
+            cost_usd=response.cost_usd,
+        )
+
+    # IMPORTANT: Preserve existing response field names for Flutter compatibility
     return {
         "message": response.content,
         "model": response.model,
