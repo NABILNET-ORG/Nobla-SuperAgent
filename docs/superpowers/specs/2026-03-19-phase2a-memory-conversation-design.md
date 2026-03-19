@@ -36,32 +36,48 @@ Each memory layer is an independent module. A thin orchestrator coordinates them
 
 ```
 backend/nobla/memory/
-├── orchestrator.py      # Thin coordinator — routes to layers
-├── working.py           # Context window management (in-memory)
-├── episodic.py          # Conversation storage + search (PostgreSQL)
-├── semantic.py          # Facts + embeddings (ChromaDB + PostgreSQL)
-├── procedural.py        # Learned workflows + Bayesian scoring (PostgreSQL)
-├── graph.py             # Entity relationships (NetworkX, lazy-built)
-├── retrieval.py         # Hybrid retrieval (0.7 semantic + 0.3 BM25 + re-ranking)
-├── extraction.py        # NER + keyword extraction (spaCy, lightweight)
-├── consolidation.py     # Warm path: post-conversation LLM extraction
-├── maintenance.py       # Cold path: decay, dedup, graph rebuild
-└── models.py            # Shared data models
+├── orchestrator.py       # Thin coordinator — routes to layers
+├── working.py            # Context window management (in-memory)
+├── episodic.py           # Conversation storage + search (PostgreSQL)
+├── semantic.py           # Facts + embeddings (ChromaDB + PostgreSQL)
+├── procedural.py         # Learned workflows + Bayesian scoring (PostgreSQL)
+├── graph_builder.py      # Entity/relationship CRUD + lazy construction
+├── graph_queries.py      # Graph traversal + search queries
+├── graph_persistence.py  # NetworkX ↔ PostgreSQL serialization
+├── retrieval.py          # Hybrid retrieval (merge + re-rank)
+├── retrieval_sources.py  # ChromaDB, BM25, and graph query backends
+├── extraction.py         # NER + keyword extraction (spaCy, lightweight)
+├── consolidation.py      # Warm path: post-conversation LLM extraction
+├── maintenance.py        # Cold path: decay, dedup, graph rebuild
+└── models.py             # Shared data models
 ```
+
+**750-line risk mitigation:** `graph.py` split into three files (builder, queries, persistence) and `retrieval.py` split into two (orchestration + source backends). Each file targets <400 lines with clear single responsibility.
 
 ### 2.2 Three Processing Paths
 
-#### Hot Path (real-time, per message, <50ms overhead)
-- Store raw message in PostgreSQL (episodic)
-- Extract lightweight signals without LLM call:
-  - spaCy NER: people, organizations, locations, dates
-  - TF-IDF keyword extraction: top terms
-  - Embed message via sentence-transformers (for later retrieval)
-- Update working memory context window
+#### Hot Path (real-time, per message, <50ms sync + async embedding)
+- **Synchronous (<50ms):**
+  - Store raw message in PostgreSQL (episodic) — 1-5ms
+  - spaCy NER extraction (if loaded) — 10-30ms on CPU
+  - TF-IDF keyword extraction — 1-5ms
+  - Update working memory context window — <1ms
+- **Async (fire-and-forget, does not block response):**
+  - Embed message via sentence-transformers — 20-50ms CPU, 5-10ms GPU
+  - Store embedding in ChromaDB + update `embedding_id` on message
+- **Graceful degradation:**
+  - spaCy not loaded → skip NER, keywords only (TF-IDF still works)
+  - sentence-transformers not loaded → skip embedding (retrieval uses keyword-only)
+  - PostgreSQL unreachable → agent still chats (no memory persistence, warn user)
 - **Cost: $0. No LLM calls.**
 
 #### Warm Path (post-conversation, async)
-Triggers when: conversation ends, app backgrounded, or 5 min idle (configurable).
+**Trigger protocol:**
+- **App backgrounded:** Flutter sends `conversation.pause` JSON-RPC notification when `AppLifecycleState.paused` fires
+- **Conversation switch:** Triggered when user calls `conversation.get` with a different conversation_id
+- **Idle timeout:** Server-side timer resets on each `chat.send`. After 5 min (configurable) of no activity, warm path fires
+- **Explicit end:** User calls `conversation.close` (optional, most users just switch or background)
+- Timer resets if user sends a message before timeout fires
 - Generate conversation summary (1 cheap LLM call)
 - Extract facts and preferences from conversation
 - For each extracted fact:
@@ -83,6 +99,44 @@ Runs daily at 3 AM (configurable):
 - Stats: log memory health metrics
 - **Cost: ~0. Uses local computation only.**
 
+### 2.3 chat.send Integration Flow (How Memory Plugs Into the Existing Gateway)
+
+The existing `chat.send` RPC method (gateway/websocket.py) is modified to integrate memory:
+
+```
+chat.send received with {message, conversation_id}
+  │
+  ├─ 1. HOT PATH — STORE (sync, <50ms)
+  │   ├─ Store user message in PostgreSQL (episodic)
+  │   ├─ spaCy NER + TF-IDF keywords (if available)
+  │   └─ Fire-and-forget: embed message async
+  │
+  ├─ 2. RETRIEVE — GET RELEVANT MEMORIES (async, <200ms)
+  │   ├─ Parallel: ChromaDB semantic + PostgreSQL BM25 + NetworkX graph
+  │   ├─ Merge + dedup + re-rank (no LLM call)
+  │   └─ Format top-K as memory context block
+  │
+  ├─ 3. ASSEMBLE — BUILD WORKING MEMORY (sync, <50ms)
+  │   ├─ System prompt + persona
+  │   ├─ Memory context block (from step 2)
+  │   ├─ Conversation history (recent verbatim + older summarized)
+  │   └─ Current user message
+  │   (All fitted within token budget)
+  │
+  ├─ 4. ROUTE — SEND TO LLM (existing Phase 1 router)
+  │   └─ LLM router classifies complexity → selects provider → generates response
+  │
+  ├─ 5. HOT PATH — STORE RESPONSE (sync)
+  │   ├─ Store assistant message in PostgreSQL (episodic)
+  │   ├─ spaCy NER + keywords on response
+  │   └─ Fire-and-forget: embed response async
+  │
+  └─ 6. RETURN — Send response to Flutter via WebSocket
+      └─ (In Phase 2B: stream token-by-token instead of full response)
+```
+
+**Key change to existing code:** The `chat.send` handler in `websocket.py` gains a dependency on `MemoryOrchestrator`. The orchestrator is injected via the FastAPI lifespan (same pattern as existing `AuthService` injection in `app.py`).
+
 ---
 
 ## 3. Data Models
@@ -96,28 +150,36 @@ Runs daily at 3 AM (configurable):
 | `topics` | TEXT[] | Extracted topic keywords |
 | `message_count` | INTEGER | Cached count for UI display |
 
-**messages table** — Add:
-| Column | Type | Purpose |
-|--------|------|---------|
-| `parent_message_id` | UUID (FK, nullable) | Tree structure for future branching |
-| `entities_extracted` | JSONB | NER results from hot path |
-| `keywords` | TEXT[] | TF-IDF keywords from hot path |
-
-**memory_nodes table** — Add:
-| Column | Type | Purpose |
-|--------|------|---------|
-| `source_conversation_ids` | UUID[] | Provenance: which conversations produced this fact |
-| `last_accessed` | TIMESTAMP | For recency scoring in retrieval |
-| `access_count` | INTEGER | For frequency scoring in retrieval |
-| `decay_factor` | FLOAT | Current decay value (cold path updates) |
-
-**procedures table** — Modify:
-| Column | Change | Purpose |
+**messages table** — Changes:
+| Column | Status | Purpose |
 |--------|--------|---------|
-| `beta_success` | FLOAT (replaces success_count) | Bayesian Beta distribution alpha parameter |
-| `beta_failure` | FLOAT (replaces failure_count) | Bayesian Beta distribution beta parameter |
-| `trigger_context` | TEXT (new) | When to suggest this procedure |
-| `last_triggered` | TIMESTAMP (new) | Recency tracking |
+| `parent_message_id` | **NEW** (UUID FK, nullable) | Tree structure for future branching |
+| `entities_extracted` | **NEW** (JSONB) | NER results from hot path |
+| `memory_keywords` | **EXISTS** (ARRAY String) | Reuse for TF-IDF keywords (no migration needed) |
+| `memory_tags` | **EXISTS** (ARRAY String) | Reuse for topic tags (no migration needed) |
+| `embedding_id` | **EXISTS** (String) | Reuse for sentence-transformer embedding ref (no migration needed) |
+
+**memory_nodes table** — Changes:
+| Column | Status | Purpose |
+|--------|--------|---------|
+| `source_conversation_ids` | **NEW** (UUID[]) | Provenance: which conversations produced this fact |
+| `decay_factor` | **NEW** (FLOAT, default 1.0) | Current decay value (cold path updates) |
+| `last_accessed` | **EXISTS** | Already in Phase 1 schema (no migration needed) |
+| `access_count` | **EXISTS** | Already in Phase 1 schema (no migration needed) |
+| `confidence` | **EXISTS** | Already in Phase 1 schema (no migration needed) |
+
+**procedures table** — Changes:
+| Column | Status | Purpose |
+|--------|--------|---------|
+| `beta_success` | **NEW** (FLOAT, default 2.0) | Bayesian Beta distribution alpha parameter |
+| `beta_failure` | **NEW** (FLOAT, default 1.0) | Bayesian Beta distribution beta parameter |
+| `trigger_context` | **NEW** (TEXT) | When to suggest this procedure |
+| `last_triggered` | **NEW** (TIMESTAMP) | Recency tracking |
+| `success_count` | **KEEP** | Preserved for backward compat; beta params derived initially from these |
+| `failure_count` | **KEEP** | Preserved for backward compat; beta params derived initially from these |
+| `bayesian_score` | **KEEP** | Cached lower-confidence-bound; recalculated from beta params |
+
+**Note on `procedure_sources` table:** The existing junction table linking procedures to source conversations is preserved. The new `source_conversation_ids` on `memory_nodes` serves a different purpose (tracking which conversations produced a *fact*, not a *procedure*).
 
 ### 3.2 New Indexes
 
@@ -290,10 +352,35 @@ Messages stored with `parent_message_id` for future branching support (ChatGPT-s
 
 ### 7.1 Architecture
 
-- **Runtime**: NetworkX in-process Python graph
+- **Runtime**: NetworkX in-process Python graph, **one graph per user**
 - **Persistence**: Serialized to PostgreSQL `memory_nodes` + `memory_links` tables
 - **Build strategy**: Lazy — graph grows incrementally from conversations (no upfront bulk processing)
 - **Cost**: 700x cheaper than full GraphRAG (Microsoft benchmarks)
+- **Max expected size**: ~10K nodes for typical personal use (years of conversations). NetworkX handles millions in-memory, so no scaling concern for Phase 2A.
+
+### 7.1.1 Graph Serialization Lifecycle
+
+```
+Server startup
+  → Load graph from PostgreSQL for each active user (lazy: on first request)
+  → Graph lives in memory during server lifetime
+
+After each warm path run
+  → Persist new/updated nodes and edges to PostgreSQL (incremental, not full dump)
+  → Only changed subgraph is written (tracked via dirty flag)
+
+On server graceful shutdown
+  → Persist any unserialized changes to PostgreSQL
+
+On server crash
+  → Graph is rebuilt from PostgreSQL on next startup
+  → Loss: only entities from warm paths that hadn't been persisted yet
+  → Mitigation: warm path always persists immediately after extraction
+```
+
+### 7.1.2 ChromaDB Collection Isolation
+
+Each user gets a dedicated ChromaDB collection namespaced as `user_{uuid}_memories`. All retrieval queries include the collection name as a mandatory parameter. The `semantic.py` module enforces this — there is no code path that queries without a user-scoped collection. This prevents cross-user memory leakage.
 
 ### 7.2 Entity Types
 
@@ -640,6 +727,22 @@ No new package dependencies. Uses existing: `flutter_riverpod`, `go_router`, `we
 - `test_memory_flow.py` — Full hot→warm→cold path with real database
 - `test_retrieval_integration.py` — ChromaDB + PostgreSQL + NetworkX together
 - `test_conversation_lifecycle.py` — Create, chat, switch, search, archive
+- `test_chat_send_memory.py` — Full chat.send flow with memory retrieval + storage (Section 2.3)
+
+### Concurrency & Scale Tests
+- `test_concurrent_memory.py` — Two conversations writing to same user's memory simultaneously; verify no race conditions in fact extraction/merge
+- `test_large_memory.py` — 10K+ memory nodes: verify retrieval <200ms, graph load <5s
+- `test_chromadb_sync.py` — Verify PostgreSQL and ChromaDB stay in sync; test recovery when one is ahead of the other
+
+### Security Tests
+- `test_memory_isolation.py` — Verify no cross-user memory leakage in ChromaDB collections and PostgreSQL queries
+- `test_sensitive_extraction.py` — Feed messages with passwords, API keys, tokens; verify extraction prompt filters them out
+- `test_hard_delete.py` — Verify hard delete purges from PostgreSQL, ChromaDB, and NetworkX graph
+
+### Performance Benchmarks
+- `bench_hot_path.py` — Validate <50ms sync target under realistic message lengths (CPU-only)
+- `bench_retrieval.py` — Validate <200ms with 1K, 5K, 10K memory nodes
+- `bench_graph_load.py` — Validate graph load time from PostgreSQL at various sizes
 
 ### Flutter Tests
 - Widget tests for conversation drawer, memory viewer, new dashboard cards
@@ -655,7 +758,7 @@ No new package dependencies. Uses existing: `flutter_riverpod`, `go_router`, `we
 
 | Operation | Target | Measurement |
 |-----------|--------|-------------|
-| Hot path (store + extract) | <50ms | Per message overhead |
+| Hot path (store + extract) | <50ms sync, +50ms async embedding | Per message overhead (sync portion blocks response) |
 | Retrieval (full pipeline) | <200ms | Query to ranked results |
 | Working memory assembly | <50ms | Build context for LLM |
 | Warm path (consolidation) | <10s | Per conversation |
@@ -671,8 +774,12 @@ No new package dependencies. Uses existing: `flutter_riverpod`, `go_router`, `we
 - Memory data is user-scoped: all queries filter by `user_id`
 - No cross-user memory access (even in future multi-user scenarios)
 - Memory search and facts endpoints require authentication
-- Extracted facts never include raw passwords, tokens, or secrets (extraction prompt explicitly excludes sensitive data)
+- Extracted facts never include raw passwords, tokens, or secrets. The warm path extraction prompt includes explicit exclusion rules:
+  - "Do NOT extract: passwords, API keys, tokens, secret keys, private URLs, internal hostnames, credit card numbers, SSNs, or any credential-like strings"
+  - Extraction output is validated against a regex blocklist before storage
 - Conversation delete is soft-delete (archive) — hard delete available via ADMIN tier only
+- Hard delete propagates to all stores: PostgreSQL rows, ChromaDB embeddings, NetworkX graph nodes
+- **Audit scope:** The following operations are logged: memory node create/update/delete, procedure create/update, graph entity/relationship changes, warm path runs, cold path runs, conversation archive/delete. Read-only operations (retrieval, search) are NOT logged to avoid noise.
 - Audit trail logs all memory write operations
 - ChromaDB collections are per-user (isolated embedding spaces)
 

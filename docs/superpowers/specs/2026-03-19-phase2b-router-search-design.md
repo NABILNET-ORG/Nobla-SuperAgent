@@ -68,19 +68,25 @@ User taps "Connect Gemini" in Flutter settings
   → LLM Router can now use Gemini through user's account
 ```
 
-**Supported OAuth providers:**
-| Provider | OAuth Type | Scopes | Notes |
-|----------|-----------|--------|-------|
-| Google (Gemini) | Google OAuth 2.0 | `generativelanguage.googleapis.com` | Most users have Google accounts |
-| OpenAI | OpenAI OAuth 2.0 | API access | Uses platform.openai.com OAuth |
-| Anthropic | Anthropic OAuth 2.0 | API access | Console OAuth flow |
-| Groq | Groq OAuth | API access | If available, else API key |
+**Provider connection methods matrix:**
+| Provider | OAuth | API Key | Local | Notes |
+|----------|-------|---------|-------|-------|
+| Google (Gemini) | **Yes** (Google OAuth 2.0) | Yes | No | OAuth is the easiest path — most users have Google accounts |
+| OpenAI (GPT) | **Planned** (monitor for OAuth availability) | **Yes** (primary) | No | No public OAuth yet; API key with guided wizard |
+| Anthropic (Claude) | **Planned** (monitor for OAuth availability) | **Yes** (primary) | No | No public OAuth yet; API key with guided wizard |
+| Groq | No | **Yes** (primary) | No | API key only; free tier available |
+| DeepSeek | No | **Yes** (primary) | No | API key only |
+| Ollama | No | No | **Yes** | Local endpoint configuration |
+
+**Note on OAuth availability:** OpenAI and Anthropic currently only offer API key authentication. Some open-source agents (OpenClaw, CoPaw) access these providers through web session tokens or reverse-proxy patterns. We will implement OAuth for these providers when/if they offer public OAuth endpoints. Until then, the guided API key wizard provides a smooth UX. The architecture supports adding OAuth to any provider without code changes — just add the OAuth config.
 
 **Token management:**
 - Access tokens refreshed automatically before expiry
 - Refresh tokens stored AES-256 encrypted in PostgreSQL
 - If OAuth token expires and refresh fails → graceful degradation to other providers
 - User can disconnect (revoke) any provider from settings
+- **CSRF protection:** OAuth state parameter required on all flows
+- **Callback security:** Callback URL allowlisted per provider; rate-limited to 10 req/min
 
 ### 2.3 API Key Method
 
@@ -129,6 +135,28 @@ class UnifiedProvider(BaseProvider):
     async def health_check(self) -> bool: ...
     def token_count(self, text: str) -> int: ...
     def cost_estimate(self, input_tokens: int, output_tokens: int) -> float: ...
+```
+
+### 2.6 LiteLLM Integration
+
+**Role:** LiteLLM serves as a fallback abstraction layer, NOT the primary provider interface. Native SDKs (google-generativeai, anthropic, openai) are used for primary providers because they support OAuth, streaming, and provider-specific features. LiteLLM handles:
+
+- **Long-tail providers:** Any provider beyond the 6 primary ones (e.g., Together AI, Fireworks, Mistral) can be added via LiteLLM config without writing a new provider class
+- **Unified fallback:** If all primary providers fail their circuit breakers, LiteLLM provides a last-resort path to any model with an OpenAI-compatible API
+- **Budget enforcement:** LiteLLM's built-in per-user budget tracking supplements Nobla's cost tracker as a second safety net
+
+**What LiteLLM does NOT do:**
+- Does not replace native SDKs for primary providers (Gemini, OpenAI, Anthropic, Groq, DeepSeek, Ollama)
+- Does not handle OAuth — OAuth flows are managed by `auth/oauth.py`
+- Does not participate in circuit breaker tracking — circuit breakers wrap LiteLLM the same as native providers
+
+**Integration point:**
+```python
+# litellm_proxy.py wraps litellm.completion() as a UnifiedProvider
+# Only used when: (a) user configures a non-primary provider, or (b) all primary providers are down
+class LiteLLMProvider(UnifiedProvider):
+    async def generate(self, messages, **kwargs):
+        return await litellm.acompletion(model=self.model, messages=messages, **kwargs)
 ```
 
 ---
@@ -218,6 +246,17 @@ for provider in route_order:
 raise AllProvidersDown("No available providers")
 ```
 
+### 4.4 Streaming Failure Handling
+
+| Scenario | Circuit Breaker | Client Behavior |
+|----------|----------------|-----------------|
+| Provider fails before first token | Counts as failure | Router tries next provider transparently |
+| Provider fails mid-stream (after tokens sent) | Counts as failure | Error notification sent; partial response kept in episodic memory; user sees "Response interrupted — [Retry]" button |
+| Provider times out (no tokens for 30s) | Counts as failure | Same as mid-stream failure |
+| Rate limit hit | Counts as failure | Router tries next provider; if all rate-limited, return error with retry-after |
+
+**No mid-stream fallback:** If a stream fails after tokens have been sent to the client, we do NOT attempt to continue with a different provider (different models produce incoherent continuations). Instead, send an error and let the user retry.
+
 ---
 
 ## 5. Smart Routing (Enhanced)
@@ -278,6 +317,12 @@ async def compress_context(memory_context: str, target_ratio: float = 0.5) -> st
     return llmlingua.compress(memory_context, rate=target_ratio)
 ```
 
+**Graceful degradation:** LLMLingua requires PyTorch + a small transformer model (~500MB RAM). On resource-constrained systems:
+- **Fallback 1:** Naive truncation — keep first 40% and last 20% of context (preserves intro + recency)
+- **Fallback 2:** Extractive summarization — keep sentences with highest TF-IDF overlap with the query
+- LLMLingua is loaded lazily on first use, not at startup. If loading fails, fallback is automatic.
+- Config flag `compression.enabled: true/false` allows users to disable entirely.
+
 ### 6.2 Token Budget Hints
 
 For HARD queries, add a budget hint to the system prompt:
@@ -296,13 +341,13 @@ This reduces output 3x with minimal quality impact (ACL 2025 Findings).
 class TokenCounter:
     def count(self, text: str, provider: str, model: str) -> int:
         if provider == "openai":
-            return tiktoken.encoding_for_model(model).encode(text).__len__()
+            return len(tiktoken.encoding_for_model(model).encode(text))
         elif provider == "anthropic":
             return self._anthropic_count(text, model)  # Official API
         elif provider == "gemini":
             return self._gemini_count(text, model)      # countTokens endpoint
         else:
-            return tiktoken.get_encoding("cl100k_base").encode(text).__len__()  # Estimate
+            return len(tiktoken.get_encoding("cl100k_base").encode(text))  # Estimate
 ```
 
 ### 7.2 Cost Tracking (extends Phase 1)
@@ -380,6 +425,8 @@ searxng:
 
 SearxNG API endpoint: `http://localhost:8888/search?q={query}&format=json`
 
+**Privacy note:** SearxNG is a meta-search engine — it proxies queries to upstream engines (Google, Bing, DuckDuckGo). The query text leaves the user's machine, but SearxNG strips tracking cookies, user identifiers, and IP addresses. For users who want zero external data leakage, a "local-only search" mode uses only the memory/ChromaDB layer with no external requests.
+
 ### 8.5 Brave LLM Context API
 
 ```python
@@ -393,6 +440,36 @@ async def brave_search(query: str, count: int = 5) -> list[SearchResult]:
     )
     return parse_brave_results(response.json())
 ```
+
+### 8.6 Academic Search
+
+```python
+# academic.py — ArXiv + Google Scholar integration
+async def arxiv_search(query: str, max_results: int = 5) -> list[SearchResult]:
+    """Search ArXiv via their public Atom API (free, no key needed)."""
+    response = await httpx.get(
+        "http://export.arxiv.org/api/query",
+        params={"search_query": f"all:{query}", "max_results": max_results}
+    )
+    return parse_arxiv_atom(response.text)
+
+async def scholar_search(query: str, max_results: int = 5) -> list[SearchResult]:
+    """Search Google Scholar via SearxNG's scholar engine (avoids scraping)."""
+    return await searxng_search(query, engines=["google_scholar"], max_results=max_results)
+```
+
+Academic search is triggered when:
+- User explicitly asks for papers/research ("find papers on...", "research about...")
+- Deep/DeepWide search mode encounters academic-looking queries
+- Results include: title, authors, date, abstract, PDF link, citation count (when available)
+
+### 8.7 Search Result Sanitization
+
+All search results are sanitized before passing to the LLM:
+- Strip HTML tags and scripts
+- Limit each result snippet to 500 tokens (truncate longer content)
+- Reject results with suspicious content patterns (prompt injection attempts)
+- Total search context capped at 3K tokens before synthesis
 
 ---
 
@@ -494,11 +571,14 @@ Future<void> connectProvider(String provider) async {
 
 ### Integration Tests
 - `test_streaming_flow.py` — Full stream from provider through WebSocket to assertions
-- `test_oauth_flow.py` — End-to-end OAuth with mock provider
+- `test_streaming_failure.py` — Mid-stream failure handling, partial response preservation
+- `test_oauth_flow.py` — End-to-end OAuth with mock provider (includes CSRF state param)
 - `test_search_memory.py` — Search results cached in memory, retrieved later
 - `test_fallback_chain.py` — Provider failure → circuit break → fallback
+- `test_search_sanitization.py` — Malformed/malicious search results properly sanitized
 
 ### Coverage Target
+- Backend `auth/` modules (oauth.py, api_key.py): **90%+** (security-critical credential handling)
 - Backend router/search: 85%+
 - Flutter new screens: 80%+
 
@@ -506,15 +586,15 @@ Future<void> connectProvider(String provider) async {
 
 ## 12. Performance Targets
 
-| Operation | Target |
-|-----------|--------|
-| TTFT (time to first token) | <500ms for API, <1s for local |
-| Streaming throughput | Match provider speed (no gateway bottleneck) |
-| Circuit breaker detection | <3 failures within 60s |
-| OAuth token refresh | <2s, transparent to user |
-| Search (Quick mode) | <2s total (search + synthesis) |
-| Search (Deep mode) | <10s total |
-| Prompt compression | <200ms for typical memory context |
+| Operation | Target | Notes |
+|-----------|--------|-------|
+| TTFT (time to first token) | <500ms API, <1s local | Measured from chat.send to first stream token |
+| Streaming throughput | Match provider speed | No gateway bottleneck; buffer up to 100 tokens (~400 bytes) |
+| Circuit breaker detection | <3 failures within 60s | Configurable per provider |
+| OAuth token refresh | <2s, transparent to user | Background refresh before expiry |
+| Search (Quick mode) | <3s total | SearxNG ~1-2s + synthesis uses streaming (user sees partial results) |
+| Search (Deep mode) | <10s total | Follows links, extracts content |
+| Prompt compression | <200ms | LLMLingua; fallback truncation <5ms |
 
 ---
 
@@ -523,10 +603,14 @@ Future<void> connectProvider(String provider) async {
 - OAuth tokens encrypted AES-256 at rest in PostgreSQL
 - API keys encrypted AES-256 at rest
 - OAuth refresh tokens never exposed to Flutter app (backend-only)
+- **OAuth CSRF protection:** State parameter required on all OAuth flows; validated on callback
+- **OAuth callback rate limiting:** 10 req/min per IP to prevent abuse
+- **Callback URL allowlisting:** Only pre-registered callback URLs accepted per provider
 - Search queries logged in audit trail
-- SearxNG runs locally (no data sent to external search engines beyond the query itself)
+- SearxNG proxies queries to upstream engines (Google, Bing, etc.) without user tracking/cookies — query text does leave the machine. For zero-leakage: "local-only search" mode uses memory/ChromaDB only
 - Brave API key stored server-side only
 - Provider credentials scoped per user (no cross-user access)
+- Search results sanitized: HTML stripped, prompt injection patterns rejected, size-capped
 
 ---
 
@@ -534,7 +618,7 @@ Future<void> connectProvider(String provider) async {
 
 ### 2B-1: Streaming + Provider Auth (~1 week)
 - Streaming protocol implementation
-- OAuth flows for Google/OpenAI/Anthropic
+- OAuth flow for Google (Gemini); API key guided wizard for OpenAI/Anthropic/Groq/DeepSeek
 - API key guided wizard
 - Circuit breaker pattern
 - Flutter provider management screen
