@@ -264,11 +264,35 @@ In `backend/nobla/db/models/memory.py`, add after `metadata_` (around line 115):
 Run: `cd backend && pytest tests/test_memory_models.py -v`
 Expected: PASS
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 8: Create Alembic migration**
+
+Run: `cd backend && alembic revision --autogenerate -m "phase2a_memory_columns_and_indexes"`
+
+- [ ] **Step 9: Add GIN indexes to the migration**
+
+Edit the generated migration file to add after the column additions:
+
+```python
+# Full-text search indexes (BM25 via GIN)
+op.execute("CREATE INDEX IF NOT EXISTS idx_messages_content_fts ON messages USING GIN (to_tsvector('english', content))")
+op.execute("CREATE INDEX IF NOT EXISTS idx_conversations_summary_fts ON conversations USING GIN (to_tsvector('english', summary))")
+op.execute("CREATE INDEX IF NOT EXISTS idx_conversations_topics ON conversations USING GIN (topics)")
+# Memory retrieval indexes
+op.execute("CREATE INDEX IF NOT EXISTS idx_memory_nodes_retrieval ON memory_nodes (user_id, note_type, confidence DESC)")
+op.execute("CREATE INDEX IF NOT EXISTS idx_memory_links_source ON memory_links (source_id, link_type)")
+op.execute("CREATE INDEX IF NOT EXISTS idx_memory_links_target ON memory_links (target_id, link_type)")
+```
+
+- [ ] **Step 10: Run migration**
+
+Run: `cd backend && alembic upgrade head`
+Expected: Migration applies successfully
+
+- [ ] **Step 11: Commit**
 
 ```bash
-git add backend/nobla/db/models/ backend/tests/test_memory_models.py
-git commit -m "schema: add Phase 2A columns to conversations, messages, memory models"
+git add backend/nobla/db/ backend/tests/test_memory_models.py
+git commit -m "schema: add Phase 2A columns, GIN indexes, and Alembic migration"
 ```
 
 ---
@@ -1209,15 +1233,17 @@ async def handle_chat_send(params: dict, state: ConnectionState) -> dict:
             query=message,
         )
 
-    # 3. Build messages for LLM (with memory context)
-    messages = []
+    # 3. Build messages for LLM — MUST use LLMMessage objects, not dicts
+    #    (router.route() expects list[LLMMessage], see brain/router.py:124)
+    from nobla.brain.router import LLMMessage
+    llm_messages = []
     if memory_context:
-        messages.append({"role": "system", "content": f"[Memory] {memory_context}"})
-    messages.append({"role": "user", "content": message})
+        llm_messages.append(LLMMessage(role="system", content=f"[Memory] {memory_context}"))
+    llm_messages.append(LLMMessage(role="user", content=message))
 
     # 4. Route to LLM (existing logic)
     router = get_router()
-    response = await router.route(messages)
+    response = await router.route(llm_messages)
 
     # 5. Hot path: store assistant response
     if memory:
@@ -1231,11 +1257,13 @@ async def handle_chat_send(params: dict, state: ConnectionState) -> dict:
             cost_usd=float(response.cost) if response.cost else None,
         )
 
+    # IMPORTANT: Preserve existing response field names for Flutter compatibility
+    # (Flutter reads "message", "tokens_used", "cost_usd" — do NOT rename)
     return {
-        "response": response.content,
+        "message": response.content,
         "model": response.model,
-        "tokens": response.input_tokens + response.output_tokens,
-        "cost": str(response.cost),
+        "tokens_used": response.input_tokens + response.output_tokens,
+        "cost_usd": str(response.cost),
         "conversation_id": conversation_id,
     }
 ```
@@ -1359,6 +1387,29 @@ async def handle_conversation_rename(params: dict, state: ConnectionState) -> di
         params["title"],
     )
     return {"renamed": success}
+
+async def handle_conversation_create(params: dict, state: ConnectionState) -> dict:
+    """Create a new conversation. Called by Flutter 'New Conversation' button."""
+    memory = get_memory_orchestrator()
+    conv = await memory.create_conversation(
+        user_id=uuid.UUID(state.user_id),
+        title=params.get("title"),
+    )
+    return {"conversation_id": str(conv.id), "title": conv.title}
+
+async def handle_conversation_pause(params: dict, state: ConnectionState) -> dict:
+    """Flutter sends this on AppLifecycleState.paused. Triggers warm path."""
+    memory = get_memory_orchestrator()
+    conv_id = uuid.UUID(params["conversation_id"])
+    # Trigger warm path consolidation asynchronously
+    import asyncio
+    asyncio.create_task(memory.trigger_warm_path(conv_id, uuid.UUID(state.user_id)))
+    memory.release_working_memory(conv_id)
+    return {"status": "consolidation_started"}
+
+async def handle_conversation_close(params: dict, state: ConnectionState) -> dict:
+    """Explicit conversation end. Same as pause but user-initiated."""
+    return await handle_conversation_pause(params, state)
 ```
 
 - [ ] **Step 3: Run tests**
@@ -1576,32 +1627,190 @@ git commit -m "feat: Phase 2A complete — 5-layer memory system + conversation 
 
 ---
 
+## Cross-Cutting Fixes (Applied Throughout)
+
+These issues apply across multiple tasks. Apply them during implementation:
+
+**Session management (I8):** The `MemoryOrchestrator` must NOT be initialized with `db_session=None`. Use a session factory pattern:
+```python
+# In app.py lifespan, pass the session factory, not a session:
+from nobla.db.session import async_session_factory
+memory_orchestrator = MemoryOrchestrator(session_factory=async_session_factory, settings=settings)
+
+# In orchestrator, create sessions per operation:
+async def process_message(self, ...):
+    async with self._session_factory() as session:
+        episodic = EpisodicMemory(session)
+        ...
+```
+
+**DRY with ConversationRepository (I9):** `EpisodicMemory` should delegate to the existing `ConversationRepository` at `backend/nobla/db/repositories/conversation_repo.py` for basic CRUD, and add only the new memory-specific methods (search, summary update, hot path metadata).
+
+**UUID consistency (I10):** All new `UUID` columns must use `as_uuid=False` to match the existing convention (e.g., `Message.id` uses `UUID(as_uuid=False)`).
+
+**Use structlog (M4):** All new modules must use `import structlog; logger = structlog.get_logger(__name__)` instead of `import logging`.
+
+**RPC handler decorators (M5):** All new RPC handlers must use the `@rpc_method("method.name")` decorator to register in the dispatch table, matching the existing pattern.
+
+**websocket.py 750-line risk (I14):** When adding conversation + memory RPC handlers, create a new file `backend/nobla/gateway/conversation_handlers.py` for conversation-related handlers and `backend/nobla/gateway/memory_handlers.py` for memory-related handlers. Import and register them in websocket.py.
+
+**Hard-Query LLM Re-ranking (I2):** Explicitly deferred to Phase 2B. The retrieval pipeline returns results from the lightweight re-ranking formula only. A TODO comment marks where LLM re-ranking would be added.
+
+---
+
+### Task 23: Security, Concurrency, and Performance Tests
+
+**Files:**
+- Create: `backend/tests/test_memory_isolation.py`
+- Create: `backend/tests/test_concurrent_memory.py`
+- Create: `backend/tests/test_sensitive_extraction.py`
+- Create: `backend/tests/bench_hot_path.py`
+- Create: `backend/tests/bench_retrieval.py`
+
+- [ ] **Step 1: Write memory isolation test**
+
+```python
+# test_memory_isolation.py
+import pytest, uuid
+@pytest.mark.asyncio
+async def test_no_cross_user_memory_leakage(orchestrator_factory):
+    """Two users should never see each other's memories."""
+    user_a, user_b = uuid.uuid4(), uuid.uuid4()
+    orch = orchestrator_factory()
+    # Store fact for user_a
+    # Retrieve as user_b — must return empty
+```
+
+- [ ] **Step 2: Write concurrent memory test**
+
+```python
+# test_concurrent_memory.py
+import pytest, asyncio, uuid
+@pytest.mark.asyncio
+async def test_concurrent_warm_paths_no_race_condition():
+    """Two conversations ending simultaneously should not corrupt facts."""
+    # Create 2 conversations, send messages to both
+    # Trigger warm path on both simultaneously via asyncio.gather
+    # Verify no duplicate/corrupted facts
+```
+
+- [ ] **Step 3: Write sensitive data extraction test**
+
+```python
+# test_sensitive_extraction.py
+import pytest
+@pytest.mark.asyncio
+async def test_extraction_filters_passwords():
+    """Warm path must NOT extract passwords, API keys, or tokens as facts."""
+    messages = [
+        "My API key is sk-abc123def456",
+        "Password for server: MyS3cret!Pass",
+        "Bearer token: eyJhbGciOiJIUzI1...",
+    ]
+    # Run warm path extraction on these
+    # Verify no extracted fact contains the sensitive values
+```
+
+- [ ] **Step 4: Write performance benchmarks**
+
+```python
+# bench_hot_path.py — validate <50ms sync target
+# bench_retrieval.py — validate <200ms with 1K, 5K, 10K nodes
+```
+
+- [ ] **Step 5: Run all tests**
+
+Run: `cd backend && pytest tests/ -v --cov=nobla`
+Expected: All pass, >90% coverage on memory modules
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add backend/tests/
+git commit -m "test: add security, concurrency, and performance tests for memory"
+```
+
+---
+
+### Task 24: Flutter Lifecycle + Tests
+
+**Files:**
+- Modify: `app/lib/main.dart` — Add `AppLifecycleState` observer
+- Create: `app/test/features/conversations/conversation_provider_test.dart`
+- Create: `app/test/features/memory/memory_viewer_screen_test.dart`
+
+- [ ] **Step 1: Add lifecycle observer to main.dart**
+
+```dart
+// In NoblaApp, add WidgetsBindingObserver mixin
+// On AppLifecycleState.paused: send conversation.pause via JSON-RPC
+// On AppLifecycleState.resumed: reconnect WebSocket if needed
+```
+
+- [ ] **Step 2: Write conversation provider tests**
+
+```dart
+// conversation_provider_test.dart
+// Test: list conversations returns parsed models
+// Test: search conversations filters correctly
+// Test: archive conversation calls RPC
+```
+
+- [ ] **Step 3: Write memory viewer widget tests**
+
+```dart
+// memory_viewer_screen_test.dart
+// Test: renders tabs (Facts, Entities, Procedures)
+// Test: shows empty state when no memories
+// Test: displays fact cards with confidence
+```
+
+- [ ] **Step 4: Run Flutter tests**
+
+Run: `cd app && flutter test --coverage && flutter analyze`
+Expected: All pass, no analysis issues
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add app/
+git commit -m "feat: Flutter lifecycle observer + widget/provider tests"
+```
+
+---
+
 ## Task Dependencies
 
 ```
-Task 1 (deps) → Task 2 (schema) → Task 3 (extraction) → Task 4 (episodic) → Task 5 (working)
-                                                                                      ↓
+Task 1 (deps) ──→ Task 2 (schema + migration + indexes)
+                    ├──→ Task 3 (extraction — no DB dependency)
+                    └──→ Task 4 (episodic) → Task 5 (working)
+                                                    ↓
 Task 6 (orchestrator) → Task 7 (gateway integration) → Task 8 (conversation RPC)
                                                                       ↓
                     ┌───────────────────────────────────────────────────┤
                     ↓                                                   ↓
 Task 9 (semantic) → Task 10 (retrieval)          Task 11 (graph builder) → Task 12 (graph queries)
-                    ↓                                                   ↓
-                    └───────────────────────────────────────────────────┤
+        ↓           ↓                                                   ↓
+  Task 14 (embed)   └───────────────────────────────────────────────────┤
                                                                       ↓
-Task 13 (consolidation/warm path) → Task 14 (async embedding)
-                                                    ↓
+Task 13 (consolidation/warm path)
+                          ↓
 Task 15 (procedural) → Task 16 (maintenance/cold) → Task 17 (memory RPC)
                                                               ↓
-Task 18 (Flutter models) → Task 19 (conversation drawer) → Task 20 (memory viewer)
-                                                              ↓
-                                              Task 21 (dashboard) → Task 22 (final integration)
+Task 18 (Flutter models) ──→ Task 19a (conversation drawer)
+                          ├──→ Task 19b (conversation switching)
+                          ├──→ Task 20 (memory viewer)
+                          └──→ Task 21 (dashboard)
+                                        ↓
+Task 22 (skill schema + integration) → Task 23 (security/perf tests) → Task 24 (Flutter tests)
 ```
 
-**Parallelizable pairs:**
+**Parallelizable groups:**
+- Tasks 3 (extraction) || Task 2 (schema) — extraction has no DB dependency
 - Tasks 9-10 (semantic + retrieval) || Tasks 11-12 (graph)
-- Task 18 (Flutter models) can start as soon as Task 17 defines the RPC response shapes
-- Tasks 19-21 (Flutter screens) can be parallelized across developers
+- Task 14 (async embedding) depends on Task 9 only, not Task 13
+- Tasks 19a, 19b, 20, 21 (Flutter screens) — all independent, share only Task 18 models
 
 ---
 
@@ -1617,5 +1826,9 @@ After all tasks complete, verify:
 - [ ] Search past conversations → relevant results returned
 - [ ] Memory viewer shows facts, entities, procedures
 - [ ] Dashboard shows memory stats
+- [ ] Background app → warm path triggers (conversation.pause sent)
+- [ ] Two users' memories are fully isolated (security test passes)
+- [ ] Sensitive data (passwords, API keys) never stored as facts
 - [ ] All tests pass with >90% coverage on memory modules
 - [ ] No file exceeds 750 lines
+- [ ] websocket.py stays under 750 lines (handlers split into separate files)
