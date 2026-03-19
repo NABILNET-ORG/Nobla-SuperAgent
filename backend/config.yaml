@@ -26,4 +26,11 @@ database:
 memory:
   context_window_messages: 20
   max_context_tokens: 8000
-  store_embeddings: false
+  store_embeddings: true
+  chromadb_path: "./data/chromadb"
+  embedding_model: "all-MiniLM-L6-v2"
+  spacy_model: "en_core_web_sm"
+  warm_path_idle_timeout_minutes: 5
+  cold_path_schedule_hour: 3
+  memory_retention_days: 90
+  retrieval_top_k: 5
