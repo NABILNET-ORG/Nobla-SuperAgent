@@ -37,7 +37,7 @@ secrets/
 *.pt
 *.pth
 *.safetensors
-models/
+/models/
 
 # Database & Storage
 *.db
