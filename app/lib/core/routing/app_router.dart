@@ -6,6 +6,7 @@ import 'package:nobla_agent/features/auth/screens/register_screen.dart';
 import 'package:nobla_agent/features/chat/screens/chat_screen.dart';
 import 'package:nobla_agent/features/dashboard/screens/dashboard_screen.dart';
 import 'package:nobla_agent/features/settings/screens/settings_screen.dart';
+import 'package:nobla_agent/features/memory/screens/memory_viewer_screen.dart';
 import 'package:nobla_agent/shared/widgets/kill_switch_fab.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -45,6 +46,10 @@ GoRouter createRouter(AuthState authState) {
             builder: (context, state) => const DashboardScreen(),
           ),
           GoRoute(
+            path: '/home/memory',
+            builder: (context, state) => const MemoryViewerScreen(),
+          ),
+          GoRoute(
             path: '/home/settings',
             builder: (context, state) => const SettingsScreen(),
           ),
@@ -73,6 +78,8 @@ class HomeShell extends StatelessWidget {
             case 1:
               context.go('/home/dashboard');
             case 2:
+              context.go('/home/memory');
+            case 3:
               context.go('/home/settings');
           }
         },
@@ -88,6 +95,11 @@ class HomeShell extends StatelessWidget {
             label: 'Dashboard',
           ),
           NavigationDestination(
+            icon: Icon(Icons.memory_outlined),
+            selectedIcon: Icon(Icons.memory),
+            label: 'Memory',
+          ),
+          NavigationDestination(
             icon: Icon(Icons.settings_outlined),
             selectedIcon: Icon(Icons.settings),
             label: 'Settings',
@@ -99,7 +111,8 @@ class HomeShell extends StatelessWidget {
 
   int _calculateIndex(String location) {
     if (location.startsWith('/home/dashboard')) return 1;
-    if (location.startsWith('/home/settings')) return 2;
+    if (location.startsWith('/home/memory')) return 2;
+    if (location.startsWith('/home/settings')) return 3;
     return 0;
   }
 }
