@@ -28,6 +28,7 @@ from nobla.gateway.websocket import (
 )
 from nobla.memory.orchestrator import MemoryOrchestrator
 from nobla.db.engine import Database
+import nobla.gateway.memory_handlers  # noqa: F401 — registers memory RPC methods
 from nobla.config import load_settings
 from nobla.brain.router import LLMRouter
 from nobla.security import (
