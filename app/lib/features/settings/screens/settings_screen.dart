@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nobla_agent/core/providers/config_provider.dart';
+import 'package:nobla_agent/features/settings/screens/provider_management_screen.dart';
 import 'package:nobla_agent/main.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -93,6 +94,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   value: config.isDarkMode,
                   onChanged: (v) =>
                       ref.read(configProvider.notifier).setDarkMode(v),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.psychology),
+                  title: const Text('LLM Providers'),
+                  subtitle: const Text('Connect AI models'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ProviderManagementScreen(),
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 12),

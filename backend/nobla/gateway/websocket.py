@@ -8,6 +8,7 @@ auth, permissions, kill switch, audit, and cost checks (Phase 1B).
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from dataclasses import dataclass, field
 from typing import Any, Callable, Awaitable
@@ -17,6 +18,7 @@ import structlog
 
 from nobla.brain.base_provider import LLMMessage
 from nobla.brain.router import LLMRouter
+from nobla.brain.streaming import StreamSession
 from nobla.gateway.protocol import (
     JsonRpcError,
     JsonRpcRequest,
@@ -454,6 +456,72 @@ async def handle_chat_send(params: dict, state: ConnectionState) -> dict:
         "cost_usd": response.cost_usd,
         "conversation_id": conversation_id,
     }
+
+
+# ---------------------------------------------------------------------------
+# Streaming Chat (Phase 2B)
+# ---------------------------------------------------------------------------
+
+_active_streams: dict[str, StreamSession] = {}
+
+
+@rpc_method("chat.stream")
+async def handle_chat_stream(params: dict, state: ConnectionState) -> dict:
+    """Start a streaming LLM response. Tokens arrive as notifications."""
+    message = params.get("message", "")
+    conversation_id = params.get("conversation_id", str(uuid.uuid4()))
+
+    router = get_router()
+    if not router:
+        raise RuntimeError("LLM router not initialized")
+
+    memory = get_memory_orchestrator()
+    if memory:
+        conv_uuid = uuid.UUID(conversation_id)
+        await memory.process_message(conversation_id=conv_uuid, role="user", content=message)
+
+    memory_context = ""
+    if memory and state.user_id:
+        memory_context = await memory.get_memory_context(user_id=uuid.UUID(state.user_id), query=message)
+
+    llm_messages = []
+    if memory_context:
+        llm_messages.append(LLMMessage(role="system", content=f"[Memory] {memory_context}"))
+    llm_messages.append(LLMMessage(role="user", content=message))
+
+    provider_name, token_iter = await router.stream_route(llm_messages)
+
+    ws_pair = manager._connections.get(state.connection_id)
+    if not ws_pair:
+        raise RuntimeError("WebSocket connection not found")
+    ws, _ = ws_pair
+
+    session = StreamSession(ws=ws, conversation_id=conversation_id, model=provider_name)
+    _active_streams[conversation_id] = session
+
+    async def run_stream():
+        try:
+            await session.run(token_iter)
+        finally:
+            _active_streams.pop(conversation_id, None)
+            if memory and session.full_text:
+                await memory.process_message(
+                    conversation_id=uuid.UUID(conversation_id),
+                    role="assistant", content=session.full_text, model_used=provider_name,
+                )
+
+    asyncio.create_task(run_stream())
+    return {"conversation_id": conversation_id, "model": provider_name, "streaming": True}
+
+
+@rpc_method("chat.stream.cancel")
+async def handle_chat_stream_cancel(params: dict, state: ConnectionState) -> dict:
+    conversation_id = params.get("conversation_id", "")
+    session = _active_streams.get(conversation_id)
+    if session:
+        session.cancel()
+        return {"cancelled": True, "partial_text": session.full_text}
+    return {"cancelled": False, "error": "No active stream for this conversation"}
 
 
 # ---------------------------------------------------------------------------
