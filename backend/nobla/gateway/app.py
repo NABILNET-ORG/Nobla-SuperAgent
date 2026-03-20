@@ -58,7 +58,7 @@ async def lifespan(app: FastAPI):
             continue
         try:
             if name == "gemini":
-                from nobla.brain.gemini import GeminiProvider
+                from nobla.brain.providers.gemini import GeminiProvider
 
                 api_key = prov_settings.api_key or os.environ.get(
                     "GEMINI_API_KEY", ""
@@ -68,14 +68,14 @@ async def lifespan(app: FastAPI):
                         api_key=api_key, model=prov_settings.model
                     )
             elif name == "ollama":
-                from nobla.brain.ollama import OllamaProvider
+                from nobla.brain.providers.ollama import OllamaProvider
 
                 providers[name] = OllamaProvider(
                     model=prov_settings.model,
                     base_url=prov_settings.base_url or "http://localhost:11434",
                 )
             elif name == "groq":
-                from nobla.brain.groq import GroqProvider
+                from nobla.brain.providers.groq import GroqProvider
 
                 api_key = prov_settings.api_key or os.environ.get(
                     "GROQ_API_KEY", ""
