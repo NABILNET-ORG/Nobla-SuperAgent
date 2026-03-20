@@ -203,40 +203,89 @@ TIER 4: ADMIN
 
 ---
 
-### Phase 2: Intelligence Core (Weeks 5-8)
-**Goal:** Make the agent smart — LLM routing, memory, search.
+### Phase 2A: Memory System + Conversation Persistence (Weeks 5-7)
+**Goal:** Make the agent remember, learn, and persist conversations.
+**Design spec:** `docs/superpowers/specs/2026-03-19-phase2a-memory-conversation-design.md`
+**Research basis:** 80+ papers (2024-2026). See `research/phase2-research-synthesis.md`
 
-**Multi-LLM Router:**
-- [ ] LLM abstraction layer (supports any provider)
-- [ ] Smart routing: task complexity → model selection
-- [ ] Supported providers: Ollama, Gemini, DeepSeek, Groq, OpenAI, Claude
-- [ ] Fallback chain: if one fails, try next
-- [ ] Token usage tracking per provider
-- [ ] User-configurable model preferences
+**5-Layer Memory Engine (Layered Pipeline Architecture):**
+- [ ] Memory orchestrator: thin coordinator routing to independent layers
+- [ ] Working memory: context window management with token budgeting
+- [ ] Episodic memory: conversation storage + full-text search (PostgreSQL GIN)
+- [ ] Semantic memory: fact extraction + vector embeddings (ChromaDB + PostgreSQL)
+- [ ] Procedural memory: learned workflows + Bayesian Beta scoring (MACLA-inspired)
+- [ ] Knowledge graph: entity relationships via NetworkX (LazyGraphRAG, incremental)
+- [ ] Hybrid retrieval: 0.7 semantic + 0.3 BM25 keyword + lightweight re-ranking
+- [ ] Memory scoring: recency decay + importance + relevance + access frequency
 
-**Advanced Memory System:**
-- [ ] Episodic memory: conversation history with timestamps + context
-- [ ] Semantic memory: extracted knowledge/facts (ChromaDB embeddings)
-- [ ] Procedural memory: learned skills/workflows
-- [ ] Knowledge Graph: entities + relationships (NetworkX)
-- [ ] RAG pipeline: embed → store → retrieve → augment prompts
-- [ ] Memory search: natural language queries over all memory types
-- [ ] Memory management UI in Flutter app
+**Three Processing Paths:**
+- [ ] Hot path: per-message, <50ms, spaCy NER + keywords + embedding (no LLM call)
+- [ ] Warm path: post-conversation, async LLM extraction of facts/entities/procedures
+- [ ] Cold path: nightly maintenance — decay, dedup, prune, graph rebuild (APScheduler)
+
+**Conversation Persistence:**
+- [ ] Tree-structured messages (parent_message_id for future branching)
+- [ ] Conversation lifecycle: create, resume, switch, archive
+- [ ] Conversation search: full-text + semantic across all history
+- [ ] Observation masking: tool outputs hidden from context, action kept (NeurIPS 2025)
+- [ ] Rolling summary: compress older messages when context window overflows
+
+**Skill & Plugin Schema (Foundation for Phase 6 Marketplace):**
+- [ ] Skill manifest (skill.json) + SKILL.md prompt format
+- [ ] Plugin manifest (plugin.json) with skills/agents/hooks/commands
+- [ ] Directory structure: bundled/ + community/ + custom/
+- [ ] Marketplace entry schema (data model only, no UI yet)
+
+**Flutter App Updates:**
+- [ ] Conversation drawer: sidebar with list, search, grouping by date
+- [ ] Memory viewer screen: facts, entities, procedures tabs
+- [ ] Dashboard memory stats card
+- [ ] Community tab placeholder ("Coming Soon")
+- [ ] Memory settings: context budget, warm path timeout, retention period
+
+**New JSON-RPC Methods:**
+- [ ] conversation.list, conversation.get, conversation.search
+- [ ] conversation.delete (soft), conversation.rename
+- [ ] memory.search, memory.facts, memory.graph, memory.stats
+
+---
+
+### Phase 2B: LLM Router Enhancements + Search (Weeks 8-9)
+**Goal:** Upgrade the LLM router with streaming, OAuth provider auth, and add AI search.
+**Design spec:** `docs/superpowers/specs/2026-03-19-phase2b-router-search-design.md`
+
+**Multi-LLM Router Enhancements:**
+- [ ] Streaming responses: token-by-token via WebSocket (SSE internally to providers)
+- [ ] Provider auth — three connection methods per provider:
+  - [ ] OAuth sign-in: "Sign in with Google" for Gemini, OAuth for OpenAI/Anthropic
+  - [ ] API key: guided setup wizard with step-by-step instructions
+  - [ ] Local model: Ollama endpoint configuration
+- [ ] All three methods coexist — user picks per provider, router uses all available
+- [ ] RouteLLM-inspired complexity classification (matrix factorization approach)
+- [ ] Circuit breaker pattern: Closed→Open→Half-Open with rolling latency metrics
+- [ ] New providers: Claude (Anthropic), DeepSeek, OpenAI (extends Phase 1 Gemini/Groq/Ollama)
+- [ ] Token counting: `tiktoken` + provider-specific tokenizers
+- [ ] Prompt compression: LLMLingua-2 for retrieved memory context
+- [ ] LiteLLM as provider abstraction layer (100+ models, unified interface)
+- [ ] User-configurable model preferences + per-session model pinning
 
 **Smart Search (Brave + SearXNG):**
-- [ ] SearXNG Docker integration (self-hosted, free)
-- [ ] Brave Search API integration (premium, LLM Context API)
-- [ ] Search router: Brave for quality, SearXNG for volume/privacy
-- [ ] Source citation: every answer links to sources
-- [ ] Search modes: Speed, Balanced, Deep Research
+- [ ] SearXNG Docker integration (self-hosted, free, privacy-first default)
+- [ ] Brave Search LLM Context API ($5/1K queries, extracts page content)
+- [ ] Agentic RAG: expose 3 retrieval tools (keyword, semantic, chunk) to LLM
+- [ ] Search modes: Quick, Deep Search, Wide Search, DeepWide
+- [ ] Source citation: every answer links to sources with snippets
 - [ ] Academic search: ArXiv, Google Scholar integration
+- [ ] Search + Memory integration: check memory before searching, cache results
 - [ ] Domain-scoped search
 
 **Flutter App Updates:**
-- [ ] Memory viewer: browse episodic/semantic/procedural memory
+- [ ] Provider management screen: connect/disconnect per provider, status indicators
+- [ ] OAuth sign-in flows per provider (Google, OpenAI, Anthropic, etc.)
+- [ ] API key guided setup wizard with screenshots and links
 - [ ] Search UI: search modes, source display, citations
-- [ ] LLM settings: model selector, provider config, cost display
-- [ ] Conversation history with search
+- [ ] LLM settings: model selector, provider config, cost display per provider
+- [ ] Streaming message display: token-by-token text rendering
 
 ---
 
@@ -362,8 +411,8 @@ TIER 4: ADMIN
 
 ---
 
-### Phase 6: Automation & Multi-Agent (Weeks 21-24)
-**Goal:** Workflows, cron jobs, and multi-agent collaboration.
+### Phase 6: Automation, Multi-Agent & Community Marketplace (Weeks 21-24)
+**Goal:** Workflows, cron jobs, multi-agent collaboration, and community skill/plugin marketplace.
 
 **Automation Engine:**
 - [ ] Cron jobs: schedule recurring tasks with APScheduler
@@ -391,11 +440,29 @@ TIER 4: ADMIN
 - [ ] Dynamic tool discovery via MCP
 - [ ] MCP marketplace: discover and install MCP servers
 
+**Community Marketplace (Skills + Plugins):**
+- [ ] Skill runtime: load and execute user-created skills (SKILL.md + skill.json)
+- [ ] Plugin runtime: load plugins with skills/agents/hooks/commands
+- [ ] Community backend: user accounts, publishing, versioning, moderation
+- [ ] Marketplace API: browse, search, install, rate, review
+- [ ] Security audit pipeline: scan published plugins for dangerous patterns
+- [ ] Custom skill creator: guided UI for non-developers to create skills
+- [ ] Custom plugin creator: developer-focused plugin scaffolding tool
+- [ ] Plugin revenue sharing: optional paid plugins with author payments
+- [ ] One-tap install: install from marketplace directly in Flutter app
+- [ ] Auto-update: version pinning with update notifications
+- [ ] Categories: productivity, development, media, automation, finance, health, etc.
+- [ ] Author profiles: linked to community accounts with reputation scoring
+
 **Flutter App Updates:**
 - [ ] Workflow builder UI: visual workflow creation
 - [ ] Cron manager: schedule, edit, delete cron jobs
 - [ ] Multi-agent dashboard: see all running agents/sub-agents
 - [ ] Automation templates: pre-built common workflows
+- [ ] Community tab: browse marketplace, install skills/plugins, rate/review
+- [ ] Skill creator screen: guided skill creation for non-developers
+- [ ] Plugin manager: installed plugins, updates, settings per plugin
+- [ ] My Publications: manage user's published skills/plugins
 
 ---
 
@@ -485,7 +552,7 @@ Nobla Agent improves itself over time:
 3. **Skill auto-creation** — If a task is repeated 3x, agent creates a reusable skill
 4. **Model fine-tuning data** — (Optional) collect interaction data for future model improvements
 5. **A/B routing** — Test different models/approaches, keep the better one
-6. **Community skills** — Open marketplace where users share skills (vetted + scanned)
+6. **Community marketplace** — Open marketplace where users create, share, and install custom skills + plugins (security-audited, rated, versioned). Schema defined in Phase 2A, runtime + UI in Phase 6
 
 ---
 
@@ -620,11 +687,29 @@ nobla-agent/
 7. Test cost control: set budget, exceed it, verify shutoff
 8. Run security tests: injection attempts, sandbox escape
 
-### Phase 2 Verification:
-1. Test LLM routing: send easy vs hard tasks, verify model selection
-2. Test memory: have conversation, close app, reopen, verify context retained
-3. Test search: query via Brave + SearXNG, verify citations
-4. Test RAG: add documents, ask questions about them
+### Phase 2A Verification:
+1. Test memory hot path: send messages, verify NER extraction + embedding storage (<50ms)
+2. Test episodic memory: have conversation, close app, reopen, verify history retained
+3. Test semantic memory: chat about preferences, verify facts extracted after conversation ends
+4. Test knowledge graph: mention people/projects, verify entities + relationships in graph
+5. Test procedural memory: repeat a workflow 2x, verify procedure created with Bayesian score
+6. Test retrieval pipeline: ask about past conversation, verify relevant memories augment prompt
+7. Test conversation persistence: list, switch, search, archive conversations
+8. Test working memory: long conversation, verify observation masking + rolling summary
+9. Test cold path: trigger maintenance, verify decay + dedup + prune
+10. Flutter: test conversation drawer, memory viewer, dashboard stats
+
+### Phase 2B Verification:
+1. Test streaming: send message, verify token-by-token response via WebSocket
+2. Test OAuth: sign in with Google, verify Gemini access via OAuth token
+3. Test API key: configure Claude API key, verify routing to Claude for hard tasks
+4. Test local model: connect Ollama, verify free routing for easy tasks
+5. Test all three coexisting: OAuth Gemini + API Claude + local Ollama, verify router uses all
+6. Test circuit breaker: disable a provider, verify fallback to next
+7. Test search: query via SearxNG, verify citations + LLM synthesis
+8. Test search + memory: search for something, ask again later, verify memory serves it
+9. Test prompt compression: verify LLMLingua-2 reduces token count on retrieved context
+10. Flutter: test provider management screen, OAuth flows, search UI
 
 ### Phase 3 Verification:
 1. Test voice: speak → STT → LLM → TTS → hear response

@@ -35,7 +35,16 @@ class DatabaseSettings(BaseModel):
 class MemorySettings(BaseModel):
     context_window_messages: int = 20
     max_context_tokens: int = 8000
-    store_embeddings: bool = False
+    store_embeddings: bool = True
+    chromadb_path: str = "./data/chromadb"
+    embedding_model: str = "all-MiniLM-L6-v2"
+    spacy_model: str = "en_core_web_sm"
+    warm_path_idle_timeout_minutes: int = 5
+    cold_path_schedule_hour: int = 3
+    memory_retention_days: int = 90
+    retrieval_top_k: int = 5
+    semantic_weight: float = 0.7
+    keyword_weight: float = 0.3
 
 
 class AuthSettings(BaseModel):

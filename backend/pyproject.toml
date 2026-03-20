@@ -30,6 +30,11 @@ dependencies = [
     "pyjwt>=2.9.0",
     "bcrypt>=4.1.0",
     "docker>=7.0.0",
+    "chromadb>=0.5.0",
+    "sentence-transformers>=3.0.0",
+    "spacy>=3.7.0",
+    "scikit-learn>=1.5.0",
+    "scipy>=1.14.0",
 ]
 
 [project.optional-dependencies]

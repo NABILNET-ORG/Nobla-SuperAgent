@@ -191,6 +191,18 @@ def get_sandbox_manager():
     return _sandbox_manager
 
 
+_memory_orchestrator = None
+
+
+def set_memory_orchestrator(orch) -> None:
+    global _memory_orchestrator
+    _memory_orchestrator = orch
+
+
+def get_memory_orchestrator():
+    return _memory_orchestrator
+
+
 # ---------------------------------------------------------------------------
 # Built-in RPC Handlers
 # ---------------------------------------------------------------------------
@@ -389,15 +401,52 @@ async def handle_code_execute(params: dict, state: ConnectionState) -> dict:
 @rpc_method("chat.send")
 async def handle_chat_send(params: dict, state: ConnectionState) -> dict:
     message = params.get("message", "")
-    conversation_id = params.get("conversation_id")
+    conversation_id = params.get("conversation_id", str(uuid.uuid4()))
+    conv_uuid = uuid.UUID(conversation_id)
 
+    # 1. Hot path: store user message + extract
+    memory = get_memory_orchestrator()
+    if memory:
+        await memory.process_message(
+            conversation_id=conv_uuid,
+            role="user",
+            content=message,
+        )
+
+    # 2. Retrieve memory context
+    memory_context = ""
+    if memory and state.user_id:
+        memory_context = await memory.get_memory_context(
+            user_id=uuid.UUID(state.user_id),
+            query=message,
+        )
+
+    # 3. Build messages for LLM
     router = get_router()
     if not router:
         raise RuntimeError("LLM router not initialized")
 
-    messages = [LLMMessage(role="user", content=message)]
-    response = await router.route(messages)
+    llm_messages = []
+    if memory_context:
+        llm_messages.append(LLMMessage(role="system", content=f"[Memory] {memory_context}"))
+    llm_messages.append(LLMMessage(role="user", content=message))
 
+    # 4. Route to LLM
+    response = await router.route(llm_messages)
+
+    # 5. Hot path: store assistant response
+    if memory:
+        await memory.process_message(
+            conversation_id=conv_uuid,
+            role="assistant",
+            content=response.content,
+            model_used=response.model,
+            tokens_input=response.tokens_input,
+            tokens_output=response.tokens_output,
+            cost_usd=response.cost_usd,
+        )
+
+    # IMPORTANT: Preserve existing response field names for Flutter compatibility
     return {
         "message": response.content,
         "model": response.model,
@@ -405,6 +454,115 @@ async def handle_chat_send(params: dict, state: ConnectionState) -> dict:
         "cost_usd": response.cost_usd,
         "conversation_id": conversation_id,
     }
+
+
+# ---------------------------------------------------------------------------
+# Conversation RPC Handlers (Phase 2A)
+# ---------------------------------------------------------------------------
+
+
+@rpc_method("conversation.list")
+async def handle_conversation_list(params: dict, state: ConnectionState) -> dict:
+    memory = get_memory_orchestrator()
+    if not memory:
+        raise RuntimeError("Memory orchestrator not initialized")
+    conversations = await memory.list_conversations(
+        user_id=uuid.UUID(state.user_id),
+        limit=params.get("limit", 20),
+        offset=params.get("offset", 0),
+    )
+    return {
+        "conversations": [
+            {
+                "id": str(c.id),
+                "title": c.title,
+                "summary": c.summary,
+                "topics": c.topics or [],
+                "message_count": c.message_count,
+                "updated_at": c.updated_at,
+                "created_at": c.created_at,
+            }
+            for c in conversations
+        ]
+    }
+
+
+@rpc_method("conversation.get")
+async def handle_conversation_get(params: dict, state: ConnectionState) -> dict:
+    memory = get_memory_orchestrator()
+    if not memory:
+        raise RuntimeError("Memory orchestrator not initialized")
+    conv_id = uuid.UUID(params["conversation_id"])
+    messages = await memory.get_messages(conv_id, limit=params.get("limit", 50))
+    return {
+        "messages": [
+            {
+                "id": str(m.id),
+                "role": m.role,
+                "content": m.content,
+                "created_at": m.created_at,
+                "model_used": m.model_used,
+            }
+            for m in messages
+        ]
+    }
+
+
+@rpc_method("conversation.create")
+async def handle_conversation_create(params: dict, state: ConnectionState) -> dict:
+    memory = get_memory_orchestrator()
+    if not memory:
+        raise RuntimeError("Memory orchestrator not initialized")
+    conv = await memory.create_conversation(
+        user_id=uuid.UUID(state.user_id),
+        title=params.get("title"),
+    )
+    return {"conversation_id": str(conv.id), "title": conv.title}
+
+
+@rpc_method("conversation.archive")
+async def handle_conversation_archive(params: dict, state: ConnectionState) -> dict:
+    memory = get_memory_orchestrator()
+    if not memory:
+        raise RuntimeError("Memory orchestrator not initialized")
+    success = await memory.archive_conversation(uuid.UUID(params["conversation_id"]))
+    return {"archived": success}
+
+
+@rpc_method("conversation.rename")
+async def handle_conversation_rename(params: dict, state: ConnectionState) -> dict:
+    memory = get_memory_orchestrator()
+    if not memory:
+        raise RuntimeError("Memory orchestrator not initialized")
+    success = await memory.rename_conversation(
+        uuid.UUID(params["conversation_id"]),
+        params["title"],
+    )
+    return {"renamed": success}
+
+
+@rpc_method("conversation.search")
+async def handle_conversation_search(params: dict, state: ConnectionState) -> dict:
+    memory = get_memory_orchestrator()
+    if not memory:
+        raise RuntimeError("Memory orchestrator not initialized")
+    results = await memory.search_conversations(
+        user_id=uuid.UUID(state.user_id),
+        query=params["query"],
+        limit=params.get("limit", 10),
+    )
+    return {"results": results}
+
+
+@rpc_method("conversation.pause")
+async def handle_conversation_pause(params: dict, state: ConnectionState) -> dict:
+    """Flutter sends this on AppLifecycleState.paused. Releases working memory."""
+    memory = get_memory_orchestrator()
+    if not memory:
+        raise RuntimeError("Memory orchestrator not initialized")
+    conv_id = uuid.UUID(params["conversation_id"])
+    memory.release_working_memory(conv_id)
+    return {"status": "paused"}
 
 
 # ---------------------------------------------------------------------------
