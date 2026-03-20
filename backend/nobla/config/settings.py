@@ -15,15 +15,19 @@ class ProviderSettings(BaseModel):
     model: str = ""
     base_url: str | None = None
     api_key: str | None = None
+    auth_type: str = "api_key"
 
 
 class LLMSettings(BaseModel):
     default_provider: str = "gemini"
-    fallback_chain: list[str] = ["gemini", "groq", "ollama"]
+    fallback_chain: list[str] = ["gemini", "groq", "ollama", "openai", "anthropic", "deepseek"]
     providers: dict[str, ProviderSettings] = Field(default_factory=lambda: {
         "gemini": ProviderSettings(model="gemini-2.0-flash"),
         "ollama": ProviderSettings(model="llama3.1", base_url="http://localhost:11434"),
         "groq": ProviderSettings(model="llama-3.1-70b-versatile"),
+        "openai": ProviderSettings(model="gpt-4o", enabled=False),
+        "anthropic": ProviderSettings(model="claude-sonnet-4-20250514", enabled=False),
+        "deepseek": ProviderSettings(model="deepseek-chat", enabled=False),
     })
 
 
