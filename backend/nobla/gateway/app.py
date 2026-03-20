@@ -30,6 +30,7 @@ from nobla.memory.orchestrator import MemoryOrchestrator
 from nobla.db.engine import Database
 import nobla.gateway.memory_handlers  # noqa: F401 — registers memory RPC methods
 import nobla.gateway.provider_handlers  # noqa: F401
+import nobla.gateway.search_handlers  # noqa: F401
 from nobla.config import load_settings
 from nobla.brain.router import LLMRouter
 from nobla.brain.circuit_breaker import CircuitBreaker
@@ -163,6 +164,24 @@ async def lifespan(app: FastAPI):
         settings=settings,
     )
     set_memory_orchestrator(memory_orchestrator)
+
+    # --- Search Engine (Phase 2B-2) ---
+    from nobla.tools.search.searxng import SearxNGClient
+    from nobla.tools.search.brave import BraveSearchClient
+    from nobla.tools.search.academic import AcademicSearchClient
+    from nobla.tools.search.synthesizer import SearchSynthesizer
+    from nobla.tools.search.engine import SearchEngine
+    from nobla.gateway.search_handlers import set_search_engine
+
+    searxng = SearxNGClient(base_url=settings.search.searxng_url)
+    brave_client = BraveSearchClient(api_key=settings.search.brave_api_key) if settings.search.brave_api_key else None
+    academic = AcademicSearchClient(searxng_url=settings.search.searxng_url)
+    synthesizer = SearchSynthesizer(router=router)
+    search_engine = SearchEngine(
+        searxng=searxng, brave=brave_client, academic=academic,
+        synthesizer=synthesizer, memory=memory_orchestrator,
+    )
+    set_search_engine(search_engine)
 
     # --- Provider Auth (Phase 2B) ---
     api_key_mgr = ApiKeyManager(encryption_key=settings.secret_key or "dev-key-change-me")

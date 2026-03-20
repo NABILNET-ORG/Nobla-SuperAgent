@@ -80,6 +80,18 @@ class CostSettings(BaseModel):
     warning_threshold: float = 0.8
 
 
+class SearchSettings(BaseModel):
+    searxng_url: str = "http://localhost:8888"
+    brave_api_key: str = ""
+    default_mode: str = "quick"
+    enabled: bool = True
+
+
+class CompressionSettings(BaseModel):
+    enabled: bool = True
+    target_ratio: float = 0.5
+
+
 class Settings(BaseSettings):
     server: ServerSettings = ServerSettings()
     llm: LLMSettings = LLMSettings()
@@ -89,6 +101,8 @@ class Settings(BaseSettings):
     security: SecuritySettings = SecuritySettings()
     sandbox: SandboxSettings = SandboxSettings()
     costs: CostSettings = CostSettings()
+    search: SearchSettings = SearchSettings()
+    compression: CompressionSettings = CompressionSettings()
     secret_key: str = ""  # REQUIRED: set via SECRET_KEY env var
 
     model_config = {"env_prefix": "", "env_nested_delimiter": "__"}
