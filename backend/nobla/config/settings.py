@@ -104,6 +104,19 @@ class VoiceSettings(BaseModel):
     vad_min_speech_ms: int = 250
 
 
+class PersonaSettings(BaseModel):
+    """Persona system configuration."""
+
+    hume_api_key: str | None = None
+    emotion_enabled: bool = True
+    emotion_cache_ttl: int = 30
+    emotion_confidence_threshold: float = 0.5
+    default_persona: str = "professional"
+    local_emotion_model: str = (
+        "ehcalabres/wav2vec2-lg-xlsr-en-speech-emotion-recognition"
+    )
+
+
 class Settings(BaseSettings):
     server: ServerSettings = ServerSettings()
     llm: LLMSettings = LLMSettings()
@@ -116,6 +129,7 @@ class Settings(BaseSettings):
     search: SearchSettings = SearchSettings()
     compression: CompressionSettings = CompressionSettings()
     voice: VoiceSettings = Field(default_factory=VoiceSettings)
+    persona: PersonaSettings = Field(default_factory=PersonaSettings)
     secret_key: str = ""  # REQUIRED: set via SECRET_KEY env var
 
     model_config = {"env_prefix": "", "env_nested_delimiter": "__"}
