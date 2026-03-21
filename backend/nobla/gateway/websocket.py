@@ -433,8 +433,17 @@ async def handle_chat_send(params: dict, state: ConnectionState) -> dict:
         llm_messages.append(LLMMessage(role="system", content=f"[Memory] {memory_context}"))
     llm_messages.append(LLMMessage(role="user", content=message))
 
-    # 4. Route to LLM
-    response = await router.route(llm_messages)
+    # 4. Route to LLM (persona-aware)
+    from nobla.persona.service import resolve_and_route, get_persona_manager
+    if get_persona_manager() is not None:
+        response, _persona_ctx = await resolve_and_route(
+            messages=llm_messages,
+            session_id=state.connection_id,
+            user_id=state.user_id or "",
+            router=router,
+        )
+    else:
+        response = await router.route(llm_messages)
 
     # 5. Hot path: store assistant response
     if memory:
@@ -738,3 +747,11 @@ async def websocket_endpoint(ws: WebSocket) -> None:
         pass
     finally:
         manager.disconnect(state.connection_id)
+        # Clean up persona session state + emotion cache
+        try:
+            from nobla.persona.service import get_persona_manager
+            pm = get_persona_manager()
+            if pm:
+                pm.clear_session(state.connection_id)
+        except Exception:
+            pass
