@@ -119,22 +119,57 @@ async def handle_voice_audio(params: dict, state: ConnectionState) -> dict:
         return {"error": {"code": -32602, "message": "Invalid base64 audio data"}}
 
     try:
-        result = await _pipeline.process_segment(session, audio_data)
+        # Step 1: STT + emotion detection (pipeline)
+        transcript, emotion_result = await _pipeline.transcribe_and_detect(
+            session, audio_data
+        )
+
+        # Step 2: Persona-aware LLM routing (service)
+        from nobla.persona.service import resolve_and_route, get_persona_manager
+        from nobla.brain.base_provider import LLMMessage
+
+        llm_messages = [LLMMessage(role="user", content=transcript.text)]
+
+        if get_persona_manager() is not None:
+            response, persona_ctx = await resolve_and_route(
+                messages=llm_messages,
+                session_id=state.connection_id,
+                user_id=state.user_id or "",
+                emotion=emotion_result,
+            )
+        else:
+            from nobla.gateway.websocket import get_router
+            router = get_router()
+            response = await router.route(llm_messages)
+            persona_ctx = None
+
+        # Step 3: TTS with persona voice_config
+        tts_engine_name = session.config.tts_engine
+        if persona_ctx and persona_ctx.voice_config:
+            tts_engine_name = persona_ctx.voice_config.get(
+                "engine", session.config.tts_engine
+            )
+        tts_engine = await _pipeline._resolve_tts(tts_engine_name)
+        audio_chunks: list[bytes] = []
+        async for chunk in tts_engine.synthesize(response.content):
+            audio_chunks.append(chunk)
+
     except Exception as exc:
         logger.exception("voice_audio_processing_failed connection=%s", state.connection_id)
         return {"error": {"code": -32012, "message": f"Voice processing failed: {exc}"}}
 
-    audio_b64 = [base64.b64encode(chunk).decode() for chunk in result.audio_chunks]
+    audio_b64 = [base64.b64encode(chunk).decode() for chunk in audio_chunks]
 
     return {
         "transcript": {
-            "text": result.transcript.text,
-            "language": result.transcript.language,
-            "confidence": result.transcript.confidence,
+            "text": transcript.text,
+            "language": transcript.language,
+            "confidence": transcript.confidence,
             "is_final": True,
         },
-        "response": {"text": result.response_text},
+        "response": {"text": response.content},
         "audio": audio_b64,
+        "emotion": emotion_result.model_dump() if emotion_result else None,
     }
 
 

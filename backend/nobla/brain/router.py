@@ -97,6 +97,16 @@ class LLMRouter:
         return candidates
 
     async def route(self, messages: list[LLMMessage], **kwargs) -> LLMResponse:
+        # --- Persona integration: extract persona kwargs before forwarding ---
+        system_prompt_extra: str | None = kwargs.pop("system_prompt_extra", None)
+        temperature_bias: float | None = kwargs.pop("temperature_bias", None)
+
+        if system_prompt_extra:
+            messages = [
+                LLMMessage(role="system", content=system_prompt_extra),
+                *messages,
+            ]
+
         last_user = next(
             (m.content for m in reversed(messages) if m.role == "user"), ""
         )
@@ -120,7 +130,16 @@ class LLMRouter:
                 healthy = await provider.health_check()
                 if not healthy:
                     continue
-                result = await provider.generate(messages, **kwargs)
+
+                # Apply temperature bias relative to provider default
+                call_kwargs = dict(kwargs)
+                if temperature_bias is not None:
+                    base_temp = getattr(provider, "default_temperature", 1.0)
+                    call_kwargs["temperature"] = max(
+                        0.0, min(2.0, base_temp + temperature_bias)
+                    )
+
+                result = await provider.generate(messages, **call_kwargs)
                 if cb:
                     cb.record_success()
                 return result
@@ -135,6 +154,16 @@ class LLMRouter:
     async def stream_route(
         self, messages: list[LLMMessage], **kwargs
     ) -> tuple[str, AsyncIterator[str]]:
+        # --- Persona integration: extract persona kwargs before forwarding ---
+        system_prompt_extra: str | None = kwargs.pop("system_prompt_extra", None)
+        temperature_bias: float | None = kwargs.pop("temperature_bias", None)
+
+        if system_prompt_extra:
+            messages = [
+                LLMMessage(role="system", content=system_prompt_extra),
+                *messages,
+            ]
+
         last_user = next(
             (m.content for m in reversed(messages) if m.role == "user"), ""
         )
@@ -157,7 +186,16 @@ class LLMRouter:
                 healthy = await provider.health_check()
                 if not healthy:
                     continue
-                return provider.name, provider.stream(messages, **kwargs)
+
+                # Apply temperature bias relative to provider default
+                call_kwargs = dict(kwargs)
+                if temperature_bias is not None:
+                    base_temp = getattr(provider, "default_temperature", 1.0)
+                    call_kwargs["temperature"] = max(
+                        0.0, min(2.0, base_temp + temperature_bias)
+                    )
+
+                return provider.name, provider.stream(messages, **call_kwargs)
             except Exception as exc:
                 logger.warning("router.stream_provider_failed", provider=name, error=str(exc))
                 if cb:

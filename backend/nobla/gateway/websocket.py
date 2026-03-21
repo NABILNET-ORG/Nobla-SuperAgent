@@ -1,6 +1,5 @@
 """
 WebSocket handler with JSON-RPC 2.0 dispatch.
-
 Manages WebSocket connections, routes incoming JSON-RPC messages to
 registered method handlers, and sends back responses. Integrates
 auth, permissions, kill switch, audit, and cost checks (Phase 1B).
@@ -433,8 +432,17 @@ async def handle_chat_send(params: dict, state: ConnectionState) -> dict:
         llm_messages.append(LLMMessage(role="system", content=f"[Memory] {memory_context}"))
     llm_messages.append(LLMMessage(role="user", content=message))
 
-    # 4. Route to LLM
-    response = await router.route(llm_messages)
+    # 4. Route to LLM (persona-aware)
+    from nobla.persona.service import resolve_and_route, get_persona_manager
+    if get_persona_manager() is not None:
+        response, _persona_ctx = await resolve_and_route(
+            messages=llm_messages,
+            session_id=state.connection_id,
+            user_id=state.user_id or "",
+            router=router,
+        )
+    else:
+        response = await router.route(llm_messages)
 
     # 5. Hot path: store assistant response
     if memory:
@@ -738,3 +746,5 @@ async def websocket_endpoint(ws: WebSocket) -> None:
         pass
     finally:
         manager.disconnect(state.connection_id)
+        from nobla.persona.service import cleanup_session
+        cleanup_session(state.connection_id)

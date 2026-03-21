@@ -25,6 +25,8 @@ class LLMMessage:
 
 
 class BaseLLMProvider(ABC):
+    default_temperature: float = 1.0
+
     def __init__(
         self,
         name: str,

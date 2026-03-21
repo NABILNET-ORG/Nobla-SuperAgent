@@ -235,6 +235,59 @@ async def lifespan(app: FastAPI):
     else:
         logger.warning("voice_pipeline_disabled stt=unavailable")
 
+    # --- Phase 3B: Persona System ---
+    from nobla.persona.repository import PersonaRepository
+    from nobla.persona.manager import PersonaManager
+    from nobla.persona.prompt import PromptBuilder
+    from nobla.persona.service import set_persona_manager, set_prompt_builder, set_emotion_detector
+    from nobla.voice.emotion.hume import HumeEmotionEngine
+    from nobla.voice.emotion.local import LocalEmotionEngine
+    from nobla.voice.emotion.detector import EmotionDetector
+    from nobla.gateway.persona_routes import create_persona_router
+
+    persona_repo = PersonaRepository(db.session_factory)
+    persona_manager = PersonaManager(repo=persona_repo)
+    prompt_builder = PromptBuilder()
+    set_persona_manager(persona_manager)
+    set_prompt_builder(prompt_builder)
+
+    # Emotion detection
+    hume_engine = HumeEmotionEngine(api_key=settings.persona.hume_api_key)
+    local_emotion_engine = LocalEmotionEngine(
+        model_name=settings.persona.local_emotion_model,
+    )
+    emotion_detector = EmotionDetector(
+        hume=hume_engine,
+        local=local_emotion_engine,
+        cache_ttl=settings.persona.emotion_cache_ttl,
+    )
+    set_emotion_detector(emotion_detector)
+
+    # Pass emotion detector to voice pipeline (if it was initialized)
+    from nobla.gateway.voice_handlers import get_voice_pipeline
+    _vp = get_voice_pipeline()
+    if _vp is not None:
+        _vp._emotion_detector = emotion_detector
+
+    # Register persona REST API routes
+    persona_router = create_persona_router(persona_manager, persona_repo)
+    app.include_router(persona_router)
+
+    logger.info("persona_system_ready default=%s", settings.persona.default_persona)
+
+    # --- Phase 3B-2: PersonaPlex premium TTS ---
+    if settings.personaplex.enabled:
+        from nobla.voice.tts.personaplex import PersonaPlexTTS
+
+        personaplex_engine = PersonaPlexTTS(
+            server_url=settings.personaplex.server_url,
+            timeout=settings.personaplex.timeout,
+            voice_prompts_dir=settings.personaplex.voice_prompts_dir,
+            cpu_offload=settings.personaplex.cpu_offload,
+        )
+        tts_engines["personaplex"] = personaplex_engine
+        logger.info("personaplex_registered url=%s", settings.personaplex.server_url)
+
     # --- Provider Auth (Phase 2B) ---
     api_key_mgr = ApiKeyManager(encryption_key=settings.secret_key or "dev-key-change-me")
     oauth_mgr = OAuthManager(configs={}, encryption_key=settings.secret_key or "dev-key-change-me")
@@ -254,10 +307,11 @@ async def lifespan(app: FastAPI):
     logger.info(
         "nobla_started",
         providers=list(providers.keys()),
-        phase="3A",
+        phase="3B",
         security="enabled",
         memory="enabled",
         voice="enabled" if whisper_stt else "disabled",
+        persona="enabled",
     )
 
     yield
