@@ -30,6 +30,26 @@ def get_prompt_builder() -> PromptBuilder | None:
     return _prompt_builder
 
 
+_emotion_detector = None
+
+
+def set_emotion_detector(detector) -> None:
+    global _emotion_detector
+    _emotion_detector = detector
+
+
+def get_emotion_detector():
+    return _emotion_detector
+
+
+def cleanup_session(connection_id: str) -> None:
+    """Clean up persona + emotion state on disconnect."""
+    if _persona_manager:
+        _persona_manager.clear_session(connection_id)
+    if _emotion_detector:
+        _emotion_detector.clear_session(connection_id)
+
+
 async def resolve_and_route(
     messages: list[LLMMessage],
     session_id: str,
@@ -47,6 +67,9 @@ async def resolve_and_route(
     brain_router = router or get_router()
     manager = _persona_manager
     builder = _prompt_builder
+
+    if manager is None or builder is None:
+        raise RuntimeError("Persona system not initialized")
 
     persona = await manager.resolve(session_id, user_id)
     ctx = builder.build(persona, emotion)

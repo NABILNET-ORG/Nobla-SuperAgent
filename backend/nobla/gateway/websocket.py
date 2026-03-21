@@ -1,6 +1,5 @@
 """
 WebSocket handler with JSON-RPC 2.0 dispatch.
-
 Manages WebSocket connections, routes incoming JSON-RPC messages to
 registered method handlers, and sends back responses. Integrates
 auth, permissions, kill switch, audit, and cost checks (Phase 1B).
@@ -747,11 +746,5 @@ async def websocket_endpoint(ws: WebSocket) -> None:
         pass
     finally:
         manager.disconnect(state.connection_id)
-        # Clean up persona session state + emotion cache
-        try:
-            from nobla.persona.service import get_persona_manager
-            pm = get_persona_manager()
-            if pm:
-                pm.clear_session(state.connection_id)
-        except Exception:
-            pass
+        from nobla.persona.service import cleanup_session
+        cleanup_session(state.connection_id)

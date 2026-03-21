@@ -239,7 +239,7 @@ async def lifespan(app: FastAPI):
     from nobla.persona.repository import PersonaRepository
     from nobla.persona.manager import PersonaManager
     from nobla.persona.prompt import PromptBuilder
-    from nobla.persona.service import set_persona_manager, set_prompt_builder
+    from nobla.persona.service import set_persona_manager, set_prompt_builder, set_emotion_detector
     from nobla.voice.emotion.hume import HumeEmotionEngine
     from nobla.voice.emotion.local import LocalEmotionEngine
     from nobla.voice.emotion.detector import EmotionDetector
@@ -261,6 +261,7 @@ async def lifespan(app: FastAPI):
         local=local_emotion_engine,
         cache_ttl=settings.persona.emotion_cache_ttl,
     )
+    set_emotion_detector(emotion_detector)
 
     # Pass emotion detector to voice pipeline (if it was initialized)
     from nobla.gateway.voice_handlers import get_voice_pipeline

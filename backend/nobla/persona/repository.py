@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 
 from sqlalchemy import select, delete as sa_delete
 from sqlalchemy.ext.asyncio import async_sessionmaker
@@ -78,6 +79,7 @@ class PersonaRepository:
                 )
             for key, value in updates.items():
                 setattr(persona, key, value)
+            persona.updated_at = datetime.now(timezone.utc).isoformat()
             await session.commit()
             await session.refresh(persona)
             return persona

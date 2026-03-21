@@ -101,7 +101,7 @@ class PersonaUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=100)
     personality: str | None = Field(default=None, min_length=1, max_length=1000)
     language_style: str | None = Field(default=None, min_length=1, max_length=500)
-    background: str | None = None
+    background: str | None = Field(default=None, max_length=2000)
     voice_config: dict | None = None
     rules: list[str] | None = None
     temperature_bias: float | None = Field(default=None, ge=-0.5, le=0.5)

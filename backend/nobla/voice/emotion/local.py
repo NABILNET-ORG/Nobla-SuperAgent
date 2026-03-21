@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-from functools import lru_cache
 
 import numpy as np
 
@@ -83,7 +82,8 @@ class LocalEmotionEngine(EmotionEngine):
         return primary, top_conf, secondary
 
     async def detect(self, audio: bytes) -> EmotionResult:
-        primary, confidence, secondary = self._classify(audio)
+        import asyncio
+        primary, confidence, secondary = await asyncio.to_thread(self._classify, audio)
         return EmotionResult(
             emotion=primary,
             confidence=round(confidence, 2),
