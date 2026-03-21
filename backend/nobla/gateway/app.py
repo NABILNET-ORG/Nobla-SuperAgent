@@ -275,6 +275,19 @@ async def lifespan(app: FastAPI):
 
     logger.info("persona_system_ready default=%s", settings.persona.default_persona)
 
+    # --- Phase 3B-2: PersonaPlex premium TTS ---
+    if settings.personaplex.enabled:
+        from nobla.voice.tts.personaplex import PersonaPlexTTS
+
+        personaplex_engine = PersonaPlexTTS(
+            server_url=settings.personaplex.server_url,
+            timeout=settings.personaplex.timeout,
+            voice_prompts_dir=settings.personaplex.voice_prompts_dir,
+            cpu_offload=settings.personaplex.cpu_offload,
+        )
+        tts_engines["personaplex"] = personaplex_engine
+        logger.info("personaplex_registered url=%s", settings.personaplex.server_url)
+
     # --- Provider Auth (Phase 2B) ---
     api_key_mgr = ApiKeyManager(encryption_key=settings.secret_key or "dev-key-change-me")
     oauth_mgr = OAuthManager(configs={}, encryption_key=settings.secret_key or "dev-key-change-me")
