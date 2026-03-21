@@ -33,3 +33,47 @@ class TestLocalEmotionEngine:
 
         assert "angry" in EMOTION_MAP  # maps to our vocabulary
         assert EMOTION_MAP["angry"] == "frustrated"
+
+
+class TestHumeEmotionEngine:
+    @pytest.mark.asyncio
+    async def test_is_available_without_key(self):
+        from nobla.voice.emotion.hume import HumeEmotionEngine
+        engine = HumeEmotionEngine(api_key=None)
+        assert await engine.is_available() is False
+
+    @pytest.mark.asyncio
+    async def test_is_available_with_key(self):
+        from nobla.voice.emotion.hume import HumeEmotionEngine
+        engine = HumeEmotionEngine(api_key="test-key")
+        assert await engine.is_available() is True
+
+    @pytest.mark.asyncio
+    async def test_detect_calls_api(self):
+        from nobla.voice.emotion.hume import HumeEmotionEngine
+
+        engine = HumeEmotionEngine(api_key="test-key")
+        mock_response = {
+            "results": {
+                "predictions": [{
+                    "models": {
+                        "prosody": {
+                            "grouped_predictions": [{
+                                "predictions": [{
+                                    "emotions": [
+                                        {"name": "Joy", "score": 0.85},
+                                        {"name": "Interest", "score": 0.6},
+                                        {"name": "Sadness", "score": 0.1},
+                                    ]
+                                }]
+                            }]
+                        }
+                    }
+                }]
+            }
+        }
+        with patch.object(engine, "_call_api", return_value=mock_response):
+            result = await engine.detect(b"fake_audio")
+            assert result.source == "hume"
+            assert result.emotion == "happy"
+            assert result.confidence > 0
