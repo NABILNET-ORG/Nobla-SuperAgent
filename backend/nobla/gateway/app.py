@@ -31,6 +31,7 @@ from nobla.db.engine import Database
 import nobla.gateway.memory_handlers  # noqa: F401 — registers memory RPC methods
 import nobla.gateway.provider_handlers  # noqa: F401
 import nobla.gateway.search_handlers  # noqa: F401
+import nobla.gateway.voice_handlers  # noqa: F401 — registers voice RPC methods
 from nobla.config import load_settings
 from nobla.brain.router import LLMRouter
 from nobla.brain.circuit_breaker import CircuitBreaker
@@ -183,6 +184,57 @@ async def lifespan(app: FastAPI):
     )
     set_search_engine(search_engine)
 
+    # --- Voice Pipeline (Phase 3A) ---
+    from nobla.voice.stt.whisper import WhisperSTT
+    from nobla.voice.stt.levantine import LevantineSTT
+    from nobla.voice.stt.detector import LanguageDetector
+    from nobla.voice.tts.fish_speech import FishSpeechTTS
+    from nobla.voice.tts.cosyvoice import CosyVoiceTTS
+    from nobla.voice.pipeline import VoicePipeline
+    from nobla.gateway.voice_handlers import set_voice_pipeline
+
+    try:
+        whisper_stt = WhisperSTT(model_size=settings.voice.stt_model)
+    except Exception:
+        logger.warning("whisper_stt_load_failed voice_disabled=true")
+        whisper_stt = None
+
+    levantine_stt = None
+    if whisper_stt:
+        try:
+            levantine_stt = LevantineSTT(model_path=settings.voice.levantine_model_path)
+        except Exception:
+            logger.warning("levantine_model_not_found arabic_stt=disabled")
+
+    if whisper_stt:
+        stt_engine = LanguageDetector(
+            whisper_engine=whisper_stt,
+            levantine_engine=levantine_stt,
+        ) if levantine_stt else whisper_stt
+
+        tts_engines = {}
+        try:
+            tts_engines["cosyvoice"] = CosyVoiceTTS(model_path="models/cosyvoice2")
+        except Exception:
+            logger.warning("cosyvoice_load_failed")
+        try:
+            tts_engines["fish_speech"] = FishSpeechTTS(model_path="models/fish_speech")
+        except Exception:
+            logger.warning("fish_speech_load_failed")
+
+        if tts_engines:
+            voice_pipeline = VoicePipeline(
+                stt_engine=stt_engine,
+                tts_engines=tts_engines,
+                llm_router=router,
+            )
+            set_voice_pipeline(voice_pipeline)
+            logger.info("voice_pipeline_ready engines=%s", list(tts_engines.keys()))
+        else:
+            logger.warning("no_tts_engines_available voice_disabled=true")
+    else:
+        logger.warning("voice_pipeline_disabled stt=unavailable")
+
     # --- Provider Auth (Phase 2B) ---
     api_key_mgr = ApiKeyManager(encryption_key=settings.secret_key or "dev-key-change-me")
     oauth_mgr = OAuthManager(configs={}, encryption_key=settings.secret_key or "dev-key-change-me")
@@ -202,9 +254,10 @@ async def lifespan(app: FastAPI):
     logger.info(
         "nobla_started",
         providers=list(providers.keys()),
-        phase="2B",
+        phase="3A",
         security="enabled",
         memory="enabled",
+        voice="enabled" if whisper_stt else "disabled",
     )
 
     yield

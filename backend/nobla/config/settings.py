@@ -92,6 +92,18 @@ class CompressionSettings(BaseModel):
     target_ratio: float = 0.5
 
 
+class VoiceSettings(BaseModel):
+    """Voice pipeline configuration."""
+
+    stt_model: str = "large-v3"
+    levantine_model_path: str = "backend/nobla/voice/models/ggml-levantine-large-v3.bin"
+    default_tts_engine: str = "cosyvoice"
+    default_vad_mode: str = "push_to_talk"
+    opus_bitrate: int = 32000
+    vad_silence_threshold_ms: int = 800
+    vad_min_speech_ms: int = 250
+
+
 class Settings(BaseSettings):
     server: ServerSettings = ServerSettings()
     llm: LLMSettings = LLMSettings()
@@ -103,6 +115,7 @@ class Settings(BaseSettings):
     costs: CostSettings = CostSettings()
     search: SearchSettings = SearchSettings()
     compression: CompressionSettings = CompressionSettings()
+    voice: VoiceSettings = Field(default_factory=VoiceSettings)
     secret_key: str = ""  # REQUIRED: set via SECRET_KEY env var
 
     model_config = {"env_prefix": "", "env_nested_delimiter": "__"}
