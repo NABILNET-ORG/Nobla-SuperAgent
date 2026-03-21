@@ -76,6 +76,7 @@ class LevantineSTT(STTEngine):
             buffer.extend(chunk)
             if len(buffer) >= 64000:
                 result = await self.transcribe(bytes(buffer))
+                buffer.clear()
                 yield PartialTranscript(
                     text=result.text, is_final=False, language="ar"
                 )

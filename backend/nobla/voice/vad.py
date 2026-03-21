@@ -41,9 +41,11 @@ class VoiceActivityDetector:
         self._mode = mode
         self._silence_threshold_ms = silence_threshold_ms
         self._min_speech_ms = min_speech_ms
-        self._vad_model = _load_silero_vad()
+        # Lazy-load: only auto-detect mode needs the Silero model
+        self._vad_model = _load_silero_vad() if mode == VADMode.AUTO_DETECT else None
 
         self._buffer = bytearray()
+        self._speech_buffer = bytearray()  # accumulates actual speech frames
         self._segments: list[bytes] = []
         self._is_speech = False
         self._silence_frames = 0
@@ -58,6 +60,7 @@ class VoiceActivityDetector:
         """Begin a VAD session."""
         self._active = True
         self._buffer = bytearray()
+        self._speech_buffer = bytearray()
         self._segments = []
         self._is_speech = False
         self._silence_frames = 0
@@ -97,16 +100,17 @@ class VoiceActivityDetector:
                 self._is_speech = True
                 self._speech_frames += 1
                 self._silence_frames = 0
+                self._speech_buffer.extend(frame)
             elif self._is_speech:
                 self._silence_frames += 1
 
                 if self._silence_frames >= frames_per_silence:
                     if self._speech_frames >= frames_per_min_speech:
-                        segment_bytes = _FRAME_BYTES * self._speech_frames
-                        self._segments.append(b"\x00" * segment_bytes)
+                        self._segments.append(bytes(self._speech_buffer))
                     self._is_speech = False
                     self._speech_frames = 0
                     self._silence_frames = 0
+                    self._speech_buffer = bytearray()
 
     def get_segments(self) -> list[bytes]:
         """Get completed speech segments (auto-detect mode only)."""
@@ -131,6 +135,7 @@ class VoiceActivityDetector:
     def reset(self) -> None:
         """Clear all buffers and state."""
         self._buffer = bytearray()
+        self._speech_buffer = bytearray()
         self._segments = []
         self._is_speech = False
         self._silence_frames = 0

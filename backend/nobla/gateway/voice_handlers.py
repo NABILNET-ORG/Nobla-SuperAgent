@@ -110,8 +110,19 @@ async def handle_voice_audio(params: dict, state: ConnectionState) -> dict:
     if not session:
         return {"error": {"code": -32011, "message": "No active voice session"}}
 
-    audio_data = base64.b64decode(params["data"])
-    result = await _pipeline.process_segment(session, audio_data)
+    if "data" not in params:
+        return {"error": {"code": -32602, "message": "Missing required 'data' param"}}
+
+    try:
+        audio_data = base64.b64decode(params["data"])
+    except Exception:
+        return {"error": {"code": -32602, "message": "Invalid base64 audio data"}}
+
+    try:
+        result = await _pipeline.process_segment(session, audio_data)
+    except Exception as exc:
+        logger.exception("voice_audio_processing_failed connection=%s", state.connection_id)
+        return {"error": {"code": -32012, "message": f"Voice processing failed: {exc}"}}
 
     audio_b64 = [base64.b64encode(chunk).decode() for chunk in result.audio_chunks]
 
