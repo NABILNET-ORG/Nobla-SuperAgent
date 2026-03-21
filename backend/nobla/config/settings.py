@@ -117,6 +117,16 @@ class PersonaSettings(BaseModel):
     )
 
 
+class PersonaPlexSettings(BaseModel):
+    """PersonaPlex premium TTS server configuration."""
+
+    enabled: bool = False
+    server_url: str = "http://localhost:8880"
+    timeout: float = 30.0
+    voice_prompts_dir: str = "backend/nobla/voice/models/voice_prompts"
+    cpu_offload: bool = False
+
+
 class Settings(BaseSettings):
     server: ServerSettings = ServerSettings()
     llm: LLMSettings = LLMSettings()
@@ -130,6 +140,7 @@ class Settings(BaseSettings):
     compression: CompressionSettings = CompressionSettings()
     voice: VoiceSettings = Field(default_factory=VoiceSettings)
     persona: PersonaSettings = Field(default_factory=PersonaSettings)
+    personaplex: PersonaPlexSettings = Field(default_factory=PersonaPlexSettings)
     secret_key: str = ""  # REQUIRED: set via SECRET_KEY env var
 
     model_config = {"env_prefix": "", "env_nested_delimiter": "__"}
