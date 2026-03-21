@@ -332,14 +332,14 @@ class VADConfig(BaseModel):
 
 ### 8.1 Database Schema
 
-New SQLAlchemy model in `backend/nobla/db/models/personas.py`:
+New SQLAlchemy model in `backend/nobla/db/models/personas.py`. The schema below is conceptual — implementation must follow existing ORM conventions in `db/models/` (e.g., `Mapped[str]` with `mapped_column(UUID(as_uuid=False))`, explicit `server_default`, index definitions):
 
 ```python
 class Persona(Base):
     __tablename__ = "personas"
 
-    id: Mapped[uuid.UUID]                    # PK, server-generated
-    user_id: Mapped[uuid.UUID | None]        # FK to users; null = built-in preset
+    id: Mapped[str]                          # PK, UUID as string (matches existing convention)
+    user_id: Mapped[str | None]              # FK to users; null = built-in preset
     name: Mapped[str]                        # Display name
     personality: Mapped[str]                 # Free-text personality description
     language_style: Mapped[str]              # "formal", "casual", "military-precise"
@@ -388,7 +388,7 @@ Current user emotion: {emotion_result.dominant} (confidence: {confidence:.0%})
 Guidance: {emotion_mappings[detected_emotion]}
 ```
 
-This integrates with `brain/router.py`'s existing system prompt mechanism — the persona prompt is prepended before the user's conversation history.
+The pipeline constructs an `LLMMessage(role="system", content=...)` with the persona prompt and prepends it to the message list before calling `brain/router.py`'s `route()` method. This is a new integration point built in Phase 3 — the router's `route(messages)` API already accepts a message list, so the persona prompt is simply the first message in that list.
 
 ### 8.4 Persona Switching
 
