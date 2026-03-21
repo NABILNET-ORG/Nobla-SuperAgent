@@ -32,6 +32,11 @@ ALL_PROVIDERS_FAILED: int = -32002
 RATE_LIMITED: int = -32003
 CONVERSATION_NOT_FOUND: int = -32004
 
+# Voice pipeline errors
+VOICE_SESSION_EXISTS: int = -32010
+VOICE_NO_SESSION: int = -32011
+VOICE_ENGINE_UNAVAILABLE: int = -32012
+
 # Human-readable descriptions for standard codes
 _ERROR_MESSAGES: dict[int, str] = {
     PARSE_ERROR: "Parse error",
@@ -43,6 +48,9 @@ _ERROR_MESSAGES: dict[int, str] = {
     ALL_PROVIDERS_FAILED: "All LLM providers failed",
     RATE_LIMITED: "Rate limit exceeded",
     CONVERSATION_NOT_FOUND: "Conversation not found",
+    VOICE_SESSION_EXISTS: "Voice session already exists",
+    VOICE_NO_SESSION: "No active voice session",
+    VOICE_ENGINE_UNAVAILABLE: "Voice engine unavailable",
 }
 
 JSONRPC_VERSION = "2.0"
