@@ -101,3 +101,40 @@ class TestPersonaContext:
             voice_config={"engine": "fish_speech"},
         )
         assert ctx.system_prompt_addition == "You are Pro."
+
+
+from nobla.persona.presets import PRESETS, get_preset, PROFESSIONAL_ID, FRIENDLY_ID, MILITARY_ID
+
+
+class TestPresets:
+    def test_three_presets_exist(self):
+        assert len(PRESETS) == 3
+
+    def test_professional_is_default(self):
+        p = get_preset("professional")
+        assert p is not None
+        assert p.id == PROFESSIONAL_ID
+        assert p.is_builtin is True
+
+    def test_friendly_preset(self):
+        p = get_preset("friendly")
+        assert p is not None
+        assert p.temperature_bias == 0.2
+
+    def test_military_preset(self):
+        p = get_preset("military")
+        assert p is not None
+        assert p.temperature_bias == -0.3
+
+    def test_get_by_id(self):
+        from nobla.persona.presets import get_preset_by_id
+        p = get_preset_by_id(PROFESSIONAL_ID)
+        assert p is not None
+        assert p.name == "Professional"
+
+    def test_unknown_returns_none(self):
+        assert get_preset("nonexistent") is None
+
+    def test_all_presets_are_builtin(self):
+        for p in PRESETS.values():
+            assert p.is_builtin is True
