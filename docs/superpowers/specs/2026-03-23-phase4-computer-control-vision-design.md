@@ -22,8 +22,8 @@ Phase 4 gives Nobla Agent the ability to see and control the computer like a hum
 - Every tool action is tier-gated, audit-logged, and (where required) user-approved via Flutter
 
 ### Non-Goals (Phase 4)
-- Multi-machine orchestration (deferred to Phase 6 — Automation & Multi-Agent)
-- Project scaffolding (deferred to Phase 6 — marketplace/template system)
+- Multi-machine orchestration (deferred to Phase 6 — Automation & Multi-Agent, coordinated workflows). Phase 4 supports independent connections to multiple machines; Phase 6 adds coordinated execution across N machines.
+- Project scaffolding (deferred to Phase 6 — community marketplace skill system; tracked as backlog item BACKLOG-SCAFFOLD)
 - Local UI-TARS GPU deployment (cloud/CPU fallback only in Phase 4)
 - Always-on screen monitoring / autonomous action loops (requires Phase 6 automation)
 - Persona marketplace for tool presets (Phase 6+)
@@ -60,6 +60,16 @@ Phase 4 is decomposed into 6 sub-phases, each with its own plan → implementati
 **Hybrid class + decorator pattern** — tools are classes inheriting from `BaseTool` ABC (enforcing contracts) and registered via `@register_tool` decorator (clean auto-discovery). This synthesizes two existing patterns in the codebase:
 - ABCs for pluggable engines (`voice/stt/base.py`, `voice/tts/base.py`)
 - Decorators for registration (`gateway/websocket.py` `@rpc_method`)
+
+### 3.1.1 Prerequisites
+
+Before implementing the tool platform, two existing files need changes:
+
+1. **`gateway/websocket.py` refactoring** — This file is at the 750-line hard limit. As a prerequisite, extract existing domain-specific RPC handlers (code.execute, conversation handlers, chat handlers) into separate handler files (e.g., `gateway/code_handlers.py`, `gateway/chat_handlers.py`). This creates room for tool platform wiring and follows the same pattern as the new `gateway/tool_handlers.py`.
+
+2. **`ConnectionManager.send_to()` method** — The approval flow and activity feed require sending targeted messages to a specific connection. Add a `send_to(connection_id, message)` method to `ConnectionManager` in `gateway/websocket.py`. The connection store (`dict[str, tuple[WebSocket, ConnectionState]]`) already supports this — the method simply looks up the connection and calls `websocket.send_json(message)`.
+
+3. **Existing `code.execute` RPC migration** — The current `code.execute` RPC handler in `websocket.py` (line ~377) bypasses the tool platform pipeline (no tier check, no approval, no audit). During Phase 4-Pre, this handler must be replaced by a thin shim that delegates to `tool_executor.execute("code.run", ...)`, ensuring all code execution flows through the unified permission/audit pipeline.
 
 ### 3.2 Backend Module Structure
 
@@ -187,9 +197,15 @@ File: `tools/base.py` (~60 lines)
 
 ```python
 class BaseTool(ABC):
-    name: str
-    description: str
-    category: ToolCategory
+    """Abstract base class for all Nobla tools.
+
+    Subclasses MUST define name, description, and category as class variables
+    (not instance variables). Optional class variables: tier, requires_approval,
+    approval_timeout have defaults.
+    """
+    name: str                          # Class variable — set by subclass
+    description: str                   # Class variable — set by subclass
+    category: ToolCategory             # Class variable — set by subclass
     tier: Tier = Tier.STANDARD
     requires_approval: bool = False
     approval_timeout: int = 30
@@ -208,8 +224,23 @@ class BaseTool(ABC):
         return sanitize_params(params.args)
 ```
 
+**Concrete subclass example:**
+```python
+@register_tool
+class ScreenshotTool(BaseTool):
+    name = "screenshot.capture"                # Class variable, NOT annotation
+    description = "Capture a screenshot of the current screen"
+    category = ToolCategory.VISION
+    tier = Tier.STANDARD
+    requires_approval = False
+
+    async def execute(self, params: ToolParams) -> ToolResult:
+        # ... capture logic ...
+        return ToolResult(success=True, data={"image_b64": screenshot_b64})
+```
+
 **Design rationale:**
-- Metadata is class-level — the registry reads it without instantiation
+- Metadata is defined as **class variables** (e.g., `name = "screenshot.capture"`), not bare annotations — `@register_tool` calls `cls()` which requires no arguments, and the class variables are accessible on the instance
 - `validate()` is optional — simple tools skip it, SSH tools check host validity
 - `describe_action()` provides context for the approval dialog (e.g., "Click Submit button at (450, 320)")
 - `get_params_summary()` reuses existing `sanitize_params()` from `security/audit.py`
@@ -343,6 +374,35 @@ class ToolExecutor:
 - Reuses existing `PermissionChecker`, `AuditEntry`, `sanitize_params()`
 - Exception boundary catches tool errors — never crashes the pipeline
 - Audit logs every outcome for full trail
+
+### 3.6.1 Kill Switch Integration
+
+`ToolExecutor` registers callbacks with the existing `KillSwitch` during initialization:
+
+```python
+# In ToolExecutor.__init__:
+kill_switch.on_soft_kill(self._handle_kill)
+
+async def _handle_kill(self):
+    # 1. Resolve all pending approvals as DENIED
+    self.approvals.deny_all()
+    # 2. Cancel all in-flight tool tasks
+    for task in self._running_tasks:
+        task.cancel()
+    # 3. Reset concurrent tool semaphore
+    self._semaphore = asyncio.Semaphore(self._max_concurrent)
+```
+
+`ApprovalManager` adds a `deny_all()` method:
+```python
+def deny_all(self) -> None:
+    for future in self._pending.values():
+        if not future.done():
+            future.set_result(ApprovalStatus.DENIED)
+    self._pending.clear()
+```
+
+The executor wraps each `tool.execute()` call in an `asyncio.Task` tracked in `self._running_tasks`, enabling cancellation on kill switch. When the kill switch fires, in-flight tools receive `asyncio.CancelledError`, which the executor catches and logs as `"killed"` status in the audit trail.
 
 ### 3.7 Approval Manager
 
@@ -559,16 +619,20 @@ All Phase 4 tools map to the existing 4-tier permission system:
 
 ### 6.1 Sub-Phase 4-Pre: Tool Platform Foundation
 
-**Scope:** `tools/models.py`, `tools/base.py`, `tools/registry.py`, `tools/executor.py`, `tools/approval.py`, `gateway/tool_handlers.py`, settings additions.
+**Scope:** `tools/models.py`, `tools/base.py`, `tools/registry.py`, `tools/executor.py`, `tools/approval.py`, `gateway/tool_handlers.py`, settings additions, gateway refactoring prerequisites.
 
 **Deliverables:**
+- **Prerequisite:** Refactor `gateway/websocket.py` — extract domain-specific RPC handlers into separate files to free space (currently at 750-line limit)
+- **Prerequisite:** Add `ConnectionManager.send_to(connection_id, message)` method
+- **Prerequisite:** Migrate existing `code.execute` RPC handler to delegate through tool executor
 - All 5 core tool platform files
-- Gateway RPC handlers
-- Settings classes
-- Unit tests: registry, executor pipeline (mock tools), approval manager (mock WebSocket)
+- Gateway RPC handlers (`tool_handlers.py`)
+- Settings classes (ToolPlatformSettings, VisionSettings, ComputerControlSettings, RemoteControlSettings)
+- Kill switch integration (callbacks for tool cancellation)
+- Unit tests: registry, executor pipeline (mock tools), approval manager (mock WebSocket), kill switch cancellation, permission enforcement
 - Integration test: end-to-end tool execution via WebSocket
 
-**Estimated size:** ~390 lines backend + ~80 lines gateway + ~100 lines settings + ~300 lines tests
+**Estimated size:** ~390 lines platform + ~80 lines gateway handlers + ~100 lines settings + ~300 lines tests + prerequisite refactoring
 
 ### 6.2 Sub-Phase 4A: Screen Vision
 
@@ -651,6 +715,8 @@ All Phase 4 tools map to the existing 4-tier permission system:
 - Test connection button
 - Default machine selection
 - Connection status indicator
+
+**Phase 4 vs Phase 6 boundary:** Phase 4 supports connecting to multiple machines independently (one command at a time, user-initiated). Phase 6 adds coordinated multi-machine workflows (run the same task across N machines, automated orchestration via A2A protocol).
 
 ---
 
