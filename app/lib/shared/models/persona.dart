@@ -35,10 +35,9 @@ class Persona {
       languageStyle: json['language_style'] as String,
       background: json['background'] as String?,
       voiceConfig: json['voice_config'] as Map<String, dynamic>?,
-      rules: (json['rules'] as List<dynamic>?)
-              ?.map((e) => e as String)
-              .toList() ??
-          const [],
+      rules:
+          (json['rules'] as List<dynamic>?)?.map((e) => e as String).toList() ??
+              const [],
       temperatureBias: (json['temperature_bias'] as num?)?.toDouble(),
       maxResponseLength: json['max_response_length'] as int?,
       isBuiltin: json['is_builtin'] as bool? ?? false,

@@ -29,9 +29,11 @@ final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
 
 final apiClientProvider = Provider<ApiClient>((ref) {
   final config = ref.watch(configProvider);
-  final authState = ref.watch(authProvider);
+  ref.watch(authProvider); // rebuild when auth changes
   return ApiClient(
-    baseUrl: config.serverUrl.replaceFirst('ws://', 'http://').replaceFirst('wss://', 'https://'),
+    baseUrl: config.serverUrl
+        .replaceFirst('ws://', 'http://')
+        .replaceFirst('wss://', 'https://'),
     getUserId: () {
       final s = ref.read(authProvider);
       return s is Authenticated ? s.userId : '';
@@ -53,8 +55,7 @@ class NoblaApp extends ConsumerWidget {
     final router = createRouter(authState);
 
     ref.listen(authProvider, (prev, next) {
-      if (next is Authenticated &&
-          (prev == null || prev is Unauthenticated)) {
+      if (next is Authenticated && (prev == null || prev is Unauthenticated)) {
         final ws = ref.read(websocketProvider);
         final cfg = ref.read(configProvider);
         ws.connect(cfg.serverUrl);

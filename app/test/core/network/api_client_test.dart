@@ -2,7 +2,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:nobla_agent/core/network/api_client.dart';
-import 'package:nobla_agent/shared/models/persona.dart';
 
 class MockDio extends Mock implements Dio {}
 
@@ -103,8 +102,7 @@ void main() {
         (_) async => Response(
           data: {'default_persona_id': 'p1'},
           statusCode: 200,
-          requestOptions:
-              RequestOptions(path: '/api/user/persona-preference'),
+          requestOptions: RequestOptions(path: '/api/user/persona-preference'),
         ),
       );
 

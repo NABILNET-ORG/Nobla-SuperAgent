@@ -50,7 +50,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> login(String passphrase) async {
-    final result = await _rpc.call('system.authenticate', {'passphrase': passphrase});
+    final result =
+        await _rpc.call('system.authenticate', {'passphrase': passphrase});
     if (result['authenticated'] != true) {
       throw Exception(result['message'] ?? 'Authentication failed');
     }
@@ -79,7 +80,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> refreshToken() async {
     final current = state;
     if (current is! Authenticated) return;
-    final result = await _rpc.call('system.refresh', {'refresh_token': current.refreshToken});
+    final result = await _rpc
+        .call('system.refresh', {'refresh_token': current.refreshToken});
     if (result.containsKey('error')) return;
     state = Authenticated(
       userId: current.userId,

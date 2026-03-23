@@ -23,13 +23,11 @@ class PersonaPickerSheet extends ConsumerWidget {
           children: [
             Padding(
               padding: const EdgeInsets.all(16),
-              child: Text('Switch Persona',
-                  style: theme.textTheme.titleMedium),
+              child: Text('Switch Persona', style: theme.textTheme.titleMedium),
             ),
             Expanded(
               child: personasAsync.when(
-                loading: () =>
-                    const Center(child: CircularProgressIndicator()),
+                loading: () => const Center(child: CircularProgressIndicator()),
                 error: (_, __) =>
                     const Center(child: Text('Failed to load personas')),
                 data: (personas) => ListView.builder(
@@ -40,8 +38,7 @@ class PersonaPickerSheet extends ConsumerWidget {
                       return ListTile(
                         leading: const Icon(Icons.settings),
                         title: const Text('Manage Personas'),
-                        trailing: const Icon(Icons.arrow_forward_ios,
-                            size: 16),
+                        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                         onTap: () {
                           Navigator.pop(context);
                           context.go('/home/persona');
@@ -55,9 +52,7 @@ class PersonaPickerSheet extends ConsumerWidget {
                         isSelected
                             ? Icons.radio_button_checked
                             : Icons.radio_button_unchecked,
-                        color: isSelected
-                            ? theme.colorScheme.primary
-                            : null,
+                        color: isSelected ? theme.colorScheme.primary : null,
                       ),
                       title: Text(persona.name),
                       subtitle: persona.isBuiltin

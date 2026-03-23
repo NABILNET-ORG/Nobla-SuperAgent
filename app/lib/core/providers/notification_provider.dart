@@ -30,7 +30,8 @@ class KillSwitchNotifier extends StateNotifier<KillState> {
   void setRunning() => state = KillState.running;
 }
 
-final killSwitchProvider = StateNotifierProvider<KillSwitchNotifier, KillState>((ref) {
+final killSwitchProvider =
+    StateNotifierProvider<KillSwitchNotifier, KillState>((ref) {
   return KillSwitchNotifier();
 });
 
@@ -38,7 +39,8 @@ class BudgetWarning {
   final String period;
   final double limit;
   final double spent;
-  const BudgetWarning({required this.period, required this.limit, required this.spent});
+  const BudgetWarning(
+      {required this.period, required this.limit, required this.spent});
 }
 
 final budgetWarningProvider = StateProvider<BudgetWarning?>((ref) => null);

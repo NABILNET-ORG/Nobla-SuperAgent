@@ -23,7 +23,8 @@ void main() {
 
       expect(persona.id, '00000000-0000-4000-a000-000000000001');
       expect(persona.name, 'Professional');
-      expect(persona.personality, 'Expert assistant focused on clarity and efficiency');
+      expect(persona.personality,
+          'Expert assistant focused on clarity and efficiency');
       expect(persona.languageStyle, 'formal, concise, structured');
       expect(persona.background, 'Productivity-oriented AI assistant');
       expect(persona.voiceConfig, {'engine': 'cosyvoice'});

@@ -7,8 +7,7 @@ class PersonaPreferenceNotifier
     extends StateNotifier<AsyncValue<PersonaPreference>> {
   final ApiClient _api;
 
-  PersonaPreferenceNotifier(this._api)
-      : super(const AsyncValue.loading());
+  PersonaPreferenceNotifier(this._api) : super(const AsyncValue.loading());
 
   Future<void> load() async {
     state = const AsyncValue.loading();

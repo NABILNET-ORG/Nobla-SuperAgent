@@ -51,8 +51,11 @@ class CostCard extends StatelessWidget {
   Widget _buildBar(
       BuildContext context, String label, double spent, double limit) {
     final ratio = limit > 0 ? (spent / limit).clamp(0.0, 1.0) : 0.0;
-    final color =
-        ratio >= 1.0 ? Colors.red : ratio >= 0.8 ? Colors.amber : Colors.green;
+    final color = ratio >= 1.0
+        ? Colors.red
+        : ratio >= 0.8
+            ? Colors.amber
+            : Colors.green;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -69,8 +72,7 @@ class CostCard extends StatelessWidget {
         const SizedBox(height: 4),
         LinearProgressIndicator(
           value: ratio,
-          backgroundColor:
-              Theme.of(context).colorScheme.outline.withAlpha(51),
+          backgroundColor: Theme.of(context).colorScheme.outline.withAlpha(51),
           color: color,
         ),
       ],

@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:nobla_agent/core/network/api_client.dart';
 import 'package:nobla_agent/shared/models/persona.dart';
@@ -30,8 +29,7 @@ void main() {
   });
 
   test('loadPersonas fetches from API and sets data state', () async {
-    when(() => mockApi.listPersonas())
-        .thenAnswer((_) async => [_professional]);
+    when(() => mockApi.listPersonas()).thenAnswer((_) async => [_professional]);
 
     final notifier = PersonaListNotifier(mockApi);
     await notifier.loadPersonas();
@@ -41,8 +39,7 @@ void main() {
   });
 
   test('deletePersona removes from list and calls API', () async {
-    when(() => mockApi.listPersonas())
-        .thenAnswer((_) async => [_professional]);
+    when(() => mockApi.listPersonas()).thenAnswer((_) async => [_professional]);
     when(() => mockApi.deletePersona('p1')).thenAnswer((_) async {});
 
     final notifier = PersonaListNotifier(mockApi);
@@ -69,8 +66,7 @@ void main() {
       'updated_at': '2026-03-23T10:00:00',
     });
 
-    when(() => mockApi.listPersonas())
-        .thenAnswer((_) async => [_professional]);
+    when(() => mockApi.listPersonas()).thenAnswer((_) async => [_professional]);
     when(() => mockApi.clonePersona('p1')).thenAnswer((_) async => cloned);
 
     final notifier = PersonaListNotifier(mockApi);

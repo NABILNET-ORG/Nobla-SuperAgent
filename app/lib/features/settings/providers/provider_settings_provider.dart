@@ -58,8 +58,7 @@ class ProviderSettingsState {
 class ProviderSettingsNotifier extends StateNotifier<ProviderSettingsState> {
   final JsonRpcClient _rpc;
 
-  ProviderSettingsNotifier(this._rpc)
-      : super(const ProviderSettingsState());
+  ProviderSettingsNotifier(this._rpc) : super(const ProviderSettingsState());
 
   Future<void> loadProviders() async {
     state = state.copyWith(isLoading: true, error: null);

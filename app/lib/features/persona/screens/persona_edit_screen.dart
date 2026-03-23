@@ -50,14 +50,12 @@ class _PersonaEditScreenState extends ConsumerState<PersonaEditScreen> {
           _personalityCtl.text = p.personality;
           _styleCtl.text = p.languageStyle;
           _backgroundCtl.text = p.background ?? '';
-          _maxLengthCtl.text =
-              p.maxResponseLength?.toString() ?? '';
+          _maxLengthCtl.text = p.maxResponseLength?.toString() ?? '';
           setState(() {
             _rules = List.from(p.rules);
             _temperatureBias = p.temperatureBias;
-            _voiceConfig = p.voiceConfig != null
-                ? Map.from(p.voiceConfig!)
-                : null;
+            _voiceConfig =
+                p.voiceConfig != null ? Map.from(p.voiceConfig!) : null;
           });
         }
       });

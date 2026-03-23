@@ -44,8 +44,7 @@ void main() {
           personaPreferenceProvider.overrideWith(
             (ref) {
               final notifier = PersonaPreferenceNotifier(mockApi);
-              notifier.state =
-                  const AsyncValue.data(PersonaPreference());
+              notifier.state = const AsyncValue.data(PersonaPreference());
               return notifier;
             },
           ),

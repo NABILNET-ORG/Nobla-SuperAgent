@@ -33,8 +33,7 @@ class _MessageInputState extends State<MessageInput> {
         color: Theme.of(context).colorScheme.surface,
         border: Border(
           top: BorderSide(
-            color:
-                Theme.of(context).colorScheme.outline.withAlpha(51),
+            color: Theme.of(context).colorScheme.outline.withAlpha(51),
           ),
         ),
       ),

@@ -15,8 +15,7 @@ class VoiceConfigSection extends StatelessWidget {
   String get _currentEngine =>
       (voiceConfig?['engine'] as String?) ?? 'cosyvoice';
 
-  String get _voicePrompt =>
-      (voiceConfig?['voice_prompt'] as String?) ?? '';
+  String get _voicePrompt => (voiceConfig?['voice_prompt'] as String?) ?? '';
 
   @override
   Widget build(BuildContext context) {

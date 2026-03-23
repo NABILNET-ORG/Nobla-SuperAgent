@@ -115,8 +115,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               Card(
                 child: ListTile(
                   leading: const Icon(Icons.logout, color: Colors.red),
-                  title: const Text('Logout',
-                      style: TextStyle(color: Colors.red)),
+                  title:
+                      const Text('Logout', style: TextStyle(color: Colors.red)),
                   onTap: () => ref.read(authProvider.notifier).logout(),
                 ),
               ),
@@ -134,11 +134,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       const SizedBox(height: 4),
                       Text(
                         'nabilnet.ai',
-                        style:
-                            Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color:
-                                      Theme.of(context).colorScheme.primary,
-                                ),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
                       ),
                     ],
                   ),

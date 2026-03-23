@@ -28,13 +28,12 @@ class ChatNotifier extends StateNotifier<ChatState> {
   final JsonRpcClient _rpc;
   StreamSubscription? _streamSub;
 
-  ChatNotifier(this._rpc)
-      : super(ChatState(conversationId: const Uuid().v4()));
+  ChatNotifier(this._rpc) : super(ChatState(conversationId: const Uuid().v4()));
 
   Future<void> sendMessage(String text) async {
     final userMsg = ChatMessage.user(text);
-    state = state.copyWith(
-        messages: [...state.messages, userMsg], isLoading: true);
+    state =
+        state.copyWith(messages: [...state.messages, userMsg], isLoading: true);
 
     try {
       final result = await _rpc.call('chat.send', {
@@ -46,8 +45,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
         if (m.id == userMsg.id) return m.copyWith(status: MessageStatus.sent);
         return m;
       }).toList();
-      state = state.copyWith(
-          messages: [...updatedMessages, agentMsg], isLoading: false);
+      state = state
+          .copyWith(messages: [...updatedMessages, agentMsg], isLoading: false);
     } catch (e) {
       final updatedMessages = state.messages.map((m) {
         if (m.id == userMsg.id) return m.copyWith(status: MessageStatus.error);
@@ -64,8 +63,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
   Future<void> sendMessageStreaming(String text) async {
     final userMsg = ChatMessage.user(text);
-    state = state.copyWith(
-        messages: [...state.messages, userMsg], isLoading: true);
+    state =
+        state.copyWith(messages: [...state.messages, userMsg], isLoading: true);
     try {
       final result = await _rpc.call('chat.stream', {
         'message': text,
@@ -74,8 +73,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
       final model = result['model'] as String? ?? '';
       _streamSub = _rpc.notificationStream.listen((notification) {
         final method = notification['method'] as String?;
-        final params =
-            notification['params'] as Map<String, dynamic>? ?? {};
+        final params = notification['params'] as Map<String, dynamic>? ?? {};
         switch (method) {
           case 'chat.stream.token':
             _appendStreamToken(params['content'] as String? ?? '');

@@ -11,9 +11,8 @@ class PersonaDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final personasAsync = ref.watch(personaListProvider);
-    final persona = personasAsync.valueOrNull
-        ?.where((p) => p.id == personaId)
-        .firstOrNull;
+    final persona =
+        personasAsync.valueOrNull?.where((p) => p.id == personaId).firstOrNull;
 
     if (persona == null) {
       return Scaffold(
@@ -32,8 +31,7 @@ class PersonaDetailScreen extends ConsumerWidget {
             IconButton(
               icon: const Icon(Icons.edit),
               tooltip: 'Edit',
-              onPressed: () =>
-                  context.go('/home/persona/${persona.id}/edit'),
+              onPressed: () => context.go('/home/persona/${persona.id}/edit'),
             ),
           IconButton(
             icon: const Icon(Icons.copy),
@@ -51,8 +49,7 @@ class PersonaDetailScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          if (persona.isBuiltin)
-            Chip(label: const Text('Builtin Preset')),
+          if (persona.isBuiltin) Chip(label: const Text('Builtin Preset')),
           const SizedBox(height: 16),
           _section(theme, 'Personality', persona.personality),
           _section(theme, 'Language Style', persona.languageStyle),
@@ -64,8 +61,7 @@ class PersonaDetailScreen extends ConsumerWidget {
             Wrap(
               spacing: 8,
               runSpacing: 4,
-              children:
-                  persona.rules.map((r) => Chip(label: Text(r))).toList(),
+              children: persona.rules.map((r) => Chip(label: Text(r))).toList(),
             ),
             const SizedBox(height: 16),
           ],
@@ -167,9 +163,7 @@ class PersonaDetailScreen extends ConsumerWidget {
 
   Future<void> _setAsDefault(BuildContext context, WidgetRef ref) async {
     try {
-      await ref
-          .read(personaPreferenceProvider.notifier)
-          .setDefault(personaId);
+      await ref.read(personaPreferenceProvider.notifier).setDefault(personaId);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Set as default persona')),

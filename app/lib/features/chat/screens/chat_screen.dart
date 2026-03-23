@@ -68,10 +68,7 @@ class ChatScreen extends ConsumerWidget {
                       const SizedBox(height: 16),
                       Text(
                         'Start a conversation',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodyLarge
-                            ?.copyWith(
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                               color: Theme.of(context)
                                   .colorScheme
                                   .onSurface
@@ -83,10 +80,8 @@ class ChatScreen extends ConsumerWidget {
                 )
               : ListView.builder(
                   reverse: true,
-                  padding:
-                      const EdgeInsets.only(bottom: 8, top: 8),
-                  itemCount:
-                      chat.messages.length + (chat.isLoading ? 1 : 0),
+                  padding: const EdgeInsets.only(bottom: 8, top: 8),
+                  itemCount: chat.messages.length + (chat.isLoading ? 1 : 0),
                   itemBuilder: (context, index) {
                     if (chat.isLoading && index == 0) {
                       return const ToolActivityIndicator();
@@ -94,19 +89,16 @@ class ChatScreen extends ConsumerWidget {
                     final msgIndex = chat.isLoading
                         ? chat.messages.length - index
                         : chat.messages.length - 1 - index;
-                    if (msgIndex < 0 ||
-                        msgIndex >= chat.messages.length) {
+                    if (msgIndex < 0 || msgIndex >= chat.messages.length) {
                       return const SizedBox.shrink();
                     }
-                    return MessageBubble(
-                        message: chat.messages[msgIndex]);
+                    return MessageBubble(message: chat.messages[msgIndex]);
                   },
                 ),
         ),
         MessageInput(
           enabled: !chat.isLoading && !isKilled,
-          onSend: (text) =>
-              ref.read(chatProvider.notifier).sendMessage(text),
+          onSend: (text) => ref.read(chatProvider.notifier).sendMessage(text),
         ),
       ],
     );

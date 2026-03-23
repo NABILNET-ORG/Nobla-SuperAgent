@@ -58,8 +58,7 @@ class ApiClient {
 
   Future<PersonaPreference> getPreference() async {
     final response = await _dio.get('/api/user/persona-preference');
-    return PersonaPreference.fromJson(
-        response.data as Map<String, dynamic>);
+    return PersonaPreference.fromJson(response.data as Map<String, dynamic>);
   }
 
   Future<PersonaPreference> setPreference(String personaId) async {
@@ -67,7 +66,6 @@ class ApiClient {
       '/api/user/persona-preference',
       data: {'default_persona_id': personaId},
     );
-    return PersonaPreference.fromJson(
-        response.data as Map<String, dynamic>);
+    return PersonaPreference.fromJson(response.data as Map<String, dynamic>);
   }
 }

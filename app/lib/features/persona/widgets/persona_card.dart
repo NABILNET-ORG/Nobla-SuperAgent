@@ -52,7 +52,8 @@ class PersonaCard extends StatelessWidget {
                     ),
                   if (isDefault) ...[
                     const SizedBox(width: 4),
-                    Icon(Icons.star, size: 18, color: theme.colorScheme.primary),
+                    Icon(Icons.star,
+                        size: 18, color: theme.colorScheme.primary),
                   ],
                 ],
               ),
