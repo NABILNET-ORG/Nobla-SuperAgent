@@ -3,11 +3,15 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from nobla.brain.base_provider import LLMMessage
 from nobla.voice.models import Transcript, VoiceConfig, VoiceSession, VoiceState
 from nobla.voice.stt.base import STTEngine
 from nobla.voice.tts.base import TTSEngine
+
+if TYPE_CHECKING:
+    from nobla.persona.models import EmotionResult
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +23,7 @@ class PipelineResult:
     transcript: Transcript
     response_text: str
     audio_chunks: list[bytes] = field(default_factory=list)
+    emotion_result: EmotionResult | None = None
 
 
 class VoicePipeline:
@@ -29,11 +34,13 @@ class VoicePipeline:
         stt_engine: STTEngine,
         tts_engines: dict[str, TTSEngine],
         llm_router: object,
+        emotion_detector=None,
     ) -> None:
         self._stt = stt_engine
         self._tts_engines = tts_engines
         self._router = llm_router
         self._sessions: dict[str, VoiceSession] = {}
+        self._emotion_detector = emotion_detector
 
     def create_session(
         self,
@@ -63,6 +70,34 @@ class VoicePipeline:
         session = self._sessions.pop(connection_id, None)
         if session:
             logger.info("voice_session_ended connection=%s", connection_id)
+
+    async def transcribe_and_detect(
+        self, session: VoiceSession, audio: bytes
+    ) -> tuple[Transcript, EmotionResult | None]:
+        """STT + emotion detection only. Handler controls LLM routing.
+
+        Used by the persona-aware voice handler which needs to inject
+        persona context between STT and LLM. Returns transcript and
+        optional emotion result without touching LLM or TTS.
+        """
+        transcript = await self._stt.transcribe(audio)
+        logger.info(
+            "stt_complete text=%s lang=%s confidence=%.2f",
+            transcript.text[:50],
+            transcript.language,
+            transcript.confidence,
+        )
+
+        emotion_result = None
+        if self._emotion_detector is not None:
+            try:
+                emotion_result = await self._emotion_detector.detect(
+                    session.connection_id, audio
+                )
+            except Exception:
+                logger.warning("emotion_detection_failed", exc_info=True)
+
+        return transcript, emotion_result
 
     async def process_segment(
         self,

@@ -1,0 +1,39 @@
+# Sample Docker Compose for PersonaPlex 7B deployment.
+# Requires NVIDIA GPU with Docker GPU support enabled.
+#
+# Usage:
+#   docker compose up -d
+#
+# Then configure Nobla:
+#   NOBLA_PERSONAPLEX_ENABLED=true
+#   NOBLA_PERSONAPLEX_SERVER_URL=http://localhost:8880
+
+services:
+  personaplex:
+    image: personaplex/personaplex-7b:latest
+    ports:
+      - "8880:8880"
+    volumes:
+      - ./voice_prompts:/data/voice_prompts
+      - personaplex-models:/models
+    environment:
+      MODEL_PATH: /models/personaplex-7b-v1
+      CPU_OFFLOAD: "false"
+      HOST: "0.0.0.0"
+      PORT: "8880"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8880/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  personaplex-models:

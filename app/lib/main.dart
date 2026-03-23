@@ -7,6 +7,7 @@ import 'package:nobla_agent/core/routing/app_router.dart';
 import 'package:nobla_agent/core/theme/app_theme.dart';
 import 'package:nobla_agent/core/network/websocket_client.dart';
 import 'package:nobla_agent/core/network/jsonrpc_client.dart';
+import 'package:nobla_agent/core/network/api_client.dart';
 
 final websocketProvider = Provider<WebSocketClient>((ref) {
   final client = WebSocketClient();
@@ -26,6 +27,20 @@ final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   return AuthNotifier(rpc);
 });
 
+final apiClientProvider = Provider<ApiClient>((ref) {
+  final config = ref.watch(configProvider);
+  ref.watch(authProvider); // rebuild when auth changes
+  return ApiClient(
+    baseUrl: config.serverUrl
+        .replaceFirst('ws://', 'http://')
+        .replaceFirst('wss://', 'https://'),
+    getUserId: () {
+      final s = ref.read(authProvider);
+      return s is Authenticated ? s.userId : '';
+    },
+  );
+});
+
 void main() {
   runApp(const ProviderScope(child: NoblaApp()));
 }
@@ -40,8 +55,7 @@ class NoblaApp extends ConsumerWidget {
     final router = createRouter(authState);
 
     ref.listen(authProvider, (prev, next) {
-      if (next is Authenticated &&
-          (prev == null || prev is Unauthenticated)) {
+      if (next is Authenticated && (prev == null || prev is Unauthenticated)) {
         final ws = ref.read(websocketProvider);
         final cfg = ref.read(configProvider);
         ws.connect(cfg.serverUrl);

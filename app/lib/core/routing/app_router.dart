@@ -8,6 +8,9 @@ import 'package:nobla_agent/features/dashboard/screens/dashboard_screen.dart';
 import 'package:nobla_agent/features/settings/screens/settings_screen.dart';
 import 'package:nobla_agent/features/memory/screens/memory_viewer_screen.dart';
 import 'package:nobla_agent/shared/widgets/kill_switch_fab.dart';
+import 'package:nobla_agent/features/persona/screens/persona_list_screen.dart';
+import 'package:nobla_agent/features/persona/screens/persona_detail_screen.dart';
+import 'package:nobla_agent/features/persona/screens/persona_edit_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -50,6 +53,27 @@ GoRouter createRouter(AuthState authState) {
             builder: (context, state) => const MemoryViewerScreen(),
           ),
           GoRoute(
+            path: '/home/persona',
+            builder: (context, state) => const PersonaListScreen(),
+          ),
+          // create must stay before :id to avoid shadowing
+          GoRoute(
+            path: '/home/persona/create',
+            builder: (context, state) => const PersonaEditScreen(),
+          ),
+          GoRoute(
+            path: '/home/persona/:id',
+            builder: (context, state) => PersonaDetailScreen(
+              personaId: state.pathParameters['id']!,
+            ),
+          ),
+          GoRoute(
+            path: '/home/persona/:id/edit',
+            builder: (context, state) => PersonaEditScreen(
+              personaId: state.pathParameters['id']!,
+            ),
+          ),
+          GoRoute(
             path: '/home/settings',
             builder: (context, state) => const SettingsScreen(),
           ),
@@ -80,6 +104,8 @@ class HomeShell extends StatelessWidget {
             case 2:
               context.go('/home/memory');
             case 3:
+              context.go('/home/persona');
+            case 4:
               context.go('/home/settings');
           }
         },
@@ -100,6 +126,11 @@ class HomeShell extends StatelessWidget {
             label: 'Memory',
           ),
           NavigationDestination(
+            icon: Icon(Icons.face_outlined),
+            selectedIcon: Icon(Icons.face),
+            label: 'Persona',
+          ),
+          NavigationDestination(
             icon: Icon(Icons.settings_outlined),
             selectedIcon: Icon(Icons.settings),
             label: 'Settings',
@@ -112,7 +143,8 @@ class HomeShell extends StatelessWidget {
   int _calculateIndex(String location) {
     if (location.startsWith('/home/dashboard')) return 1;
     if (location.startsWith('/home/memory')) return 2;
-    if (location.startsWith('/home/settings')) return 3;
+    if (location.startsWith('/home/persona')) return 3;
+    if (location.startsWith('/home/settings')) return 4;
     return 0;
   }
 }

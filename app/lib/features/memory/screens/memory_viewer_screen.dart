@@ -9,8 +9,7 @@ class MemoryViewerScreen extends ConsumerStatefulWidget {
   const MemoryViewerScreen({super.key});
 
   @override
-  ConsumerState<MemoryViewerScreen> createState() =>
-      _MemoryViewerScreenState();
+  ConsumerState<MemoryViewerScreen> createState() => _MemoryViewerScreenState();
 }
 
 class _MemoryViewerScreenState extends ConsumerState<MemoryViewerScreen>

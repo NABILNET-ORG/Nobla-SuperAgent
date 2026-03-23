@@ -37,10 +37,8 @@ void main() {
       await tester.pumpWidget(
           const ProviderScope(child: MaterialApp(home: RegisterScreen())));
       await tester.enterText(find.byType(TextFormField).at(0), 'TestUser');
-      await tester.enterText(
-          find.byType(TextFormField).at(1), 'password123');
-      await tester.enterText(
-          find.byType(TextFormField).at(2), 'different123');
+      await tester.enterText(find.byType(TextFormField).at(1), 'password123');
+      await tester.enterText(find.byType(TextFormField).at(2), 'different123');
       await tester.tap(find.byType(FilledButton).first);
       await tester.pumpAndSettle();
       expect(find.text('Passphrases do not match'), findsOneWidget);

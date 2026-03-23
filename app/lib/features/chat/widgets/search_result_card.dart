@@ -29,8 +29,7 @@ class SearchResultCard extends StatelessWidget {
                     ?.copyWith(color: theme.colorScheme.primary)),
             const SizedBox(height: 4),
             Text(url,
-                style:
-                    theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
+                style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis),
             const SizedBox(height: 4),

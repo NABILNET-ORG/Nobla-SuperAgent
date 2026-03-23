@@ -55,7 +55,24 @@ def _make_pipeline(session: VoiceSession | None = None) -> MagicMock:
             audio_chunks=[b"chunk1", b"chunk2"],
         )
     )
+    # Phase 3B: transcribe_and_detect returns (Transcript, EmotionResult|None)
+    pipeline.transcribe_and_detect = AsyncMock(
+        return_value=(
+            Transcript(text="hello", language="en", confidence=0.95),
+            None,  # no emotion
+        )
+    )
+    # Phase 3B: _resolve_tts returns a mock TTS engine
+    mock_tts = AsyncMock()
+    mock_tts.synthesize = _async_tts_gen
+    pipeline._resolve_tts = AsyncMock(return_value=mock_tts)
     return pipeline
+
+
+async def _async_tts_gen(text: str):
+    """Mock async generator for TTS synthesize."""
+    for chunk in [b"chunk1", b"chunk2"]:
+        yield chunk
 
 
 def _make_session(connection_id: str = "test-conn") -> VoiceSession:
@@ -205,9 +222,30 @@ async def test_voice_audio_full_round_trip():
     raw_audio = b"\x00" * 320
     encoded = base64.b64encode(raw_audio).decode()
 
-    result = await handle_voice_audio({"data": encoded}, _make_state())
+    # Mock resolve_and_route to return a mock LLM response + persona context
+    from nobla.brain.base_provider import LLMResponse
+    from nobla.persona.models import PersonaContext
 
-    pipeline.process_segment.assert_awaited_once_with(session, raw_audio)
+    mock_response = LLMResponse(
+        content="Hi there!", model="test", tokens_input=5,
+        tokens_output=3, cost_usd=0.0, latency_ms=50,
+    )
+    mock_ctx = PersonaContext(
+        persona_id="p-1", persona_name="Pro",
+        system_prompt_addition="test", temperature_bias=None,
+        voice_config=None,
+    )
+
+    with patch(
+        "nobla.persona.service.resolve_and_route",
+        new=AsyncMock(return_value=(mock_response, mock_ctx)),
+    ), patch(
+        "nobla.persona.service.get_persona_manager",
+        return_value=MagicMock(),
+    ):
+        result = await handle_voice_audio({"data": encoded}, _make_state())
+
+    pipeline.transcribe_and_detect.assert_awaited_once_with(session, raw_audio)
 
     assert result["transcript"]["text"] == "hello"
     assert result["transcript"]["language"] == "en"
@@ -218,6 +256,8 @@ async def test_voice_audio_full_round_trip():
     # Verify chunks are valid base64 that decode back to originals.
     assert base64.b64decode(result["audio"][0]) == b"chunk1"
     assert base64.b64decode(result["audio"][1]) == b"chunk2"
+    # New: emotion field present (None when no emotion detected)
+    assert result["emotion"] is None
 
 
 @pytest.mark.asyncio

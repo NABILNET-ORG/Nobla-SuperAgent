@@ -42,8 +42,7 @@ void main() {
 
     testWidgets('disabled state prevents input', (tester) async {
       await tester.pumpWidget(MaterialApp(
-          home: Scaffold(
-              body: MessageInput(onSend: (_) {}, enabled: false))));
+          home: Scaffold(body: MessageInput(onSend: (_) {}, enabled: false))));
       final field = tester.widget<TextField>(find.byType(TextField));
       expect(field.enabled, false);
     });

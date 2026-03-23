@@ -19,6 +19,7 @@ from nobla.gateway.voice_handlers import (
     handle_voice_audio,
     set_voice_pipeline,
 )
+from nobla.gateway.websocket import set_router
 from nobla.voice.models import PartialTranscript, Transcript, VoiceConfig, VADMode
 from nobla.voice.pipeline import VoicePipeline
 from nobla.voice.stt.base import STTEngine
@@ -111,20 +112,24 @@ def _encode_audio(raw: bytes) -> str:
 
 @pytest.fixture(autouse=True)
 def _reset_pipeline():
-    """Ensure the module-level pipeline is cleared after every test."""
+    """Ensure the module-level pipeline and router are cleared after every test."""
     yield
     set_voice_pipeline(None)  # type: ignore[arg-type]
+    set_router(None)  # type: ignore[arg-type]
 
 
 @pytest.fixture
 def pipeline() -> VoicePipeline:
     """Build and register an integrated VoicePipeline with mock engines."""
+    mock_router = _make_llm_router()
     p = VoicePipeline(
         stt_engine=MockSTT(),
         tts_engines={"test_tts": MockTTS()},
-        llm_router=_make_llm_router(),
+        llm_router=mock_router,
     )
     set_voice_pipeline(p)
+    # Phase 3B: voice handler fallback path uses get_router() from websocket module
+    set_router(mock_router)
     return p
 
 

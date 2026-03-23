@@ -52,7 +52,8 @@ class _ConversationDrawerState extends ConsumerState<ConversationDrawer> {
                 Text(
                   '${state.conversations.length} conversations',
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.7),
+                    color: theme.colorScheme.onPrimaryContainer
+                        .withValues(alpha: 0.7),
                   ),
                 ),
               ],
@@ -100,8 +101,7 @@ class _ConversationDrawerState extends ConsumerState<ConversationDrawer> {
   }
 
   Future<void> _createConversation() async {
-    final conv =
-        await ref.read(conversationListProvider.notifier).create();
+    final conv = await ref.read(conversationListProvider.notifier).create();
     if (conv != null && mounted) {
       widget.onConversationSelected(conv.id);
       Navigator.of(context).pop();

@@ -5,6 +5,8 @@ import 'package:nobla_agent/features/chat/providers/chat_provider.dart';
 import 'package:nobla_agent/features/chat/widgets/message_bubble.dart';
 import 'package:nobla_agent/features/chat/widgets/message_input.dart';
 import 'package:nobla_agent/features/chat/widgets/tool_activity_indicator.dart';
+import 'package:nobla_agent/features/persona/providers/active_persona_provider.dart';
+import 'package:nobla_agent/features/persona/widgets/persona_picker_sheet.dart';
 import 'package:nobla_agent/main.dart';
 
 final chatProvider = StateNotifierProvider<ChatNotifier, ChatState>((ref) {
@@ -24,7 +26,22 @@ class ChatScreen extends ConsumerWidget {
     return Column(
       children: [
         AppBar(
-          title: const Text('Chat'),
+          title: GestureDetector(
+            onTap: () => showModalBottomSheet(
+              context: context,
+              builder: (_) => const PersonaPickerSheet(),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Nobla \u00b7 ${ref.watch(activePersonaProvider)?.name ?? "Loading..."}',
+                ),
+                const SizedBox(width: 4),
+                const Icon(Icons.arrow_drop_down, size: 20),
+              ],
+            ),
+          ),
           centerTitle: true,
           actions: [
             IconButton(
@@ -51,10 +68,7 @@ class ChatScreen extends ConsumerWidget {
                       const SizedBox(height: 16),
                       Text(
                         'Start a conversation',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodyLarge
-                            ?.copyWith(
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                               color: Theme.of(context)
                                   .colorScheme
                                   .onSurface
@@ -66,10 +80,8 @@ class ChatScreen extends ConsumerWidget {
                 )
               : ListView.builder(
                   reverse: true,
-                  padding:
-                      const EdgeInsets.only(bottom: 8, top: 8),
-                  itemCount:
-                      chat.messages.length + (chat.isLoading ? 1 : 0),
+                  padding: const EdgeInsets.only(bottom: 8, top: 8),
+                  itemCount: chat.messages.length + (chat.isLoading ? 1 : 0),
                   itemBuilder: (context, index) {
                     if (chat.isLoading && index == 0) {
                       return const ToolActivityIndicator();
@@ -77,19 +89,16 @@ class ChatScreen extends ConsumerWidget {
                     final msgIndex = chat.isLoading
                         ? chat.messages.length - index
                         : chat.messages.length - 1 - index;
-                    if (msgIndex < 0 ||
-                        msgIndex >= chat.messages.length) {
+                    if (msgIndex < 0 || msgIndex >= chat.messages.length) {
                       return const SizedBox.shrink();
                     }
-                    return MessageBubble(
-                        message: chat.messages[msgIndex]);
+                    return MessageBubble(message: chat.messages[msgIndex]);
                   },
                 ),
         ),
         MessageInput(
           enabled: !chat.isLoading && !isKilled,
-          onSend: (text) =>
-              ref.read(chatProvider.notifier).sendMessage(text),
+          onSend: (text) => ref.read(chatProvider.notifier).sendMessage(text),
         ),
       ],
     );

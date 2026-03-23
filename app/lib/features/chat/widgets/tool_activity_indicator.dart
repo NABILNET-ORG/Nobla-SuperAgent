@@ -13,8 +13,7 @@ class ToolActivityIndicator extends StatelessWidget {
         margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
         padding: const EdgeInsets.all(12),
         child: Shimmer.fromColors(
-          baseColor:
-              Theme.of(context).colorScheme.onSurface.withAlpha(102),
+          baseColor: Theme.of(context).colorScheme.onSurface.withAlpha(102),
           highlightColor: Theme.of(context).colorScheme.primary,
           child: Row(
             mainAxisSize: MainAxisSize.min,

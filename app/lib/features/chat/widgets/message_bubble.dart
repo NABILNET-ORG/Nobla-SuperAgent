@@ -20,9 +20,7 @@ class MessageBubble extends StatelessWidget {
         margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isUser
-              ? scheme.primary.withAlpha(51)
-              : scheme.surface,
+          color: isUser ? scheme.primary.withAlpha(51) : scheme.surface,
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(16),
             topRight: const Radius.circular(16),
@@ -45,8 +43,7 @@ class MessageBubble extends StatelessWidget {
               MarkdownBody(
                 data: message.content,
                 selectable: true,
-                styleSheet:
-                    MarkdownStyleSheet.fromTheme(Theme.of(context)),
+                styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)),
               ),
             const SizedBox(height: 4),
             Row(

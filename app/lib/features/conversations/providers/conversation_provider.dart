@@ -74,9 +74,8 @@ class ConversationListNotifier extends StateNotifier<ConversationListState> {
         'conversation_id': conversationId,
       });
       state = state.copyWith(
-        conversations: state.conversations
-            .where((c) => c.id != conversationId)
-            .toList(),
+        conversations:
+            state.conversations.where((c) => c.id != conversationId).toList(),
       );
     } catch (e) {
       state = state.copyWith(error: e.toString());

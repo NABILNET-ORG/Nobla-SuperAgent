@@ -12,7 +12,8 @@ class AppConfig {
     this.isDarkMode = true,
   });
 
-  AppConfig copyWith({String? serverUrl, String? displayName, bool? isDarkMode}) {
+  AppConfig copyWith(
+      {String? serverUrl, String? displayName, bool? isDarkMode}) {
     return AppConfig(
       serverUrl: serverUrl ?? this.serverUrl,
       displayName: displayName ?? this.displayName,
