@@ -32,6 +32,7 @@ import nobla.gateway.memory_handlers  # noqa: F401 — registers memory RPC meth
 import nobla.gateway.provider_handlers  # noqa: F401
 import nobla.gateway.search_handlers  # noqa: F401
 import nobla.gateway.voice_handlers  # noqa: F401 — registers voice RPC methods
+import nobla.gateway.tool_handlers  # noqa: F401 — registers tool RPC methods
 from nobla.config import load_settings
 from nobla.brain.router import LLMRouter
 from nobla.brain.circuit_breaker import CircuitBreaker
@@ -43,6 +44,7 @@ from nobla.gateway.provider_handlers import (
     set_local_model_manager, set_provider_registry,
 )
 from nobla.security import (
+    AuditEntry,
     AuthService,
     KillSwitch,
     CostTracker,
@@ -52,6 +54,19 @@ from nobla.security import (
 )
 
 logger = structlog.get_logger(__name__)
+
+
+async def _log_audit(entry: AuditEntry) -> None:
+    """Log an audit entry via structlog."""
+    logger.info(
+        "audit",
+        user_id=entry.user_id,
+        action=entry.action,
+        status=entry.status,
+        latency_ms=entry.latency_ms,
+        tier=entry.tier,
+        **entry.metadata,
+    )
 
 
 @asynccontextmanager
@@ -157,6 +172,34 @@ async def lifespan(app: FastAPI):
     set_cost_tracker(cost_tracker)
     set_permission_checker(permission_checker)
     set_sandbox_manager(sandbox_mgr)
+
+    # --- Tool Platform (Phase 4) ---
+    from nobla.tools import tool_registry
+    from nobla.tools.approval import ApprovalManager
+    from nobla.tools.executor import ToolExecutor
+    from nobla.gateway.tool_handlers import (
+        set_tool_executor,
+        set_tool_registry,
+        set_approval_manager,
+    )
+
+    approval_manager = ApprovalManager(connection_manager=None)
+    tool_executor = ToolExecutor(
+        registry=tool_registry,
+        permission_checker=permission_checker,
+        audit_logger=_log_audit,
+        approval_manager=approval_manager,
+        connection_manager=None,
+        max_concurrent=settings.tools.max_concurrent_tools,
+    )
+
+    ks = get_kill_switch()
+    if ks:
+        ks.on_soft_kill(tool_executor.handle_kill)
+
+    set_tool_executor(tool_executor)
+    set_tool_registry(tool_registry)
+    set_approval_manager(approval_manager)
 
     # --- Database & Memory System ---
     db = Database(settings)
