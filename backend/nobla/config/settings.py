@@ -127,6 +127,15 @@ class PersonaPlexSettings(BaseModel):
     cpu_offload: bool = False
 
 
+class ToolPlatformSettings(BaseModel):
+    """Settings for the tool execution platform."""
+
+    enabled: bool = True
+    default_approval_timeout: int = 30
+    activity_feed_enabled: bool = True
+    max_concurrent_tools: int = 5
+
+
 class Settings(BaseSettings):
     server: ServerSettings = ServerSettings()
     llm: LLMSettings = LLMSettings()
@@ -141,6 +150,7 @@ class Settings(BaseSettings):
     voice: VoiceSettings = Field(default_factory=VoiceSettings)
     persona: PersonaSettings = Field(default_factory=PersonaSettings)
     personaplex: PersonaPlexSettings = Field(default_factory=PersonaPlexSettings)
+    tools: ToolPlatformSettings = Field(default_factory=ToolPlatformSettings)
     secret_key: str = ""  # REQUIRED: set via SECRET_KEY env var
 
     model_config = {"env_prefix": "", "env_nested_delimiter": "__"}
