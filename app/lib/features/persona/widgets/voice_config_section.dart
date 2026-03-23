@@ -50,6 +50,7 @@ class VoiceConfigSection extends StatelessWidget {
         if (isPersonaPlex) ...[
           const SizedBox(height: 12),
           TextFormField(
+            key: ValueKey('voice_prompt_$_currentEngine'),
             initialValue: _voicePrompt,
             decoration: const InputDecoration(
               labelText: 'Voice Prompt Filename',

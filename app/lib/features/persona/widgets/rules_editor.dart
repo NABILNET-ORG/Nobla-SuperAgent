@@ -78,6 +78,6 @@ class RulesEditor extends StatelessWidget {
           ),
         ],
       ),
-    );
+    ).then((_) => controller.dispose());
   }
 }

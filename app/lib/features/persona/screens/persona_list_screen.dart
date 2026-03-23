@@ -23,7 +23,7 @@ class PersonaListScreen extends ConsumerWidget {
         child: const Icon(Icons.add),
       ),
       body: personasAsync.when(
-        loading: () => _buildShimmer(),
+        loading: () => _buildShimmer(context),
         error: (err, _) => Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -62,10 +62,11 @@ class PersonaListScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildShimmer() {
+  Widget _buildShimmer(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Shimmer.fromColors(
-      baseColor: Colors.grey.shade800,
-      highlightColor: Colors.grey.shade600,
+      baseColor: colorScheme.surfaceContainerHighest,
+      highlightColor: colorScheme.surfaceContainerLow,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: 3,

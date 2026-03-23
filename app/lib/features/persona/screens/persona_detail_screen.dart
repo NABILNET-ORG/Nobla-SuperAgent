@@ -150,8 +150,8 @@ class PersonaDetailScreen extends ConsumerWidget {
     if (confirmed != true || !context.mounted) return;
 
     try {
-      context.go('/home/persona');
       await ref.read(personaListProvider.notifier).deletePersona(personaId);
+      if (context.mounted) context.go('/home/persona');
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
