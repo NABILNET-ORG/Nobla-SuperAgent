@@ -7,6 +7,7 @@ import 'package:nobla_agent/core/routing/app_router.dart';
 import 'package:nobla_agent/core/theme/app_theme.dart';
 import 'package:nobla_agent/core/network/websocket_client.dart';
 import 'package:nobla_agent/core/network/jsonrpc_client.dart';
+import 'package:nobla_agent/core/network/api_client.dart';
 
 final websocketProvider = Provider<WebSocketClient>((ref) {
   final client = WebSocketClient();
@@ -24,6 +25,18 @@ final jsonRpcProvider = Provider<JsonRpcClient>((ref) {
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   final rpc = ref.watch(jsonRpcProvider);
   return AuthNotifier(rpc);
+});
+
+final apiClientProvider = Provider<ApiClient>((ref) {
+  final config = ref.watch(configProvider);
+  final authState = ref.watch(authProvider);
+  return ApiClient(
+    baseUrl: config.serverUrl.replaceFirst('ws://', 'http://').replaceFirst('wss://', 'https://'),
+    getUserId: () {
+      final s = ref.read(authProvider);
+      return s is Authenticated ? s.userId : '';
+    },
+  );
 });
 
 void main() {
