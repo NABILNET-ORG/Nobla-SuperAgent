@@ -17,6 +17,7 @@ import structlog
 from nobla.gateway.routes import router as rest_router
 from nobla.gateway.websocket import (
     websocket_endpoint,
+    manager as connection_manager,
     set_router,
     set_auth_service,
     set_kill_switch,
@@ -183,13 +184,13 @@ async def lifespan(app: FastAPI):
         set_approval_manager,
     )
 
-    approval_manager = ApprovalManager(connection_manager=None)
+    approval_manager = ApprovalManager(connection_manager=connection_manager)
     tool_executor = ToolExecutor(
         registry=tool_registry,
         permission_checker=permission_checker,
         audit_logger=_log_audit,
         approval_manager=approval_manager,
-        connection_manager=None,
+        connection_manager=connection_manager,
         max_concurrent=settings.tools.max_concurrent_tools,
     )
 
