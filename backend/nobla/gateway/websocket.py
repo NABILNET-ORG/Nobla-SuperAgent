@@ -736,4 +736,7 @@ async def websocket_endpoint(ws: WebSocket) -> None:
         cleanup_session(state.connection_id)
 
 
-import nobla.gateway.code_handlers  # noqa: F401 — register code RPC methods
+# NOTE: Import at end of file to avoid circular import — code_handlers imports
+# from this module to access rpc_method, ConnectionState, and service accessors.
+# Do not move this to the top.
+import nobla.gateway.code_handlers  # noqa: E402, F401 — register code RPC methods
