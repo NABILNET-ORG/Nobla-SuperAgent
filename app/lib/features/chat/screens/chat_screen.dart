@@ -5,6 +5,8 @@ import 'package:nobla_agent/features/chat/providers/chat_provider.dart';
 import 'package:nobla_agent/features/chat/widgets/message_bubble.dart';
 import 'package:nobla_agent/features/chat/widgets/message_input.dart';
 import 'package:nobla_agent/features/chat/widgets/tool_activity_indicator.dart';
+import 'package:nobla_agent/features/persona/providers/active_persona_provider.dart';
+import 'package:nobla_agent/features/persona/widgets/persona_picker_sheet.dart';
 import 'package:nobla_agent/main.dart';
 
 final chatProvider = StateNotifierProvider<ChatNotifier, ChatState>((ref) {
@@ -24,7 +26,22 @@ class ChatScreen extends ConsumerWidget {
     return Column(
       children: [
         AppBar(
-          title: const Text('Chat'),
+          title: GestureDetector(
+            onTap: () => showModalBottomSheet(
+              context: context,
+              builder: (_) => const PersonaPickerSheet(),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Nobla \u00b7 ${ref.watch(activePersonaProvider)?.name ?? "Loading..."}',
+                ),
+                const SizedBox(width: 4),
+                const Icon(Icons.arrow_drop_down, size: 20),
+              ],
+            ),
+          ),
           centerTitle: true,
           actions: [
             IconButton(
