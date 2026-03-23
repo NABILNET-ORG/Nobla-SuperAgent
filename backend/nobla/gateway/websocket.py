@@ -103,6 +103,17 @@ class ConnectionManager:
             except Exception:
                 pass
 
+    async def send_to(self, connection_id: str, message: dict) -> None:
+        """Send a message to a specific connection."""
+        entry = self._connections.get(connection_id)
+        if entry is None:
+            return
+        ws, _state = entry
+        try:
+            await ws.send_json(message)
+        except Exception:
+            logger.warning("send_to_failed", connection_id=connection_id)
+
 
 manager = ConnectionManager()
 
@@ -372,31 +383,6 @@ async def handle_system_costs(params: dict, state: ConnectionState) -> dict:
     if not ct:
         return {"error": "Cost tracker not initialized"}
     return ct.get_dashboard()
-
-
-@rpc_method("code.execute")
-async def handle_code_execute(params: dict, state: ConnectionState) -> dict:
-    # Requires STANDARD tier
-    pc = get_permission_checker()
-    if pc:
-        pc.check(current_tier=Tier(state.tier), required_tier=Tier.STANDARD)
-
-    sm = get_sandbox_manager()
-    if not sm:
-        return {"error": "Sandbox not initialized"}
-
-    code = params.get("code", "")
-    language = params.get("language", "python")
-    timeout = params.get("timeout")
-
-    result = await sm.execute(code=code, language=language, timeout=timeout)
-    return {
-        "stdout": result.stdout,
-        "stderr": result.stderr,
-        "exit_code": result.exit_code,
-        "execution_time_ms": result.execution_time_ms,
-        "timed_out": result.timed_out,
-    }
 
 
 @rpc_method("chat.send")
@@ -748,3 +734,6 @@ async def websocket_endpoint(ws: WebSocket) -> None:
         manager.disconnect(state.connection_id)
         from nobla.persona.service import cleanup_session
         cleanup_session(state.connection_id)
+
+
+import nobla.gateway.code_handlers  # noqa: F401 — register code RPC methods
