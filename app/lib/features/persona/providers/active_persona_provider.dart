@@ -22,6 +22,7 @@ Persona resolveActivePersona({
   }
 
   // 3. First persona in list (Professional is always index 0)
+  assert(personas.isNotEmpty, 'resolveActivePersona requires a non-empty list');
   return personas.first;
 }
 

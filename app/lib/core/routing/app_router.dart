@@ -56,6 +56,7 @@ GoRouter createRouter(AuthState authState) {
             path: '/home/persona',
             builder: (context, state) => const PersonaListScreen(),
           ),
+          // create must stay before :id to avoid shadowing
           GoRoute(
             path: '/home/persona/create',
             builder: (context, state) => const PersonaEditScreen(),
@@ -69,7 +70,7 @@ GoRouter createRouter(AuthState authState) {
           GoRoute(
             path: '/home/persona/:id/edit',
             builder: (context, state) => PersonaEditScreen(
-              personaId: state.pathParameters['id'],
+              personaId: state.pathParameters['id']!,
             ),
           ),
           GoRoute(
