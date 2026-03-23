@@ -21,14 +21,6 @@ from nobla.tools.models import (
 from nobla.tools.registry import ToolRegistry, _TOOL_REGISTRY, register_tool
 
 
-@pytest.fixture(autouse=True)
-def clean_registry():
-    _TOOL_REGISTRY.clear()
-    yield
-    _TOOL_REGISTRY.clear()
-
-
-@register_tool
 class EchoTool(BaseTool):
     name = "test.echo"
     description = "Echo input"
@@ -39,7 +31,6 @@ class EchoTool(BaseTool):
         return ToolResult(success=True, data=params.args)
 
 
-@register_tool
 class AdminApprovalTool(BaseTool):
     name = "test.admin_action"
     description = "Admin action"
@@ -52,7 +43,6 @@ class AdminApprovalTool(BaseTool):
         return ToolResult(success=True, data="executed")
 
 
-@register_tool
 class ValidatingTool(BaseTool):
     name = "test.validated"
     description = "Validates input"
@@ -67,7 +57,6 @@ class ValidatingTool(BaseTool):
         return ToolResult(success=True, data=params.args["required_key"])
 
 
-@register_tool
 class FailingTool(BaseTool):
     name = "test.failing"
     description = "Always fails"
@@ -76,6 +65,18 @@ class FailingTool(BaseTool):
 
     async def execute(self, params: ToolParams) -> ToolResult:
         raise RuntimeError("Something broke")
+
+
+@pytest.fixture(autouse=True)
+def clean_registry():
+    """Clear registry and register test tools for each test."""
+    _TOOL_REGISTRY.clear()
+    _TOOL_REGISTRY["test.echo"] = EchoTool()
+    _TOOL_REGISTRY["test.admin_action"] = AdminApprovalTool()
+    _TOOL_REGISTRY["test.validated"] = ValidatingTool()
+    _TOOL_REGISTRY["test.failing"] = FailingTool()
+    yield
+    _TOOL_REGISTRY.clear()
 
 
 class FakeApprovalManager:
