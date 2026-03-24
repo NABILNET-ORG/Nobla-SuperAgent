@@ -51,63 +51,23 @@ class SandboxManager:
         environment: dict[str, str] | None = None,
     ) -> SandboxResult:
         """Execute code in a Docker container. Requires Docker daemon running."""
-        import time
         image = self.get_image(language)
         if not image:
-            return SandboxResult(stdout="", stderr=f"Unsupported language: {language}", exit_code=1, execution_time_ms=0, timed_out=False)
+            return SandboxResult(
+                stdout="", stderr=f"Unsupported language: {language}",
+                exit_code=1, execution_time_ms=0, timed_out=False,
+            )
 
         timeout = timeout or self.config.timeout_seconds
         net_enabled = network if network is not None else self.config.network_enabled
-        docker_volumes = (
-            {n: {"bind": p, "mode": "rw"} for n, p in volumes.items()}
-            if volumes else None
+        return await self._run_container(
+            image=image,
+            command=self._build_command(code, language),
+            timeout=timeout,
+            network=net_enabled,
+            volumes=volumes,
+            environment=environment,
         )
-        tmpfs = {"/tmp": "size=64m"}
-        if volumes:
-            tmpfs.update({"/root": "size=32m", "/home": "size=32m"})
-
-        try:
-            import docker
-            if not self._client:
-                self._client = docker.from_env()
-
-            start = time.monotonic()
-            container = self._client.containers.run(
-                image=image,
-                command=self._build_command(code, language),
-                detach=True,
-                mem_limit=self.config.memory_limit,
-                nano_cpus=int(self.config.cpu_limit * 1e9),
-                network_mode="none" if not net_enabled else "bridge",
-                runtime="runsc" if self.config.runtime == "gvisor" else None,
-                read_only=True,
-                tmpfs=tmpfs,
-                volumes=docker_volumes,
-                environment=environment,
-            )
-
-            try:
-                result = container.wait(timeout=timeout)
-                elapsed = int((time.monotonic() - start) * 1000)
-                stdout = container.logs(stdout=True, stderr=False).decode()
-                stderr = container.logs(stdout=False, stderr=True).decode()
-                return SandboxResult(
-                    stdout=stdout, stderr=stderr,
-                    exit_code=result.get("StatusCode", -1),
-                    execution_time_ms=elapsed, timed_out=False,
-                )
-            except Exception:
-                elapsed = int((time.monotonic() - start) * 1000)
-                container.kill()
-                return SandboxResult(stdout="", stderr="Execution timed out", exit_code=-1, execution_time_ms=elapsed, timed_out=True)
-            finally:
-                container.remove(force=True)
-
-        except ImportError:
-            return SandboxResult(stdout="", stderr="Docker SDK not available", exit_code=1, execution_time_ms=0, timed_out=False)
-        except Exception as e:
-            logger.error("sandbox_error", error=str(e))
-            return SandboxResult(stdout="", stderr=str(e), exit_code=1, execution_time_ms=0, timed_out=False)
 
     async def execute_command(
         self,
@@ -123,8 +83,6 @@ class SandboxManager:
         Used by PackageInstallTool and GitTool where the command is
         a safe list rather than a code snippet + language.
         """
-        import time
-
         if image not in self.config.allowed_images:
             return SandboxResult(
                 stdout="",
@@ -134,11 +92,33 @@ class SandboxManager:
 
         timeout = timeout or self.config.timeout_seconds
         net_enabled = network if network is not None else self.config.network_enabled
+        return await self._run_container(
+            image=image,
+            command=cmd,
+            timeout=timeout,
+            network=net_enabled,
+            volumes=volumes,
+            environment=environment,
+        )
+
+    async def _run_container(
+        self,
+        image: str,
+        command: list[str],
+        timeout: int,
+        network: bool,
+        volumes: dict[str, str] | None = None,
+        environment: dict[str, str] | None = None,
+    ) -> SandboxResult:
+        """Shared Docker orchestration for execute() and execute_command()."""
+        import time
+
         docker_volumes = (
             {n: {"bind": p, "mode": "rw"} for n, p in volumes.items()}
             if volumes else None
         )
         tmpfs = {"/tmp": "size=64m"}
+        # Package installs (pip/npm) need writable home dirs for caches
         if volumes:
             tmpfs.update({"/root": "size=32m", "/home": "size=32m"})
 
@@ -150,11 +130,11 @@ class SandboxManager:
             start = time.monotonic()
             container = self._client.containers.run(
                 image=image,
-                command=cmd,
+                command=command,
                 detach=True,
                 mem_limit=self.config.memory_limit,
                 nano_cpus=int(self.config.cpu_limit * 1e9),
-                network_mode="none" if not net_enabled else "bridge",
+                network_mode="none" if not network else "bridge",
                 runtime="runsc" if self.config.runtime == "gvisor" else None,
                 read_only=True,
                 tmpfs=tmpfs,
@@ -188,7 +168,7 @@ class SandboxManager:
                 exit_code=1, execution_time_ms=0, timed_out=False,
             )
         except Exception as e:
-            logger.error("sandbox_execute_command_error", error=str(e))
+            logger.error("sandbox_error", error=str(e))
             return SandboxResult(
                 stdout="", stderr=str(e),
                 exit_code=1, execution_time_ms=0, timed_out=False,
@@ -237,8 +217,8 @@ class SandboxManager:
 
         # Clean up code execution volumes
         try:
-            from nobla.tools.code.runner import get_settings as _get_settings
-            s = _get_settings()
+            from nobla.config.settings import Settings as _Settings
+            s = _Settings()
             await self.cleanup_volumes(s.code.package_volume_prefix)
             await self.cleanup_volumes(s.code.git_workspace_volume_prefix)
         except Exception as e:
