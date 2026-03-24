@@ -239,7 +239,7 @@ class OCRTool(BaseTool):
         import numpy as np  # lazy — only needed when easyocr is available
 
         threshold = get_settings().vision.ocr_confidence_threshold
-        reader = self._get_reader(languages)
+        reader = await self._get_reader(languages)
 
         img_array = np.array(image)
         raw_results = await asyncio.to_thread(reader.readtext, img_array)
@@ -276,10 +276,12 @@ class OCRTool(BaseTool):
     # Helpers
     # ------------------------------------------------------------------
 
-    def _get_reader(self, languages: list[str]):
+    async def _get_reader(self, languages: list[str]):
         """Lazy singleton EasyOCR reader; recreated if languages change."""
         if self._easyocr_reader is None or self._reader_langs != languages:
-            self._easyocr_reader = easyocr_module.Reader(languages, gpu=False)
+            self._easyocr_reader = await asyncio.to_thread(
+                easyocr_module.Reader, languages, gpu=False
+            )
             self._reader_langs = languages
         return self._easyocr_reader
 
