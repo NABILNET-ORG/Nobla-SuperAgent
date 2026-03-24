@@ -56,6 +56,8 @@ dev = [
     "ruff>=0.6.0",
     "mypy>=1.11.0",
 ]
+vision = ["python-mss>=9.0", "Pillow>=10.0", "pytesseract>=0.3"]
+vision-full = ["python-mss>=9.0", "Pillow>=10.0", "pytesseract>=0.3", "easyocr>=1.7"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
