@@ -85,7 +85,7 @@ backend/nobla/tools/vision/
 
 ## 4. Configuration
 
-Added to `config/settings.py`:
+**New addition** to `config/settings.py` (does not exist yet — must be created and wired into the `Settings` class). The parent spec defined a simpler `VisionSettings`; this version adds `screenshot_include_cursor`, `ocr_confidence_threshold`, and `detection_confidence_threshold` based on Phase 4A design refinement:
 
 ```python
 class VisionSettings(BaseModel):
@@ -112,7 +112,7 @@ Wired into `Settings` as: `vision: VisionSettings = Field(default_factory=Vision
 | `screenshot_format` | "png" (lossless, better for OCR) or "jpeg" (smaller) |
 | `screenshot_quality` | JPEG quality 1-100, ignored for PNG |
 | `screenshot_max_dimension` | Downscale returned image only; internal processing uses native resolution |
-| `screenshot_include_cursor` | Whether to capture mouse cursor (useful for Phase 4B debugging) |
+| `screenshot_include_cursor` | Whether to capture mouse cursor. **Deferred implementation** — setting is defined but `mss` captures without cursor by default; platform-specific cursor overlay is a Phase 4B task. |
 | `ocr_engine` | Preferred engine: "tesseract" or "easyocr". Falls back to other on failure. |
 | `ocr_languages` | Tesseract language codes (e.g., ["en", "ara"] for English + Arabic) |
 | `ocr_confidence_threshold` | Filter OCR results below this confidence (0.0-1.0) |
@@ -152,6 +152,12 @@ All four packages are optional at runtime. Each tool gracefully handles `ImportE
 
 Shared TTL cache for detected UI elements. Single-entry — only the most recent screen state is cached.
 
+**Note:** `cache.py` is an addition not listed in the parent spec's `vision/` directory structure. Added to support the shared cache design decision (Section 2.4).
+
+The `element_cache` module-level singleton lives in `cache.py` (not `__init__.py`) to avoid circular imports — `detection.py` and `targeting.py` import it directly from `cache.py`.
+
+**Thread safety:** No locking. Python's GIL protects attribute assignment, and "last write wins" is acceptable for a single-entry cache. Concurrent detection calls racing on `put()` simply overwrite each other with equally valid results.
+
 ```python
 @dataclass
 class CachedElements:
@@ -177,6 +183,10 @@ class ElementCache:
 
     def clear(self) -> None:
         self._entry = None
+
+# Module-level singleton — imported by detection.py and targeting.py directly.
+# Lives here (not in __init__.py) to avoid circular imports.
+element_cache = ElementCache()
 ```
 
 **Screenshot hashing:** Uses thumbnail hash for speed — resize image to 64x64, hash the bytes with MD5. This takes ~1ms vs ~50ms for hashing full 4K pixel data. Catches actual screen changes without pixel-perfect accuracy (not needed for cache invalidation).
@@ -327,8 +337,11 @@ async def _tesseract_extract(self, image, languages) -> OCRResult:
 
 **EasyOCR path:**
 
+**Note:** `numpy` is a transitive dependency of EasyOCR (via PyTorch). The `import numpy` must be a **lazy import inside `_easyocr_extract()`**, not a top-level import, to avoid crashing when only the `vision` (non-full) dependency group is installed.
+
 ```python
 async def _easyocr_extract(self, image, languages) -> OCRResult:
+    import numpy  # lazy import — only available with vision-full deps
     reader = await self._get_reader(languages)
     results = await asyncio.to_thread(reader.readtext, numpy.array(image))
     blocks = []
@@ -361,29 +374,28 @@ async def _get_reader(self, languages):
     return self._easyocr_reader
 ```
 
-**Fallback logic:**
+**Fallback logic (symmetric — try preferred engine first, then the other):**
 
 ```python
 async def extract(self, image, languages=None, engine=None) -> OCRResult:
     languages = languages or settings.vision.ocr_languages
-    engine = engine or settings.vision.ocr_engine
+    preferred = engine or settings.vision.ocr_engine
+    other = "easyocr" if preferred == "tesseract" else "tesseract"
+
+    engines = {"tesseract": self._tesseract_extract, "easyocr": self._easyocr_extract}
+
+    # Try preferred engine first
     try:
-        if engine == "tesseract":
-            return await self._tesseract_extract(image, languages)
-    except ImportError:
-        pass   # Tesseract not installed, try EasyOCR
-    except Exception:
-        pass   # Tesseract failed, try EasyOCR
-    try:
-        return await self._easyocr_extract(image, languages)
-    except ImportError:
-        pass
-    # Both failed
-    try:
-        if engine == "easyocr":
-            return await self._tesseract_extract(image, languages)
+        return await engines[preferred](image, languages)
     except (ImportError, Exception):
         pass
+
+    # Fall back to the other engine
+    try:
+        return await engines[other](image, languages)
+    except (ImportError, Exception):
+        pass
+
     raise RuntimeError(
         "No OCR engine available. Install pytesseract or easyocr: "
         "pip install nobla[vision] or pip install nobla[vision-full]"
@@ -595,19 +607,32 @@ class TargetResult:
     match_score: float
 ```
 
-**Tool composition via lazy properties:**
+**Internal data model for matching:**
 
 ```python
+@dataclass
+class _Match:
+    element: DetectedElement
+    score: float
+```
+
+**Tool composition via lazy properties (using public ToolRegistry API):**
+
+```python
+from nobla.tools.registry import ToolRegistry
+
+_registry = ToolRegistry()
+
 @property
 def _capture(self):
-    return _TOOL_REGISTRY["screenshot.capture"]
+    return _registry.get("screenshot.capture")
 
 @property
 def _detector(self):
-    return _TOOL_REGISTRY["ui.detect_elements"]
+    return _registry.get("ui.detect_elements")
 ```
 
-**Rationale:** Lazy resolution at call time, not import time. Avoids fragile import-order dependencies. Dict lookup is ~50ns — negligible overhead.
+**Rationale:** Lazy resolution at call time, not import time. Uses the public `ToolRegistry.get()` API instead of the private `_TOOL_REGISTRY` dict — avoids coupling to implementation details. Dict lookup is ~50ns — negligible overhead.
 
 **Internal `target()` method:**
 
@@ -708,19 +733,19 @@ def _best_match(self, description: str, elements: list[DetectedElement]):
 ## 7. Module Wiring (`vision/__init__.py`)
 
 ```python
-"""Vision tools — auto-discovery imports + shared cache singleton."""
-from nobla.tools.vision.cache import ElementCache
+"""Vision tools — auto-discovery imports."""
 
 # Import modules to trigger @register_tool decorators.
-# Order matters: capture → ocr → detection → targeting
+# Import order does not matter — tools resolve siblings lazily via
+# ToolRegistry.get() properties, not at import time.
 from nobla.tools.vision import capture  # noqa: F401
 from nobla.tools.vision import ocr  # noqa: F401
 from nobla.tools.vision import detection  # noqa: F401
 from nobla.tools.vision import targeting  # noqa: F401
 
-# Shared element cache singleton.
-# Tool instances come from the registry — no duplicates here.
-element_cache = ElementCache()
+# The shared element_cache singleton lives in cache.py (not here)
+# to avoid circular imports. Tools import it directly:
+#   from nobla.tools.vision.cache import element_cache
 ```
 
 The parent `tools/__init__.py` adds:
