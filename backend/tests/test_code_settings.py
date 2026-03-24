@@ -57,6 +57,7 @@ class TestSandboxAllowedImages:
         s = SandboxSettings()
         assert "python:3.12-slim" in s.allowed_images
         assert "node:20-slim" in s.allowed_images
+        assert "bash:5" in s.allowed_images
         assert "alpine/git:latest" in s.allowed_images
 
 
@@ -89,8 +90,7 @@ class _StaticApprovalTool(BaseTool):
 
 
 class TestNeedsApproval:
-    def test_default_returns_class_variable_false(self):
-        tool = _ConditionalApprovalTool()
+    def test_default_returns_class_variable(self):
         base_tool = _StaticApprovalTool()
         state = ConnectionState(
             connection_id="c1", user_id="u1", tier=Tier.ADMIN.value
