@@ -351,12 +351,12 @@ TIER 4: ADMIN
 - [x] VisionSettings (12 config fields) + optional dependency groups
 - [x] Module wiring + integration tests — 158 tests total
 
-**Phase 4C: Code Execution** (next)
-- [ ] Sandboxed code runner: Python, JavaScript, Bash, more
-- [ ] Package installation in sandbox
-- [ ] Code generation from natural language
-- [ ] Debug assistant: analyze errors, suggest fixes
-- [ ] Git integration: clone, commit, push, PR creation
+**Phase 4C: Code Execution** ✅
+- [x] Sandboxed code runner: Python, JavaScript, Bash (code.run)
+- [x] Package installation in sandbox (code.install_package)
+- [x] Code generation from natural language (code.generate)
+- [x] Debug assistant: analyze errors, suggest fixes (code.debug)
+- [x] Git integration: clone, commit, push, PR creation (git.ops) — 110 tests total
 
 **Phase 4B: Computer Control + Approval UI** (requires 4A vision)
 - [ ] Mouse control: move, click, drag, scroll

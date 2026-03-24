@@ -90,7 +90,7 @@ class TestToolRegistry:
 
         @register_tool
         class CodeTool(BaseTool):
-            name = "code.run"
+            name = "test.code_run"
             description = "Run code in sandbox"
             category = ToolCategory.CODE
             tier = Tier.STANDARD
@@ -111,8 +111,8 @@ class TestToolRegistry:
     def test_list_all(self, registry_with_tools):
         tools = registry_with_tools.list_all()
         names = {t.name for t in tools}
-        # 3 fixture tools + baseline vision tools (screenshot.capture, ocr.extract, etc.)
-        assert {"vision.screenshot", "input.mouse", "code.run"}.issubset(names)
+        # 3 fixture tools + baseline tools (vision, code, etc.)
+        assert {"vision.screenshot", "input.mouse", "test.code_run"}.issubset(names)
 
     def test_list_by_category(self, registry_with_tools):
         vision_tools = registry_with_tools.list_by_category(ToolCategory.VISION)
@@ -122,7 +122,7 @@ class TestToolRegistry:
     def test_list_available_standard(self, registry_with_tools):
         tools = registry_with_tools.list_available(Tier.STANDARD)
         names = {t.name for t in tools}
-        assert {"vision.screenshot", "code.run"}.issubset(names)
+        assert {"vision.screenshot", "test.code_run"}.issubset(names)
         # ADMIN tool should NOT be in STANDARD list
         assert "input.mouse" not in names
 
@@ -130,7 +130,7 @@ class TestToolRegistry:
         tools = registry_with_tools.list_available(Tier.ADMIN)
         names = {t.name for t in tools}
         # ADMIN tier sees everything
-        assert {"vision.screenshot", "input.mouse", "code.run"}.issubset(names)
+        assert {"vision.screenshot", "input.mouse", "test.code_run"}.issubset(names)
 
     def test_get_manifest(self, registry_with_tools):
         manifest = registry_with_tools.get_manifest(Tier.STANDARD)

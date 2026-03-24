@@ -70,7 +70,7 @@ class SandboxSettings(BaseModel):
     cpu_limit: float = 1.0
     timeout_seconds: int = 30
     network_enabled: bool = False
-    allowed_images: list[str] = ["python:3.12-slim"]
+    allowed_images: list[str] = ["python:3.12-slim", "node:20-slim", "bash:5", "alpine/git:latest"]
 
 
 class CostSettings(BaseModel):
@@ -153,6 +153,23 @@ class VisionSettings(BaseModel):
     element_cache_ttl: int = 5
 
 
+class CodeExecutionSettings(BaseModel):
+    """Code execution tools configuration."""
+
+    enabled: bool = True
+    default_language: str = "python"
+    supported_languages: list[str] = ["python", "javascript", "bash"]
+    package_volume_prefix: str = "nobla-pkg"
+    persist_packages: bool = False
+    max_output_length: int = 50000
+    codegen_max_tokens: int = 4096
+    debug_max_error_length: int = 5000
+    git_allowed_hosts: list[str] = ["github.com", "gitlab.com"]
+    git_timeout: int = 120
+    git_workspace_volume_prefix: str = "nobla-git"
+    git_image: str = "alpine/git:latest"
+
+
 class Settings(BaseSettings):
     server: ServerSettings = ServerSettings()
     llm: LLMSettings = LLMSettings()
@@ -169,6 +186,7 @@ class Settings(BaseSettings):
     personaplex: PersonaPlexSettings = Field(default_factory=PersonaPlexSettings)
     tools: ToolPlatformSettings = Field(default_factory=ToolPlatformSettings)
     vision: VisionSettings = Field(default_factory=VisionSettings)
+    code: CodeExecutionSettings = Field(default_factory=CodeExecutionSettings)
     secret_key: str = ""  # REQUIRED: set via SECRET_KEY env var
 
     model_config = {"env_prefix": "", "env_nested_delimiter": "__"}
