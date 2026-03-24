@@ -21,5 +21,5 @@ from nobla.tools.code import runner  # noqa: E402, F401
 # Remaining imports added as tools are implemented in Tasks 3-6:
 from nobla.tools.code import packages  # noqa: E402, F401
 from nobla.tools.code import codegen  # noqa: E402, F401
-# from nobla.tools.code import debug  # noqa: E402, F401
+from nobla.tools.code import debug  # noqa: E402, F401
 # from nobla.tools.code import git  # noqa: E402, F401
