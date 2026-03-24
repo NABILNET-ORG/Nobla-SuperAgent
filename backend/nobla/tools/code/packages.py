@@ -11,7 +11,11 @@ from nobla.tools.models import ToolCategory, ToolParams, ToolResult
 from nobla.tools.registry import register_tool
 
 PACKAGE_NAME_RE = re.compile(
-    r"^(@[a-zA-Z0-9\-_]+/)?[a-zA-Z0-9\-_.]+([><=!]+[^\s,]+)?(,[^\s,]+)*$"
+    r"^(@[a-zA-Z0-9\-_]+/)?"          # optional npm scope
+    r"[a-zA-Z0-9][a-zA-Z0-9\-_.]*"    # package name (no leading dot/dash)
+    r"([><=!~]{1,2}[a-zA-Z0-9.*]+)?"  # optional version specifier
+    r"(,[><=!~]{1,2}[a-zA-Z0-9.*]+)*" # optional additional constraints
+    r"$"
 )
 
 _INSTALL_CMD = {
@@ -21,6 +25,11 @@ _INSTALL_CMD = {
     "javascript": lambda pkgs: [
         "npm", "install", "--prefix", "/packages/node", *pkgs,
     ],
+}
+
+_INSTALL_MOUNT = {
+    "python": "/packages/python",
+    "javascript": "/packages/node",
 }
 
 _INSTALL_IMAGE = {
@@ -63,12 +72,15 @@ class PackageInstallTool(BaseTool):
         language = params.args.get("language", settings.code.default_language)
         connection_id = params.connection_state.connection_id
 
+        if language not in _INSTALL_CMD:
+            return ToolResult(success=False, data={}, error=f"Unsupported language: {language}")
+
         cmd = _INSTALL_CMD[language](packages)
         image = _INSTALL_IMAGE[language]
         vol_name = get_volume_name(
             settings.code.package_volume_prefix, language, connection_id,
         )
-        volumes = {vol_name: f"/packages/{language}"}
+        volumes = {vol_name: _INSTALL_MOUNT[language]}
 
         try:
             result = await get_sandbox().execute_command(

