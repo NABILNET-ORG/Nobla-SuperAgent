@@ -1,16 +1,67 @@
-# nobla_agent
+# Nobla Agent — Flutter App
 
-A new Flutter project.
+Mobile-first client for [Nobla Agent](https://github.com/NABILNET-ORG/Nobla-SuperAgent), built with Flutter 3.x and Riverpod state management.
 
-## Getting Started
+## Features
 
-This project is a starting point for a Flutter application.
+- **Real-time chat** via WebSocket with the Nobla backend
+- **Voice UI** with avatar animations and lip-sync playback
+- **Security dashboard** with kill switch control
+- **Persona management** — browse, create, and switch AI personalities
+- **Memory viewer** — explore conversation history and knowledge graph
+- **Settings** — server connection, theme, security tier management
+- **Auth** — JWT-based authentication with secure storage
 
-A few resources to get you started if this is your first Flutter project:
+## Architecture
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+```
+app/lib/
+├── core/           # Theme, routing (GoRouter), DI (Riverpod), network layer
+├── features/
+│   ├── auth/           # Login, registration, token management
+│   ├── chat/           # Real-time WebSocket chat UI
+│   ├── conversations/  # Conversation list and history
+│   ├── dashboard/      # Home screen with security controls
+│   ├── memory/         # Memory viewer and knowledge graph
+│   ├── persona/        # Persona browser and management
+│   └── settings/       # App and server configuration
+└── shared/         # Shared widgets, utils, constants
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Setup
+
+```bash
+flutter pub get
+flutter run -d <device-id>
+```
+
+## Testing
+
+```bash
+flutter test --coverage
+flutter analyze
+dart format lib/
+```
+
+## Key Dependencies
+
+- `flutter_riverpod` — State management
+- `web_socket_channel` — WebSocket communication
+- `dio` — HTTP client
+- `flutter_secure_storage` — Secure credential storage
+- `just_audio` — Audio playback for TTS
+- `record` — Audio recording for STT
+- `rive` / `lottie` — Avatar animations
+- `go_router` — Navigation
+
+## Connection
+
+The app connects to the Nobla backend via:
+- **WebSocket** (`ws://host:8000/ws`) for real-time chat, voice streaming, tool approvals, and activity feed
+- **HTTPS** (`https://host:8000/api/`) for auth, personas, settings
+
+Configure the server URL in Settings.
+
+---
+
+Part of [Nobla Agent](https://github.com/NABILNET-ORG/Nobla-SuperAgent) by [NABILNET.AI](https://nabilnet.ai)
