@@ -330,40 +330,52 @@ TIER 4: ADMIN
 
 ### Phase 4: Computer Control & Vision (Weeks 13-16)
 **Goal:** The agent can see and control the screen like a human.
+**Design spec:** `docs/superpowers/specs/2026-03-23-phase4-computer-control-vision-design.md`
 
-**Screen Vision:**
-- [ ] Screenshot capture and analysis pipeline
-- [ ] UI-TARS integration for GUI element detection
-- [ ] OCR: Tesseract + EasyOCR for text extraction from screenshots
-- [ ] Screen understanding: "What's on screen?" → structured description
-- [ ] Element targeting: click coordinates from natural language
+**Phase 4-Pre: Tool Platform Foundation** ✅
+- [x] BaseTool ABC, @register_tool decorator, ToolRegistry
+- [x] ToolExecutor 5-step pipeline (exists → permission → validate → approve → execute)
+- [x] ApprovalManager (asyncio.Future WebSocket round-trip)
+- [x] Gateway RPC handlers (tool.execute, tool.list, tool.approval_response)
+- [x] Kill switch integration, activity feed, concurrency control
+- [x] 51 tests passing
 
-**Computer Control:**
+**Phase 4A: Screen Vision** ✅
+**Design spec:** `docs/superpowers/specs/2026-03-24-phase4a-screen-vision-design.md`
+**Plan:** `docs/superpowers/plans/2026-03-24-phase4a-screen-vision.md`
+- [x] `screenshot.capture` — mss-based capture, multi-monitor, region, downscaling (44 tests)
+- [x] `ocr.extract` — Tesseract + EasyOCR fallback, confidence filtering (26 tests)
+- [x] `ui.detect_elements` — OCR heuristics + pixel sampling + UI-TARS stub (35 tests)
+- [x] `ui.target_element` — NL description → (x,y) with keyword matching (19 tests)
+- [x] ElementCache with TTL + thumbnail hashing (9 tests)
+- [x] VisionSettings (12 config fields) + optional dependency groups
+- [x] Module wiring + integration tests — 158 tests total
+
+**Phase 4C: Code Execution** (next)
+- [ ] Sandboxed code runner: Python, JavaScript, Bash, more
+- [ ] Package installation in sandbox
+- [ ] Code generation from natural language
+- [ ] Debug assistant: analyze errors, suggest fixes
+- [ ] Git integration: clone, commit, push, PR creation
+
+**Phase 4B: Computer Control + Approval UI** (requires 4A vision)
 - [ ] Mouse control: move, click, drag, scroll
 - [ ] Keyboard control: type, shortcuts, key combinations
 - [ ] Application launching and management
 - [ ] Window management: resize, move, minimize, maximize
 - [ ] File manager: browse, create, delete, move, copy files
 - [ ] Clipboard management: read/write clipboard
+- [ ] Flutter approval dialogs for actions
 
-**Code Execution:**
-- [ ] Sandboxed code runner: Python, JavaScript, Bash, more
-- [ ] Package installation in sandbox
-- [ ] Code generation from natural language
-- [ ] Debug assistant: analyze errors, suggest fixes
-- [ ] Git integration: clone, commit, push, PR creation
-- [ ] Project scaffolding: create full projects from description
+**Phase 4E: Flutter UI**
+- [ ] Screen mirror: see agent's screen in real-time
+- [ ] Activity feed: live log of what agent is doing
+- [ ] Tool browser: list available tools by category
 
-**Remote Control:**
+**Phase 4D: Remote Control**
 - [ ] SSH integration: connect to remote machines
 - [ ] Remote command execution with audit logging
 - [ ] File transfer: upload/download via SCP/SFTP
-- [ ] Multi-machine orchestration
-
-**Flutter App Updates:**
-- [ ] Screen mirror: see agent's screen in real-time
-- [ ] Approval dialogs: approve/deny each computer action
-- [ ] Activity feed: live log of what agent is doing
 - [ ] Remote machine manager: add/remove SSH connections
 
 ---

@@ -42,7 +42,7 @@
 - Modify: `backend/pyproject.toml`
 - Create: `backend/tests/test_vision_settings.py`
 
-- [ ] **Step 1: Write the failing test for VisionSettings**
+- [x] **Step 1: Write the failing test for VisionSettings**
 
 ```python
 # backend/tests/test_vision_settings.py
@@ -87,12 +87,12 @@ class TestVisionSettings:
         assert s.vision.enabled is True
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd backend && python -m pytest tests/test_vision_settings.py -v`
 Expected: FAIL — `VisionSettings` does not exist yet.
 
-- [ ] **Step 3: Add VisionSettings to config/settings.py**
+- [x] **Step 3: Add VisionSettings to config/settings.py**
 
 Add after `ToolPlatformSettings` class:
 
@@ -120,12 +120,12 @@ Add to `Settings` class (after `tools` field):
     vision: VisionSettings = Field(default_factory=VisionSettings)
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd backend && python -m pytest tests/test_vision_settings.py -v`
 Expected: 3 passed.
 
-- [ ] **Step 5: Add optional dependencies to pyproject.toml**
+- [x] **Step 5: Add optional dependencies to pyproject.toml**
 
 Find the `[project.optional-dependencies]` section (or create it) and add:
 
@@ -134,7 +134,7 @@ vision = ["python-mss>=9.0", "Pillow>=10.0", "pytesseract>=0.3"]
 vision-full = ["python-mss>=9.0", "Pillow>=10.0", "pytesseract>=0.3", "easyocr>=1.7"]
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add backend/nobla/config/settings.py backend/pyproject.toml backend/tests/test_vision_settings.py
@@ -150,14 +150,14 @@ git commit -m "feat(config): add VisionSettings + vision dependency groups"
 - Create: `backend/nobla/tools/vision/cache.py`
 - Create: `backend/tests/test_vision_cache.py`
 
-- [ ] **Step 1: Create vision package placeholder**
+- [x] **Step 1: Create vision package placeholder**
 
 ```python
 # backend/nobla/tools/vision/__init__.py
 """Vision tools — screen capture, OCR, element detection, targeting."""
 ```
 
-- [ ] **Step 2: Write failing tests for ElementCache**
+- [x] **Step 2: Write failing tests for ElementCache**
 
 ```python
 # backend/tests/test_vision_cache.py
@@ -229,12 +229,12 @@ class TestHashThumbnail:
         assert len(result) == 32  # MD5 hex digest length
 ```
 
-- [ ] **Step 3: Run tests to verify they fail**
+- [x] **Step 3: Run tests to verify they fail**
 
 Run: `cd backend && python -m pytest tests/test_vision_cache.py -v`
 Expected: FAIL — `cache.py` does not exist.
 
-- [ ] **Step 4: Implement cache.py**
+- [x] **Step 4: Implement cache.py**
 
 ```python
 # backend/nobla/tools/vision/cache.py
@@ -292,12 +292,12 @@ def hash_thumbnail(image: Image.Image) -> str:
 element_cache = ElementCache()
 ```
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 Run: `cd backend && python -m pytest tests/test_vision_cache.py -v`
 Expected: 8 passed.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add backend/nobla/tools/vision/__init__.py backend/nobla/tools/vision/cache.py backend/tests/test_vision_cache.py
@@ -312,7 +312,7 @@ git commit -m "feat(vision): add ElementCache with TTL and thumbnail hashing"
 - Create: `backend/nobla/tools/vision/capture.py`
 - Create: `backend/tests/test_vision_capture.py`
 
-- [ ] **Step 1: Write failing tests for ScreenshotTool**
+- [x] **Step 1: Write failing tests for ScreenshotTool**
 
 ```python
 # backend/tests/test_vision_capture.py
@@ -490,12 +490,12 @@ class TestScreenshotToolCapture:
             assert result.data["width"] <= 1920
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `cd backend && python -m pytest tests/test_vision_capture.py -v`
 Expected: FAIL — `capture.py` does not exist.
 
-- [ ] **Step 3: Implement capture.py**
+- [x] **Step 3: Implement capture.py**
 
 ```python
 # backend/nobla/tools/vision/capture.py
@@ -662,12 +662,12 @@ class ScreenshotTool(BaseTool):
         )
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `cd backend && python -m pytest tests/test_vision_capture.py -v`
 Expected: All passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend/nobla/tools/vision/capture.py backend/tests/test_vision_capture.py
@@ -682,7 +682,7 @@ git commit -m "feat(vision): add ScreenshotTool with mss capture + downscaling"
 - Create: `backend/nobla/tools/vision/ocr.py`
 - Create: `backend/tests/test_vision_ocr.py`
 
-- [ ] **Step 1: Write failing tests for OCRTool**
+- [x] **Step 1: Write failing tests for OCRTool**
 
 ```python
 # backend/tests/test_vision_ocr.py
@@ -883,12 +883,12 @@ class TestOCRToolExtract:
             assert "ara" in desc
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `cd backend && python -m pytest tests/test_vision_ocr.py -v`
 Expected: FAIL — `ocr.py` does not exist.
 
-- [ ] **Step 3: Implement ocr.py**
+- [x] **Step 3: Implement ocr.py**
 
 ```python
 # backend/nobla/tools/vision/ocr.py
@@ -1113,12 +1113,12 @@ class OCRTool(BaseTool):
         return Image.open(BytesIO(raw))
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `cd backend && python -m pytest tests/test_vision_ocr.py -v`
 Expected: All passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend/nobla/tools/vision/ocr.py backend/tests/test_vision_ocr.py
@@ -1133,7 +1133,7 @@ git commit -m "feat(vision): add OCRTool with Tesseract + EasyOCR fallback"
 - Create: `backend/nobla/tools/vision/detection.py`
 - Create: `backend/tests/test_vision_detection.py`
 
-- [ ] **Step 1: Write failing tests for UIDetectionTool**
+- [x] **Step 1: Write failing tests for UIDetectionTool**
 
 ```python
 # backend/tests/test_vision_detection.py
@@ -1346,12 +1346,12 @@ class TestCacheIntegration:
                 mock_cache.put.assert_called_once()
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `cd backend && python -m pytest tests/test_vision_detection.py -v`
 Expected: FAIL — `detection.py` does not exist.
 
-- [ ] **Step 3: Implement detection.py**
+- [x] **Step 3: Implement detection.py**
 
 ```python
 # backend/nobla/tools/vision/detection.py
@@ -1530,12 +1530,12 @@ class UIDetectionTool(BaseTool):
         return False
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `cd backend && python -m pytest tests/test_vision_detection.py -v`
 Expected: All passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend/nobla/tools/vision/detection.py backend/tests/test_vision_detection.py
@@ -1550,7 +1550,7 @@ git commit -m "feat(vision): add UIDetectionTool with OCR heuristics + UI-TARS s
 - Create: `backend/nobla/tools/vision/targeting.py`
 - Create: `backend/tests/test_vision_targeting.py`
 
-- [ ] **Step 1: Write failing tests for ElementTargetingTool**
+- [x] **Step 1: Write failing tests for ElementTargetingTool**
 
 ```python
 # backend/tests/test_vision_targeting.py
@@ -1729,12 +1729,12 @@ class TestTargetComposition:
                         await tool.target("nonexistent")
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `cd backend && python -m pytest tests/test_vision_targeting.py -v`
 Expected: FAIL — `targeting.py` does not exist.
 
-- [ ] **Step 3: Implement targeting.py**
+- [x] **Step 3: Implement targeting.py**
 
 ```python
 # backend/nobla/tools/vision/targeting.py
@@ -1913,12 +1913,12 @@ class ElementTargetingTool(BaseTool):
         return max(scored, key=lambda m: m.score, default=None)
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `cd backend && python -m pytest tests/test_vision_targeting.py -v`
 Expected: All passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend/nobla/tools/vision/targeting.py backend/tests/test_vision_targeting.py
@@ -1934,7 +1934,7 @@ git commit -m "feat(vision): add ElementTargetingTool with keyword matching"
 - Modify: `backend/nobla/tools/__init__.py`
 - Create: `backend/tests/integration/test_vision_flow.py`
 
-- [ ] **Step 1: Wire vision/__init__.py**
+- [x] **Step 1: Wire vision/__init__.py**
 
 ```python
 # backend/nobla/tools/vision/__init__.py
@@ -1950,7 +1950,7 @@ from nobla.tools.vision import targeting  # noqa: F401
 #   from nobla.tools.vision.cache import element_cache
 ```
 
-- [ ] **Step 2: Wire tools/__init__.py**
+- [x] **Step 2: Wire tools/__init__.py**
 
 Read `backend/nobla/tools/__init__.py` and add the vision import. Add after existing imports:
 
@@ -1958,14 +1958,14 @@ Read `backend/nobla/tools/__init__.py` and add the vision import. Add after exis
 from nobla.tools import vision  # noqa: F401
 ```
 
-- [ ] **Step 3: Run all existing tests to ensure no regressions**
+- [x] **Step 3: Run all existing tests to ensure no regressions**
 
 Run: `cd backend && python -m pytest tests/ -v --ignore=tests/integration`
 Expected: All existing tests still pass (51+ from Phase 4-Pre + new vision tests).
 
 **Note:** Vision tools now appear in the registry baseline. Any existing tests in `test_tool_registry.py` that assert exact tool counts (e.g., `assert len(tools) == N`) must be updated to account for the 4 new vision tools.
 
-- [ ] **Step 4: Write integration tests**
+- [x] **Step 4: Write integration tests**
 
 ```python
 # backend/tests/integration/test_vision_flow.py
@@ -2088,17 +2088,17 @@ class TestVisionPermissions:
         assert error["code"] == -32042 or "permission" in error["message"].lower()
 ```
 
-- [ ] **Step 5: Run integration tests**
+- [x] **Step 5: Run integration tests**
 
 Run: `cd backend && python -m pytest tests/integration/test_vision_flow.py -v`
 Expected: All passed.
 
-- [ ] **Step 6: Run full test suite**
+- [x] **Step 6: Run full test suite**
 
 Run: `cd backend && python -m pytest tests/ -v`
 Expected: All tests pass (51 existing + ~35 new vision tests).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add backend/nobla/tools/vision/__init__.py backend/nobla/tools/__init__.py backend/tests/integration/test_vision_flow.py

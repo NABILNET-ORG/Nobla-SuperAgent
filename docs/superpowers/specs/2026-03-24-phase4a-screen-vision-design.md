@@ -2,7 +2,7 @@
 
 **Date:** 2026-03-24
 **Author:** NABILNET.AI
-**Status:** Draft
+**Status:** Implemented (2026-03-24)
 **Scope:** Vision tools — screenshot capture, OCR, UI element detection, NL element targeting
 **Depends on:** Phase 4-Pre (Tool Platform Foundation)
 **Parent spec:** `2026-03-23-phase4-computer-control-vision-design.md` (Section 6.2)

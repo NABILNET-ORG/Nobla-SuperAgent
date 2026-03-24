@@ -1,9 +1,9 @@
 # Nobla Agent — Product Requirements Document (PRD)
 
-**Version:** 1.0
-**Date:** March 17, 2026
-**Status:** Draft — Brainstorming Complete, Awaiting Approval
-**Author:** Nobla Team
+**Version:** 1.1
+**Date:** March 24, 2026
+**Status:** In Development — Phases 1-3 + Phase 4-Pre + Phase 4A Complete
+**Author:** [NABILNET.AI](https://nabilnet.ai)
 
 ---
 
@@ -502,11 +502,11 @@ Nobla Agent is the first AI super agent that:
 
 ### 9.3 Computer Control Features (Phase 4)
 
-#### FR-017: Screen Vision
-- Screenshot capture and analysis
-- UI-TARS integration for GUI element detection
-- OCR text extraction (Tesseract + EasyOCR)
-- Natural language element targeting
+#### FR-017: Screen Vision ✅ (Phase 4A — Implemented)
+- ✅ Screenshot capture and analysis (`screenshot.capture` — mss, multi-monitor, downscaling)
+- ✅ UI-TARS integration for GUI element detection (`ui.detect_elements` — OCR heuristics + UI-TARS stub)
+- ✅ OCR text extraction (`ocr.extract` — Tesseract primary + EasyOCR fallback)
+- ✅ Natural language element targeting (`ui.target_element` — keyword matching + fuzzy search)
 
 #### FR-018: Computer Control
 - Mouse: move, click, drag, scroll
@@ -1032,27 +1032,28 @@ nobla-agent/
 ### Phase 4: Computer Control & Vision (Weeks 13-16)
 **Goal:** See and control the screen like a human.
 
-| # | Task | Priority |
-|---|------|----------|
-| 1 | Screenshot capture pipeline | P0 |
-| 2 | UI-TARS integration for GUI detection | P0 |
-| 3 | OCR (Tesseract + EasyOCR) | P0 |
-| 4 | Natural language element targeting | P0 |
-| 5 | Mouse control (move, click, drag, scroll) | P0 |
-| 6 | Keyboard control (type, shortcuts) | P0 |
-| 7 | Application launch/management | P0 |
-| 8 | Window management | P1 |
-| 9 | File manager (browse, create, delete, move) | P0 |
-| 10 | Clipboard management | P1 |
-| 11 | Sandboxed code runner (Python, JS, Bash) | P0 |
-| 12 | Package installation in sandbox | P1 |
-| 13 | Code generation from natural language | P0 |
-| 14 | Git integration (clone, commit, push, PR) | P1 |
-| 15 | SSH integration + audit logging | P1 |
-| 16 | Remote command execution | P1 |
-| 17 | Flutter screen mirror (real-time) | P1 |
-| 18 | Flutter approval dialogs for actions | P0 |
-| 19 | Flutter activity feed (live log) | P0 |
+| # | Task | Priority | Status |
+|---|------|----------|--------|
+| 0 | Tool Platform Foundation (BaseTool, registry, executor, approval) | P0 | ✅ Phase 4-Pre |
+| 1 | Screenshot capture pipeline | P0 | ✅ Phase 4A |
+| 2 | UI-TARS integration for GUI detection | P0 | ✅ Phase 4A (stub + OCR fallback) |
+| 3 | OCR (Tesseract + EasyOCR) | P0 | ✅ Phase 4A |
+| 4 | Natural language element targeting | P0 | ✅ Phase 4A |
+| 5 | Mouse control (move, click, drag, scroll) | P0 | Phase 4B |
+| 6 | Keyboard control (type, shortcuts) | P0 | Phase 4B |
+| 7 | Application launch/management | P0 | Phase 4B |
+| 8 | Window management | P1 | Phase 4B |
+| 9 | File manager (browse, create, delete, move) | P0 | Phase 4B |
+| 10 | Clipboard management | P1 | Phase 4B |
+| 11 | Sandboxed code runner (Python, JS, Bash) | P0 | Phase 4C |
+| 12 | Package installation in sandbox | P1 | Phase 4C |
+| 13 | Code generation from natural language | P0 | Phase 4C |
+| 14 | Git integration (clone, commit, push, PR) | P1 | Phase 4C |
+| 15 | SSH integration + audit logging | P1 | Phase 4D |
+| 16 | Remote command execution | P1 | Phase 4D |
+| 17 | Flutter screen mirror (real-time) | P1 | Phase 4E |
+| 18 | Flutter approval dialogs for actions | P0 | Phase 4B |
+| 19 | Flutter activity feed (live log) | P0 | Phase 4E |
 
 **Deliverable:** Agent that can see, understand, and control any computer.
 

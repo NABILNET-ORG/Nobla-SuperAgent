@@ -34,14 +34,14 @@ Phase 4 gives Nobla Agent the ability to see and control the computer like a hum
 
 Phase 4 is decomposed into 6 sub-phases, each with its own plan → implementation cycle:
 
-| Order | Sub-phase | Scope | Dependencies |
-|-------|-----------|-------|-------------|
-| 1 | **4-Pre: Tool Platform** | BaseTool, registry, executor, approval manager, gateway handlers, settings | Phase 1B infrastructure |
-| 2 | **4A: Screen Vision** | Screenshot, OCR, UI-TARS detection, NL targeting | Tool Platform |
-| 3 | **4C: Code Execution** | Sandbox enhancements, codegen, debug, git | Tool Platform + existing SandboxManager |
-| 4 | **4B: Computer Control + Approval UI** | Mouse, keyboard, files, apps + Flutter approval dialog | Tool Platform + Vision (for targeting) |
-| 5 | **4E: Flutter UI** | Screen mirror, activity feed, tool browser | Backend APIs from 4A-4C |
-| 6 | **4D: Remote Control** | SSH, remote exec, SCP/SFTP | Tool Platform |
+| Order | Sub-phase | Scope | Dependencies | Status |
+|-------|-----------|-------|-------------|--------|
+| 1 | **4-Pre: Tool Platform** | BaseTool, registry, executor, approval manager, gateway handlers, settings | Phase 1B infrastructure | ✅ Complete |
+| 2 | **4A: Screen Vision** | Screenshot, OCR, UI-TARS detection, NL targeting | Tool Platform | ✅ Complete (158 tests) |
+| 3 | **4C: Code Execution** | Sandbox enhancements, codegen, debug, git | Tool Platform + existing SandboxManager | Planned |
+| 4 | **4B: Computer Control + Approval UI** | Mouse, keyboard, files, apps + Flutter approval dialog | Tool Platform + Vision (for targeting) | Planned |
+| 5 | **4E: Flutter UI** | Screen mirror, activity feed, tool browser | Backend APIs from 4A-4C | Planned |
+| 6 | **4D: Remote Control** | SSH, remote exec, SCP/SFTP | Tool Platform | Planned |
 
 **Rationale for ordering:**
 - Tool Platform first — all other sub-phases plug into it
