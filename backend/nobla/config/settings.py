@@ -136,6 +136,23 @@ class ToolPlatformSettings(BaseModel):
     max_concurrent_tools: int = 5
 
 
+class VisionSettings(BaseModel):
+    """Screen vision tools configuration."""
+
+    enabled: bool = True
+    screenshot_format: str = "png"
+    screenshot_quality: int = 85
+    screenshot_max_dimension: int = 1920
+    screenshot_include_cursor: bool = False
+    ocr_engine: str = "tesseract"
+    ocr_languages: list[str] = ["en"]
+    ocr_confidence_threshold: float = 0.5
+    ui_tars_enabled: bool = False
+    ui_tars_model_path: str = ""
+    detection_confidence_threshold: float = 0.4
+    element_cache_ttl: int = 5
+
+
 class Settings(BaseSettings):
     server: ServerSettings = ServerSettings()
     llm: LLMSettings = LLMSettings()
@@ -151,6 +168,7 @@ class Settings(BaseSettings):
     persona: PersonaSettings = Field(default_factory=PersonaSettings)
     personaplex: PersonaPlexSettings = Field(default_factory=PersonaPlexSettings)
     tools: ToolPlatformSettings = Field(default_factory=ToolPlatformSettings)
+    vision: VisionSettings = Field(default_factory=VisionSettings)
     secret_key: str = ""  # REQUIRED: set via SECRET_KEY env var
 
     model_config = {"env_prefix": "", "env_nested_delimiter": "__"}
