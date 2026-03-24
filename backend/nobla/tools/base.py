@@ -46,3 +46,7 @@ class BaseTool(ABC):
     def get_params_summary(self, params: ToolParams) -> dict:
         """Sanitized params for display. Redacts sensitive fields."""
         return sanitize_params(params.args)
+
+    def needs_approval(self, params: ToolParams) -> bool:
+        """Whether this action needs user approval. Override for conditional logic."""
+        return self.requires_approval

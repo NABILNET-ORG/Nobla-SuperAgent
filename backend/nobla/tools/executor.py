@@ -66,7 +66,7 @@ class ToolExecutor:
 
         # 4. Approval (if required)
         approval_required = False
-        if tool.requires_approval:
+        if tool.needs_approval(params):
             approval_required = True
             request = ApprovalRequest(
                 request_id=str(uuid.uuid4()),
