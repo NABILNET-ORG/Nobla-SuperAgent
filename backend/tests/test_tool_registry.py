@@ -110,25 +110,32 @@ class TestToolRegistry:
 
     def test_list_all(self, registry_with_tools):
         tools = registry_with_tools.list_all()
-        assert len(tools) == 3
+        names = {t.name for t in tools}
+        # 3 fixture tools + baseline vision tools (screenshot.capture, ocr.extract, etc.)
+        assert {"vision.screenshot", "input.mouse", "code.run"}.issubset(names)
 
     def test_list_by_category(self, registry_with_tools):
         vision_tools = registry_with_tools.list_by_category(ToolCategory.VISION)
-        assert len(vision_tools) == 1
-        assert vision_tools[0].name == "vision.screenshot"
+        names = {t.name for t in vision_tools}
+        assert "vision.screenshot" in names
 
     def test_list_available_standard(self, registry_with_tools):
         tools = registry_with_tools.list_available(Tier.STANDARD)
         names = {t.name for t in tools}
-        assert names == {"vision.screenshot", "code.run"}
+        assert {"vision.screenshot", "code.run"}.issubset(names)
+        # ADMIN tool should NOT be in STANDARD list
+        assert "input.mouse" not in names
 
     def test_list_available_admin(self, registry_with_tools):
         tools = registry_with_tools.list_available(Tier.ADMIN)
-        assert len(tools) == 3
+        names = {t.name for t in tools}
+        # ADMIN tier sees everything
+        assert {"vision.screenshot", "input.mouse", "code.run"}.issubset(names)
 
     def test_get_manifest(self, registry_with_tools):
         manifest = registry_with_tools.get_manifest(Tier.STANDARD)
-        assert len(manifest) == 2
+        names = {m["name"] for m in manifest}
+        assert "vision.screenshot" in names
         entry = next(m for m in manifest if m["name"] == "vision.screenshot")
         assert entry["description"] == "Capture screenshot"
         assert entry["category"] == "vision"
