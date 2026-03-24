@@ -2,7 +2,7 @@
 
 **Version:** 1.1
 **Date:** March 24, 2026
-**Status:** In Development — Phases 1-3 + Phase 4-Pre + Phase 4A Complete
+**Status:** In Development — Phases 1-3 + Phase 4-Pre + 4A + 4C Complete
 **Author:** [NABILNET.AI](https://nabilnet.ai)
 
 ---
@@ -1045,10 +1045,10 @@ nobla-agent/
 | 8 | Window management | P1 | Phase 4B |
 | 9 | File manager (browse, create, delete, move) | P0 | Phase 4B |
 | 10 | Clipboard management | P1 | Phase 4B |
-| 11 | Sandboxed code runner (Python, JS, Bash) | P0 | Phase 4C |
-| 12 | Package installation in sandbox | P1 | Phase 4C |
-| 13 | Code generation from natural language | P0 | Phase 4C |
-| 14 | Git integration (clone, commit, push, PR) | P1 | Phase 4C |
+| 11 | Sandboxed code runner (Python, JS, Bash) | P0 | ✅ Complete |
+| 12 | Package installation in sandbox | P1 | ✅ Complete |
+| 13 | Code generation from natural language | P0 | ✅ Complete |
+| 14 | Git integration (clone, commit, push, PR) | P1 | ✅ Complete |
 | 15 | SSH integration + audit logging | P1 | Phase 4D |
 | 16 | Remote command execution | P1 | Phase 4D |
 | 17 | Flutter screen mirror (real-time) | P1 | Phase 4E |

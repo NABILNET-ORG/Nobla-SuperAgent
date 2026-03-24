@@ -45,7 +45,7 @@ FastAPI Gateway (Python 3.12+)
 
 ## Current Status
 
-Nobla Agent is in **active development**. Phases 1-4A are complete with 4C designed and planned.
+Nobla Agent is in **active development**. Phases 1-3, 4-Pre, 4A, and 4C are complete.
 
 | Phase | Status | Scope |
 |-------|--------|-------|
@@ -54,7 +54,7 @@ Nobla Agent is in **active development**. Phases 1-4A are complete with 4C desig
 | **Phase 3**: Voice & Persona | Complete | Whisper STT + Levantine Arabic, Fish Speech/CosyVoice TTS, PersonaPlex, Emotion detection, Persona management UI |
 | **Phase 4-Pre**: Tool Platform | Complete | BaseTool ABC, Registry, Executor pipeline, Approval Manager, Gateway handlers |
 | **Phase 4A**: Screen Vision | Complete | Screenshot capture, OCR (Tesseract + EasyOCR), UI detection, NL element targeting (158 tests) |
-| **Phase 4C**: Code Execution | Designed | Sandboxed code.run, package install, LLM codegen, debug assistant, git operations |
+| **Phase 4C**: Code Execution | Complete | Sandboxed code.run, package install, LLM codegen, debug assistant, git operations (110 tests) |
 | **Phase 4B**: Computer Control | Planned | Mouse, keyboard, file management, app control + Flutter approval UI |
 | **Phase 4D**: Remote Control | Planned | SSH connections, remote exec, SCP/SFTP |
 | **Phase 4E**: Flutter UI | Planned | Screen mirror, activity feed, tool browser |
