@@ -23,6 +23,12 @@ def get_settings() -> Settings:
 
 
 def get_sandbox() -> SandboxManager:
+    """Return (or create) the shared SandboxManager.
+
+    Settings.sandbox is a SandboxSettings (Pydantic BaseModel) while
+    SandboxManager expects a SandboxConfig.  The two models share the
+    same attribute names/types so attribute access works transparently.
+    """
     global _sandbox
     if _sandbox is None:
         _sandbox = SandboxManager(get_settings().sandbox)
@@ -36,6 +42,7 @@ async def run_code(
     code: str,
     language: str,
     connection_id: str,
+    timeout: int | None = None,
 ) -> SandboxResult:
     """Run code in a sandbox, mounting a package volume for packageable languages.
 
@@ -58,6 +65,7 @@ async def run_code(
     return await sandbox.execute(
         code=code,
         language=language,
+        timeout=timeout,
         volumes=volumes,
         environment=environment,
     )
@@ -76,6 +84,9 @@ class CodeRunnerTool(BaseTool):
 
     async def validate(self, params: ToolParams) -> None:
         settings = get_settings()
+        if not settings.code.enabled:
+            raise ValueError("Code execution is disabled")
+
         code = params.args.get("code", "")
         if not code or not code.strip():
             raise ValueError("Code is required and cannot be empty")
@@ -101,16 +112,21 @@ class CodeRunnerTool(BaseTool):
             stdout = stdout[:max_len]
             truncated = True
 
+        stderr = result.stderr
+        if len(stderr) > max_len:
+            stderr = stderr[:max_len]
+            truncated = True
+
         return ToolResult(
             success=result.exit_code == 0,
             data={
                 "stdout": stdout,
-                "stderr": result.stderr,
+                "stderr": stderr,
                 "exit_code": result.exit_code,
                 "language": language,
                 "execution_time_ms": result.execution_time_ms,
                 "timed_out": result.timed_out,
                 "truncated": truncated,
             },
-            error=result.stderr if result.exit_code != 0 else None,
+            error=stderr if result.exit_code != 0 else None,
         )

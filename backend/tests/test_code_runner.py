@@ -141,6 +141,19 @@ class TestCodeRunnerTool:
         assert "truncated" in result.data
 
     @pytest.mark.asyncio
+    async def test_validate_rejects_when_disabled(self, state):
+        from nobla.tools.code.runner import CodeRunnerTool
+        tool = CodeRunnerTool()
+        with patch("nobla.tools.code.runner.get_settings") as mock_settings:
+            settings = MagicMock()
+            settings.code.enabled = False
+            mock_settings.return_value = settings
+            with pytest.raises(ValueError, match="[Dd]isabled"):
+                await tool.validate(ToolParams(
+                    args={"code": "print('hi')"}, connection_state=state,
+                ))
+
+    @pytest.mark.asyncio
     async def test_execute_truncates_long_output(self, state):
         long_output = "x" * 100000
         with patch("nobla.tools.code.runner.get_sandbox") as mock:
@@ -159,4 +172,4 @@ class TestCodeRunnerTool:
             )
             result = await tool.execute(params)
             assert result.data["truncated"] is True
-            assert len(result.data["stdout"]) <= 50001  # max_output_length + margin
+            assert len(result.data["stdout"]) == 50000
