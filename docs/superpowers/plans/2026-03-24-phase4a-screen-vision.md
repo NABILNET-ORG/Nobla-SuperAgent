@@ -185,11 +185,10 @@ class TestElementCache:
 
     def test_miss_on_expired_ttl(self):
         cache = ElementCache(ttl=1)
-        cache.put("hash123", [{"label": "OK"}])
         with patch("nobla.tools.vision.cache.time") as mock_time:
-            # First call to monotonic() was during put (let's say t=100)
-            # get() checks: monotonic() - timestamp < ttl
-            mock_time.monotonic.return_value = time.monotonic() + 2.0
+            mock_time.monotonic.return_value = 100.0
+            cache.put("hash123", [{"label": "OK"}])
+            mock_time.monotonic.return_value = 102.0  # 2s later, TTL=1 expired
             assert cache.get("hash123") is None
 
     def test_miss_on_empty_cache(self):
@@ -399,7 +398,9 @@ class TestScreenshotToolValidate:
     async def test_validate_vision_disabled(self):
         tool = ScreenshotTool()
         params = _make_params()
-        with patch("nobla.tools.vision.capture.settings") as mock_settings:
+        with patch("nobla.tools.vision.capture.get_settings") as mock_get_settings:
+            mock_settings = MagicMock()
+            mock_get_settings.return_value = mock_settings
             mock_settings.vision.enabled = False
             with pytest.raises(ValueError, match="disabled"):
                 await tool.validate(params)
@@ -514,7 +515,14 @@ from nobla.tools.base import BaseTool
 from nobla.tools.models import ToolCategory, ToolParams, ToolResult
 from nobla.tools.registry import register_tool
 
-settings = Settings()
+_settings: Settings | None = None
+
+
+def get_settings() -> Settings:
+    global _settings
+    if _settings is None:
+        _settings = Settings()
+    return _settings
 
 try:
     import mss as mss_module
@@ -541,14 +549,14 @@ class ScreenshotTool(BaseTool):
     requires_approval = False
 
     async def validate(self, params: ToolParams) -> None:
-        if not settings.vision.enabled:
+        if not get_settings().vision.enabled:
             raise ValueError("Vision tools disabled in settings")
         if mss_module is None:
             raise ValueError(
                 "python-mss not installed. Run: pip install nobla[vision]"
             )
         args = params.args
-        fmt = args.get("format", settings.vision.screenshot_format)
+        fmt = args.get("format", get_settings().vision.screenshot_format)
         if fmt not in ("png", "jpeg", "jpg"):
             raise ValueError(f"Invalid format '{fmt}'. Must be 'png' or 'jpeg'.")
         region = args.get("region")
@@ -618,9 +626,9 @@ class ScreenshotTool(BaseTool):
         except Exception as e:
             return ToolResult(success=False, error=str(e))
 
-        fmt = args.get("format", settings.vision.screenshot_format)
-        quality = args.get("quality", settings.vision.screenshot_quality)
-        max_dim = settings.vision.screenshot_max_dimension
+        fmt = args.get("format", get_settings().vision.screenshot_format)
+        quality = args.get("quality", get_settings().vision.screenshot_quality)
+        max_dim = get_settings().vision.screenshot_max_dimension
 
         # Downscale for return only — internal callers use capture() directly
         return_image = result.image
@@ -723,7 +731,9 @@ class TestOCRToolValidate:
     async def test_validate_missing_image(self):
         tool = OCRTool()
         params = _make_params({})
-        with patch("nobla.tools.vision.ocr.settings") as mock_s:
+        with patch("nobla.tools.vision.ocr.get_settings") as mock_gs:
+            mock_s = MagicMock()
+            mock_gs.return_value = mock_s
             mock_s.vision.enabled = True
             with pytest.raises(ValueError, match="image_b64"):
                 await tool.validate(params)
@@ -732,7 +742,9 @@ class TestOCRToolValidate:
     async def test_validate_vision_disabled(self):
         tool = OCRTool()
         params = _make_params({"image_b64": "abc"})
-        with patch("nobla.tools.vision.ocr.settings") as mock_s:
+        with patch("nobla.tools.vision.ocr.get_settings") as mock_gs:
+            mock_s = MagicMock()
+            mock_gs.return_value = mock_s
             mock_s.vision.enabled = False
             with pytest.raises(ValueError, match="disabled"):
                 await tool.validate(params)
@@ -779,7 +791,9 @@ class TestOCRToolExtract:
             ([[60, 5], [100, 5], [100, 25], [60, 25]], "Cancel", 0.88),
         ]
 
-        with patch("nobla.tools.vision.ocr.settings") as mock_s:
+        with patch("nobla.tools.vision.ocr.get_settings") as mock_gs:
+            mock_s = MagicMock()
+            mock_gs.return_value = mock_s
             mock_s.vision.ocr_engine = "easyocr"
             mock_s.vision.ocr_languages = ["en"]
             mock_s.vision.ocr_confidence_threshold = 0.5
@@ -858,12 +872,15 @@ class TestOCRToolExtract:
     async def test_describe_action(self):
         tool = OCRTool()
         params = _make_params({"image_b64": "abc"})
-        with patch("nobla.tools.vision.ocr.settings") as mock_s:
+        with patch("nobla.tools.vision.ocr.get_settings") as mock_gs:
+            mock_s = MagicMock()
+            mock_gs.return_value = mock_s
             mock_s.vision.ocr_engine = "tesseract"
             mock_s.vision.ocr_languages = ["en", "ara"]
             desc = tool.describe_action(params)
             assert "tesseract" in desc.lower()
             assert "en" in desc
+            assert "ara" in desc
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -891,7 +908,14 @@ from nobla.tools.base import BaseTool
 from nobla.tools.models import ToolCategory, ToolParams, ToolResult
 from nobla.tools.registry import register_tool
 
-settings = Settings()
+_settings: Settings | None = None
+
+
+def get_settings() -> Settings:
+    global _settings
+    if _settings is None:
+        _settings = Settings()
+    return _settings
 
 try:
     import pytesseract
@@ -927,18 +951,19 @@ class OCRTool(BaseTool):
     requires_approval = False
 
     def __init__(self):
+        super().__init__()
         self._easyocr_reader = None
         self._reader_langs: list[str] | None = None
 
     async def validate(self, params: ToolParams) -> None:
-        if not settings.vision.enabled:
+        if not get_settings().vision.enabled:
             raise ValueError("Vision tools disabled in settings")
         if "image_b64" not in params.args:
             raise ValueError("Missing required parameter: image_b64")
 
     def describe_action(self, params: ToolParams) -> str:
-        engine = params.args.get("engine", settings.vision.ocr_engine)
-        langs = params.args.get("languages", settings.vision.ocr_languages)
+        engine = params.args.get("engine", get_settings().vision.ocr_engine)
+        langs = params.args.get("languages", get_settings().vision.ocr_languages)
         return f"Extract text using {engine} (languages: {', '.join(langs)})"
 
     async def extract(
@@ -948,8 +973,8 @@ class OCRTool(BaseTool):
         engine: str | None = None,
     ) -> OCRResult:
         """Internal API — accepts PIL.Image, returns structured OCRResult."""
-        languages = languages or settings.vision.ocr_languages
-        preferred = engine or settings.vision.ocr_engine
+        languages = languages or get_settings().vision.ocr_languages
+        preferred = engine or get_settings().vision.ocr_engine
         other = "easyocr" if preferred == "tesseract" else "tesseract"
 
         engines = {
@@ -1005,7 +1030,7 @@ class OCRTool(BaseTool):
             raise ImportError("pytesseract not installed")
 
         lang_str = "+".join(languages)
-        threshold = settings.vision.ocr_confidence_threshold
+        threshold = get_settings().vision.ocr_confidence_threshold
 
         data = await asyncio.to_thread(
             pytesseract.image_to_data,
@@ -1040,13 +1065,13 @@ class OCRTool(BaseTool):
     async def _easyocr_extract(
         self, image: Image.Image, languages: list[str]
     ) -> OCRResult:
-        import numpy  # lazy import — only with vision-full deps
-
         if easyocr_module is None:
             raise ImportError("easyocr not installed")
 
+        import numpy  # lazy import — only with vision-full deps (after guard)
+
         reader = await self._get_reader(languages)
-        threshold = settings.vision.ocr_confidence_threshold
+        threshold = get_settings().vision.ocr_confidence_threshold
 
         results = await asyncio.to_thread(
             reader.readtext, numpy.array(image)
@@ -1213,7 +1238,9 @@ class TestOCRBasedDetection:
             mock_ocr = MagicMock()
             mock_ocr.extract = AsyncMock(return_value=ocr_result)
             mock_get_ocr.return_value = mock_ocr
-            with patch("nobla.tools.vision.detection.settings") as mock_s:
+            with patch("nobla.tools.vision.detection.get_settings") as mock_gs:
+                mock_s = MagicMock()
+                mock_gs.return_value = mock_s
                 mock_s.vision.ui_tars_enabled = False
                 mock_s.vision.detection_confidence_threshold = 0.3
 
@@ -1236,7 +1263,9 @@ class TestOCRBasedDetection:
             mock_ocr = MagicMock()
             mock_ocr.extract = AsyncMock(return_value=ocr_result)
             mock_get_ocr.return_value = mock_ocr
-            with patch("nobla.tools.vision.detection.settings") as mock_s:
+            with patch("nobla.tools.vision.detection.get_settings") as mock_gs:
+                mock_s = MagicMock()
+                mock_gs.return_value = mock_s
                 mock_s.vision.ui_tars_enabled = False
                 mock_s.vision.detection_confidence_threshold = 0.0
 
@@ -1257,7 +1286,9 @@ class TestOCRBasedDetection:
             mock_ocr = MagicMock()
             mock_ocr.extract = AsyncMock(return_value=ocr_result)
             mock_get_ocr.return_value = mock_ocr
-            with patch("nobla.tools.vision.detection.settings") as mock_s:
+            with patch("nobla.tools.vision.detection.get_settings") as mock_gs:
+                mock_s = MagicMock()
+                mock_gs.return_value = mock_s
                 mock_s.vision.ui_tars_enabled = False
                 mock_s.vision.detection_confidence_threshold = 0.4
 
@@ -1280,7 +1311,9 @@ class TestUITarsStub:
             mock_ocr = MagicMock()
             mock_ocr.extract = AsyncMock(return_value=ocr_result)
             mock_get_ocr.return_value = mock_ocr
-            with patch("nobla.tools.vision.detection.settings") as mock_s:
+            with patch("nobla.tools.vision.detection.get_settings") as mock_gs:
+                mock_s = MagicMock()
+                mock_gs.return_value = mock_s
                 mock_s.vision.ui_tars_enabled = True
                 mock_s.vision.ui_tars_model_path = ""
                 mock_s.vision.detection_confidence_threshold = 0.0
@@ -1338,7 +1371,16 @@ from nobla.tools.models import ToolCategory, ToolParams, ToolResult
 from nobla.tools.registry import ToolRegistry, register_tool
 from nobla.tools.vision.cache import element_cache, hash_thumbnail
 
-settings = Settings()
+_settings: Settings | None = None
+
+
+def get_settings() -> Settings:
+    global _settings
+    if _settings is None:
+        _settings = Settings()
+    return _settings
+
+
 _registry = ToolRegistry()
 
 
@@ -1362,7 +1404,7 @@ class UIDetectionTool(BaseTool):
         return _registry.get("ocr.extract")
 
     async def validate(self, params: ToolParams) -> None:
-        if not settings.vision.enabled:
+        if not get_settings().vision.enabled:
             raise ValueError("Vision tools disabled in settings")
         if "image_b64" not in params.args:
             raise ValueError("Missing required parameter: image_b64")
@@ -1372,7 +1414,7 @@ class UIDetectionTool(BaseTool):
 
     async def detect(self, image: Image.Image) -> list[DetectedElement]:
         """Internal API — returns detected elements, writes to cache."""
-        if settings.vision.ui_tars_enabled:
+        if get_settings().vision.ui_tars_enabled:
             try:
                 elements = await self._uitars_detect(image)
                 img_hash = hash_thumbnail(image)
@@ -1414,7 +1456,7 @@ class UIDetectionTool(BaseTool):
         )
 
     async def _uitars_detect(self, image: Image.Image) -> list[DetectedElement]:
-        if not settings.vision.ui_tars_model_path:
+        if not get_settings().vision.ui_tars_model_path:
             raise RuntimeError("UI-TARS model path not configured")
         raise NotImplementedError("UI-TARS inference not yet implemented")
 
@@ -1424,7 +1466,7 @@ class UIDetectionTool(BaseTool):
             raise RuntimeError("OCR tool not available")
 
         ocr_result = await ocr_tool.extract(image)
-        threshold = settings.vision.detection_confidence_threshold
+        threshold = get_settings().vision.detection_confidence_threshold
 
         elements: list[DetectedElement] = []
         for block in ocr_result.blocks:
@@ -1710,7 +1752,16 @@ from nobla.tools.registry import ToolRegistry, register_tool
 from nobla.tools.vision.cache import element_cache, hash_thumbnail
 from nobla.tools.vision.detection import DetectedElement
 
-settings = Settings()
+_settings: Settings | None = None
+
+
+def get_settings() -> Settings:
+    global _settings
+    if _settings is None:
+        _settings = Settings()
+    return _settings
+
+
 _registry = ToolRegistry()
 
 _STOPWORDS = frozenset({
@@ -1751,7 +1802,7 @@ class ElementTargetingTool(BaseTool):
         return _registry.get("ui.detect_elements")
 
     async def validate(self, params: ToolParams) -> None:
-        if not settings.vision.enabled:
+        if not get_settings().vision.enabled:
             raise ValueError("Vision tools disabled in settings")
         if "description" not in params.args:
             raise ValueError("Missing required parameter: description")
@@ -1912,6 +1963,8 @@ from nobla.tools import vision  # noqa: F401
 Run: `cd backend && python -m pytest tests/ -v --ignore=tests/integration`
 Expected: All existing tests still pass (51+ from Phase 4-Pre + new vision tests).
 
+**Note:** Vision tools now appear in the registry baseline. Any existing tests in `test_tool_registry.py` that assert exact tool counts (e.g., `assert len(tools) == N`) must be updated to account for the 4 new vision tools.
+
 - [ ] **Step 4: Write integration tests**
 
 ```python
@@ -1936,6 +1989,7 @@ def _make_test_image_b64() -> str:
     return base64.b64encode(buf.getvalue()).decode("ascii")
 
 
+@pytest.mark.integration
 class TestVisionToolList:
     @pytest.mark.asyncio
     async def test_vision_tools_in_list(self, authenticated_client: RpcClient):
@@ -1958,6 +2012,7 @@ class TestVisionToolList:
             assert tool["requires_approval"] is False
 
 
+@pytest.mark.integration
 class TestScreenshotViaWebSocket:
     @pytest.mark.asyncio
     async def test_screenshot_execute(self, authenticated_client: RpcClient):
@@ -1989,6 +2044,7 @@ class TestScreenshotViaWebSocket:
             assert "image_b64" in result["data"]
 
 
+@pytest.mark.integration
 class TestOCRViaWebSocket:
     @pytest.mark.asyncio
     async def test_ocr_execute(self, authenticated_client: RpcClient):
@@ -2016,6 +2072,7 @@ class TestOCRViaWebSocket:
             assert result["data"]["full_text"] == "Hello"
 
 
+@pytest.mark.integration
 class TestVisionPermissions:
     @pytest.mark.asyncio
     async def test_safe_tier_cannot_access_vision(self, ws_client):
