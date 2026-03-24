@@ -456,6 +456,15 @@ class DetectedElement:
 - `detect(image) → list[DetectedElement]` — internal API. Used by targeting tool.
 - `execute(params) → ToolResult` — public API.
 
+**Limitation:** OCR-based detection only finds text-bearing elements. Icon-only buttons (hamburger menu, close X, settings gear), unlabeled controls, and image elements are invisible to it. These require UI-TARS. This is a known scope boundary, not a bug.
+
+**Enabled check:** All vision tools must check `settings.vision.enabled` at the start of `validate()`:
+```python
+async def validate(self, params: ToolParams) -> None:
+    if not settings.vision.enabled:
+        raise ValueError("Vision tools disabled in settings")
+```
+
 **UI-TARS path (stub for Phase 4A):**
 
 ```python
@@ -695,7 +704,16 @@ def _best_match(self, description: str, elements: list[DetectedElement]):
             if kw in label_lower
             or SequenceMatcher(None, kw, label_lower).ratio() > 0.6
         )
-        text_score = hits / len(keywords)
+        ratio_score = hits / len(keywords)
+
+        # Best single keyword score — prevents keyword dilution.
+        # "submit form" should still match "Submit" even though
+        # "form" doesn't match any label.
+        best_kw = max(
+            (SequenceMatcher(None, kw, label_lower).ratio() for kw in keywords),
+            default=0.0,
+        )
+        text_score = max(ratio_score, best_kw)
 
         # Type bonus: "button", "link", "input" mentioned in description
         type_score = 1.0 if el.element_type in description.lower() else 0.0
