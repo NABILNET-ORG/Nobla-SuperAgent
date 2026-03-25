@@ -207,6 +207,77 @@ class ComputerControlSettings(BaseModel):
         return self
 
 
+class RemoteControlSettings(BaseModel):
+    """Configuration for Phase 4D remote control tools (SSH, SFTP)."""
+
+    enabled: bool = True
+
+    # --- Allow-lists (default deny) ---
+    allowed_hosts: list[str] = Field(default_factory=list)
+    allowed_users: list[str] = Field(default_factory=list)
+    allowed_remote_dirs: list[str] = Field(default_factory=list)
+
+    # --- Command safety ---
+    safe_commands: list[str] = Field(
+        default_factory=lambda: [
+            "ls", "cat", "head", "tail", "grep", "find", "wc",
+            "df", "du", "whoami", "hostname", "date", "uptime",
+            "ps", "top", "free", "uname", "env", "echo", "pwd",
+        ]
+    )
+    blocked_binaries: list[str] = Field(
+        default_factory=lambda: [
+            "mkfs", "dd", "shutdown", "reboot", "halt", "poweroff",
+        ]
+    )
+    blocked_patterns: list[str] = Field(
+        default_factory=lambda: [
+            r"rm\s+.*-.*r.*-.*f\s+/",
+            r"dd\s+.*of=/dev/",
+            r">\s*/dev/sd",
+            r"init\s+[06]",
+            r"systemctl\s+(poweroff|halt)",
+        ]
+    )
+
+    # --- SSH settings ---
+    ssh_key_path: str | None = None
+    allow_password_auth: bool = False
+    known_hosts_policy: str = "strict"
+    known_hosts_path: str | None = None
+
+    # --- Timeouts ---
+    ssh_connect_timeout_s: int = 30
+    default_command_timeout_s: int = 60
+    max_command_timeout_s: int = 600
+
+    # --- Connection pool ---
+    max_connections: int = 5
+    idle_timeout_s: int = 300
+    max_lifetime_s: int = 3600
+
+    # --- SFTP limits ---
+    sftp_max_file_size: int = 104_857_600
+    sftp_approval_threshold: int = 10_485_760
+
+    # --- Output ---
+    max_output_bytes: int = 1_048_576
+    max_output_lines: int = 10_000
+
+    # --- Safety ---
+    failsafe_enabled: bool = True
+
+    @model_validator(mode="after")
+    def validate_known_hosts_policy(self):
+        valid = {"strict", "ask_first_time"}
+        if self.known_hosts_policy not in valid:
+            raise ValueError(
+                f"known_hosts_policy must be one of {valid}, "
+                f"got '{self.known_hosts_policy}'"
+            )
+        return self
+
+
 class Settings(BaseSettings):
     server: ServerSettings = ServerSettings()
     llm: LLMSettings = LLMSettings()
@@ -225,6 +296,7 @@ class Settings(BaseSettings):
     vision: VisionSettings = Field(default_factory=VisionSettings)
     code: CodeExecutionSettings = Field(default_factory=CodeExecutionSettings)
     computer_control: ComputerControlSettings = Field(default_factory=ComputerControlSettings)
+    remote_control: RemoteControlSettings = Field(default_factory=RemoteControlSettings)
     secret_key: str = ""  # REQUIRED: set via SECRET_KEY env var
 
     model_config = {"env_prefix": "", "env_nested_delimiter": "__"}
