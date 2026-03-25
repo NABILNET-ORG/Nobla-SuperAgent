@@ -45,6 +45,7 @@ dependencies = [
     "opuslib>=3.0.1",
     "pydub>=0.25.1",
     "soundfile>=0.12.1",
+    "asyncssh>=2.14.0,<3.0.0",
 ]
 
 [project.optional-dependencies]
