@@ -1,5 +1,7 @@
 from __future__ import annotations
-from pydantic import BaseModel, Field
+from pathlib import Path
+
+from pydantic import BaseModel, Field, model_validator
 from pydantic_settings import BaseSettings
 
 
@@ -170,6 +172,41 @@ class CodeExecutionSettings(BaseModel):
     git_image: str = "alpine/git:latest"
 
 
+class ComputerControlSettings(BaseModel):
+    """Configuration for Phase 4B computer control tools."""
+
+    enabled: bool = True
+    allowed_read_dirs: list[str] = Field(default_factory=list)
+    allowed_write_dirs: list[str] = Field(default_factory=list)
+    max_file_size_bytes: int = 10_485_760
+    max_backups_per_file: int = 3
+    allowed_apps: list[str] = Field(default_factory=list)
+    failsafe_enabled: bool = True
+    min_action_delay_ms: int = 100
+    max_actions_per_minute: int = 120
+    type_chunk_size: int = 50
+    blocked_shortcuts: list[str] = Field(default_factory=lambda: [
+        "ctrl+alt+delete", "alt+f4", "ctrl+shift+delete",
+        "win+r", "win+l", "ctrl+w",
+    ])
+    max_clipboard_size: int = 1_048_576
+    audit_clipboard_preview_length: int = 50
+
+    @model_validator(mode="after")
+    def validate_write_dirs_subset(self):
+        """Every write directory must be within an allowed read directory."""
+        for wd in self.allowed_write_dirs:
+            wd_resolved = Path(wd).resolve()
+            if not any(
+                wd_resolved.is_relative_to(Path(rd).resolve())
+                for rd in self.allowed_read_dirs
+            ):
+                raise ValueError(
+                    f"Write directory '{wd}' is not within any allowed read directory"
+                )
+        return self
+
+
 class Settings(BaseSettings):
     server: ServerSettings = ServerSettings()
     llm: LLMSettings = LLMSettings()
@@ -187,6 +224,7 @@ class Settings(BaseSettings):
     tools: ToolPlatformSettings = Field(default_factory=ToolPlatformSettings)
     vision: VisionSettings = Field(default_factory=VisionSettings)
     code: CodeExecutionSettings = Field(default_factory=CodeExecutionSettings)
+    computer_control: ComputerControlSettings = Field(default_factory=ComputerControlSettings)
     secret_key: str = ""  # REQUIRED: set via SECRET_KEY env var
 
     model_config = {"env_prefix": "", "env_nested_delimiter": "__"}
