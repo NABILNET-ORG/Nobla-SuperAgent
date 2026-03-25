@@ -358,14 +358,15 @@ TIER 4: ADMIN
 - [x] Debug assistant: analyze errors, suggest fixes (code.debug)
 - [x] Git integration: clone, commit, push, PR creation (git.ops) — 110 tests total
 
-**Phase 4B: Computer Control + Approval UI** (requires 4A vision)
-- [ ] Mouse control: move, click, drag, scroll
-- [ ] Keyboard control: type, shortcuts, key combinations
-- [ ] Application launching and management
-- [ ] Window management: resize, move, minimize, maximize
-- [ ] File manager: browse, create, delete, move, copy files
-- [ ] Clipboard management: read/write clipboard
-- [ ] Flutter approval dialogs for actions
+**Phase 4B: Computer Control + Approval UI** ✅ (191 tests)
+- [x] Mouse control: move, click, double_click, drag, scroll (mouse.control — 36 tests)
+- [x] Keyboard control: type, shortcut, key_press with blocked shortcuts (keyboard.control — 33 tests)
+- [x] Application launching and management with allow-list + PID tracking (app.control — 31 tests)
+- [x] File manager: read, write, list, move, copy, delete, info with path security + backup (file.manage — 38 tests)
+- [x] Clipboard management: read/write/clear with audit sanitization (clipboard.manage — 25 tests)
+- [x] InputSafetyGuard: rate limiting, kill switch halt, platform detection (20 tests)
+- [x] ComputerControlSettings with write_dirs subset validation (8 tests)
+- [x] Flutter approval bottom sheet with countdown timer + activity feed
 
 **Phase 4E: Flutter UI**
 - [ ] Screen mirror: see agent's screen in real-time

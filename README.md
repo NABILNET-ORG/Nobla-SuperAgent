@@ -14,6 +14,7 @@ Nobla Agent is an AI super agent that combines the best capabilities of 35+ exis
 - **Remember** everything across conversations using a 5-layer memory architecture
 - **See** your screen via OCR, UI element detection, and natural language targeting
 - **Speak** with customizable voice personas, including native Levantine Arabic support
+- **Control** your computer — mouse, keyboard, files, apps, clipboard with 6-layer security
 - **Execute code** in sandboxed Docker containers with package management
 - **Search** the web with AI-powered result synthesis
 - **Integrate** with 20+ messaging platforms (Telegram, Discord, WhatsApp, Slack, and more)
@@ -32,7 +33,7 @@ FastAPI Gateway (Python 3.12+)
     +-- Brain: LLM Router (6 providers, smart routing)
     +-- Memory: 5-layer engine (episodic, semantic, procedural, knowledge graph, working)
     +-- Voice: STT/TTS pipeline (Whisper + Levantine Arabic, Fish Speech, PersonaPlex)
-    +-- Tools: Plugin platform (vision, code execution, search, and more)
+    +-- Tools: Plugin platform (vision, computer control, code execution, search, and more)
     +-- Security: 4-tier permissions, sandbox, audit trail, kill switch
     +-- Persona: Emotion-aware response styling with customizable personalities
 ```
@@ -45,7 +46,7 @@ FastAPI Gateway (Python 3.12+)
 
 ## Current Status
 
-Nobla Agent is in **active development**. Phases 1-3, 4-Pre, 4A, and 4C are complete.
+Nobla Agent is in **active development**. Phases 1-3, 4-Pre, 4A, 4B, and 4C are complete.
 
 | Phase | Status | Scope |
 |-------|--------|-------|
@@ -55,7 +56,7 @@ Nobla Agent is in **active development**. Phases 1-3, 4-Pre, 4A, and 4C are comp
 | **Phase 4-Pre**: Tool Platform | Complete | BaseTool ABC, Registry, Executor pipeline, Approval Manager, Gateway handlers |
 | **Phase 4A**: Screen Vision | Complete | Screenshot capture, OCR (Tesseract + EasyOCR), UI detection, NL element targeting (158 tests) |
 | **Phase 4C**: Code Execution | Complete | Sandboxed code.run, package install, LLM codegen, debug assistant, git operations (110 tests) |
-| **Phase 4B**: Computer Control | Planned | Mouse, keyboard, file management, app control + Flutter approval UI |
+| **Phase 4B**: Computer Control | Complete | mouse.control, keyboard.control, file.manage, app.control, clipboard.manage, Flutter approval UI (191 tests) |
 | **Phase 4D**: Remote Control | Planned | SSH connections, remote exec, SCP/SFTP |
 | **Phase 4E**: Flutter UI | Planned | Screen mirror, activity feed, tool browser |
 | **Phase 5**: Channels | Planned | 20+ messaging platform integrations |
