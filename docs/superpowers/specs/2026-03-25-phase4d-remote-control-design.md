@@ -59,7 +59,7 @@ backend/nobla/tools/remote/
 ├── pool.py               # SSHConnectionPool (~200 lines)
 ├── safety.py             # RemoteControlGuard (~150 lines)
 
-tests/tools/remote/
+backend/tests/tools/remote/
 ├── test_ssh_connect.py
 ├── test_ssh_exec.py
 ├── test_sftp_manage.py
@@ -562,7 +562,11 @@ from .pool import _get_pool
 
 # Register kill switch callbacks
 kill_switch.on_soft_kill(RemoteControlGuard.halt)
-kill_switch.on_hard_kill(lambda: _get_pool().halt())
+
+async def _halt_pool():
+    await _get_pool().halt()
+
+kill_switch.on_hard_kill(_halt_pool)
 ```
 
 When the kill switch fires:
