@@ -3,6 +3,7 @@ from nobla.tools.registry import ToolRegistry
 
 from nobla.tools import vision  # noqa: F401 — triggers @register_tool
 from nobla.tools import code    # noqa: F401 — triggers @register_tool
+from nobla.tools import control  # noqa: F401  # Phase 4B auto-discovery
 
 tool_registry = ToolRegistry()
 
