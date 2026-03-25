@@ -46,7 +46,7 @@ FastAPI Gateway (Python 3.12+)
 
 ## Current Status
 
-Nobla Agent is in **active development**. Phases 1-3, 4-Pre, 4A, 4B, and 4C are complete.
+Nobla Agent is in **active development**. Phases 1-3, 4-Pre, 4A, 4B, 4C are complete. Phase 4D design is complete (implementation pending).
 
 | Phase | Status | Scope |
 |-------|--------|-------|
@@ -57,7 +57,7 @@ Nobla Agent is in **active development**. Phases 1-3, 4-Pre, 4A, 4B, and 4C are 
 | **Phase 4A**: Screen Vision | Complete | Screenshot capture, OCR (Tesseract + EasyOCR), UI detection, NL element targeting (158 tests) |
 | **Phase 4C**: Code Execution | Complete | Sandboxed code.run, package install, LLM codegen, debug assistant, git operations (110 tests) |
 | **Phase 4B**: Computer Control | Complete | mouse.control, keyboard.control, file.manage, app.control, clipboard.manage, Flutter approval UI (191 tests) |
-| **Phase 4D**: Remote Control | Planned | SSH connections, remote exec, SCP/SFTP |
+| **Phase 4D**: Remote Control | Design Complete | ssh.connect, ssh.exec, sftp.manage — spec + plan ready, implementation pending |
 | **Phase 4E**: Flutter UI | Planned | Screen mirror, activity feed, tool browser |
 | **Phase 5**: Channels | Planned | 20+ messaging platform integrations |
 | **Phase 6**: Automation | Planned | Cron jobs, workflows, agent cloning, MCP, A2A protocol |
@@ -115,9 +115,12 @@ nobla-agent/
 │   ├── brain/          # LLM router (6 providers, smart routing)
 │   ├── memory/         # 5-layer memory engine
 │   ├── voice/          # STT/TTS pipeline + Levantine Arabic
-│   ├── tools/          # Tool platform + vision, search
+│   ├── tools/          # Tool platform + vision, control, code, search
 │   │   ├── base.py, registry.py, executor.py, approval.py
 │   │   ├── vision/     # Screen vision (Phase 4A)
+│   │   ├── control/    # Computer control (Phase 4B)
+│   │   ├── code/       # Code execution (Phase 4C)
+│   │   ├── remote/     # Remote control — SSH/SFTP (Phase 4D, design complete)
 │   │   └── search/     # AI search engine
 │   ├── security/       # Auth, sandbox, audit, encryption
 │   ├── persona/        # Emotion detection + persona engine

@@ -373,11 +373,16 @@ TIER 4: ADMIN
 - [ ] Activity feed: live log of what agent is doing
 - [ ] Tool browser: list available tools by category
 
-**Phase 4D: Remote Control**
-- [ ] SSH integration: connect to remote machines
-- [ ] Remote command execution with audit logging
-- [ ] File transfer: upload/download via SCP/SFTP
-- [ ] Remote machine manager: add/remove SSH connections
+**Phase 4D: Remote Control** (Design Complete — spec + plan ready)
+- [x] Design specification: `docs/superpowers/specs/2026-03-25-phase4d-remote-control-design.md`
+- [x] Implementation plan: `docs/superpowers/plans/2026-03-25-phase4d-remote-control.md`
+- [x] Continuation prompt: `docs/superpowers/prompts/phase4d-implementation-prompt.md`
+- [ ] SSH integration: ssh.connect tool (connect, disconnect, list) — ADMIN tier, asyncssh
+- [ ] Remote command execution: ssh.exec tool (conditional approval, safe_commands, blocked_binaries)
+- [ ] File transfer: sftp.manage tool (upload, download, list, delete, stat)
+- [ ] Shared infrastructure: SSHConnectionPool, RemoteControlGuard, RemoteControlSettings
+- [ ] Kill switch integration + 6-layer security model
+- [ ] ~150 tests (TDD, mocked asyncssh)
 
 ---
 

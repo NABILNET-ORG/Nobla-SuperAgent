@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Nobla Agent** is an open-source, privacy-first AI super agent that unifies 35+ AI agent projects while fixing their security vulnerabilities. Currently in **active development** — Phases 1-3 + Phase 4-Pre + Phase 4A + Phase 4B + Phase 4C complete.
+**Nobla Agent** is an open-source, privacy-first AI super agent that unifies 35+ AI agent projects while fixing their security vulnerabilities. Currently in **active development** — Phases 1-3 + Phase 4-Pre + Phase 4A + Phase 4B + Phase 4C complete. Phase 4D design complete (implementation pending).
 
 - **PRD.md** — Full product requirements, competitive analysis, feature specs
 - **Plan.md** — 7-phase development roadmap with detailed task breakdowns
@@ -122,7 +122,7 @@ The Levantine model (`ggml-levantine-large-v3.bin`) should be moved to `backend/
 1. **Phase 1** (Weeks 1-4): Secure Foundation — Gateway, Auth, Sandbox, Flutter basic chat ✅
 2. **Phase 2** (Weeks 5-8): Intelligence Core — Multi-LLM router, memory system, search ✅
 3. **Phase 3** (Weeks 9-12): Voice & Persona — STT/TTS, PersonaPlex, avatar ✅
-4. **Phase 4** (Weeks 13-16): Computer Control — Screen vision, mouse/keyboard, code sandbox (**4-Pre ✅, 4A ✅, 4C ✅**, 4B/4D/4E planned)
+4. **Phase 4** (Weeks 13-16): Computer Control — Screen vision, mouse/keyboard, code sandbox (**4-Pre ✅, 4A ✅, 4B ✅, 4C ✅, 4D design ✅**, 4E planned)
 5. **Phase 5** (Weeks 17-20): Channels & Integrations — 20+ messaging platforms
 6. **Phase 6** (Weeks 21-24): Automation & Multi-Agent — Cron, workflows, agent cloning, MCP
 7. **Phase 7** (Weeks 25-32): Full Feature Set — Media, finance, health, social, smart home
@@ -135,7 +135,7 @@ The Levantine model (`ggml-levantine-large-v3.bin`) should be moved to `backend/
 | 4C: Code Execution | ✅ Complete | code.run, code.install_package, code.generate, code.debug, git.ops (110 tests) |
 | 4B: Computer Control | ✅ Complete | mouse.control, keyboard.control, file.manage, app.control, clipboard.manage (191 tests) |
 | 4E: Flutter UI | Planned | Screen mirror, activity feed, tool browser |
-| 4D: Remote Control | Planned | SSH, remote exec, SCP/SFTP |
+| 4D: Remote Control | Design Complete | ssh.connect, ssh.exec, sftp.manage — spec + 8-task plan ready, implementation pending |
 
 ## Claude Code Plugins & Skills for Development
 
