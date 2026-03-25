@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Nobla Agent** is an open-source, privacy-first AI super agent that unifies 35+ AI agent projects while fixing their security vulnerabilities. Currently in **active development** — Phases 1-3 + Phase 4-Pre + Phase 4A + Phase 4B + Phase 4C complete. Phase 4D design complete (implementation pending).
+**Nobla Agent** is an open-source, privacy-first AI super agent that unifies 35+ AI agent projects while fixing their security vulnerabilities. Currently in **active development** — Phases 1-3 + Phase 4-Pre + Phase 4A + Phase 4B + Phase 4C + Phase 4D complete.
 
 - **PRD.md** — Full product requirements, competitive analysis, feature specs
 - **Plan.md** — 7-phase development roadmap with detailed task breakdowns
@@ -18,6 +18,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Phase 4A**: Screen Vision — screenshot capture, OCR, UI element detection, NL targeting (158 tests)
 - **Phase 4B**: Computer Control — mouse.control, keyboard.control, file.manage, app.control, clipboard.manage (191 tests)
 - **Phase 4C**: Code Execution — code.run, code.install_package, code.generate, code.debug, git.ops (110 tests)
+- **Phase 4D**: Remote Control — ssh.connect, ssh.exec, sftp.manage (116 tests)
 
 ## Architecture (Two Codebases)
 
@@ -85,6 +86,7 @@ nobla-agent/
 │   │   ├── vision/     # Screen vision: capture, ocr, detection, targeting (Phase 4A)
 │   │   ├── code/       # Code execution: runner, packages, codegen, debug, git (Phase 4C)
 │   │   ├── control/    # Computer control: mouse, keyboard, files, apps, clipboard (Phase 4B)
+│   │   ├── remote/     # Remote control: SSH connect, exec, SFTP manage (Phase 4D)
 │   │   └── search/     # AI search engine (Phase 2B)
 │   ├── security/       # Auth (JWT), sandbox (Docker/gVisor), audit (OpenTelemetry), encryption (AES-256)
 │   ├── channels/       # 20+ platforms (Telegram, Discord, WhatsApp, Slack, etc.)
@@ -135,7 +137,7 @@ The Levantine model (`ggml-levantine-large-v3.bin`) should be moved to `backend/
 | 4C: Code Execution | ✅ Complete | code.run, code.install_package, code.generate, code.debug, git.ops (110 tests) |
 | 4B: Computer Control | ✅ Complete | mouse.control, keyboard.control, file.manage, app.control, clipboard.manage (191 tests) |
 | 4E: Flutter UI | Planned | Screen mirror, activity feed, tool browser |
-| 4D: Remote Control | Design Complete | ssh.connect, ssh.exec, sftp.manage — spec + 8-task plan ready, implementation pending |
+| 4D: Remote Control | ✅ Complete | ssh.connect, ssh.exec, sftp.manage (116 tests) |
 
 ## Claude Code Plugins & Skills for Development
 
