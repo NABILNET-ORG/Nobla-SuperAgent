@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Nobla Agent** is an open-source, privacy-first AI super agent that unifies 35+ AI agent projects while fixing their security vulnerabilities. Currently in **active development** — Phases 1-3 + Phase 4-Pre + Phase 4A + Phase 4B + Phase 4C + Phase 4D complete.
+**Nobla Agent** is an open-source, privacy-first AI super agent that unifies 35+ AI agent projects while fixing their security vulnerabilities. Currently in **active development** — Phases 1-3 + Phase 4-Pre + Phase 4A + Phase 4B + Phase 4C + Phase 4D complete. Phase 4E design complete (implementation pending).
 
 - **PRD.md** — Full product requirements, competitive analysis, feature specs
 - **Plan.md** — 7-phase development roadmap with detailed task breakdowns
@@ -19,6 +19,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Phase 4B**: Computer Control — mouse.control, keyboard.control, file.manage, app.control, clipboard.manage (191 tests)
 - **Phase 4C**: Code Execution — code.run, code.install_package, code.generate, code.debug, git.ops (110 tests)
 - **Phase 4D**: Remote Control — ssh.connect, ssh.exec, sftp.manage (116 tests)
+- **Phase 4E**: Flutter Tool UI — design complete, implementation pending (screen mirror, activity feed, tool browser)
 
 ## Architecture (Two Codebases)
 
@@ -94,7 +95,7 @@ nobla-agent/
 │   └── automation/     # APScheduler cron, webhooks, workflows
 ├── app/lib/
 │   ├── core/           # Theme, routing, DI (Riverpod), network
-│   ├── features/       # auth, chat, dashboard, voice, persona, memory, automation, security, settings
+│   ├── features/       # auth, chat, dashboard, voice, persona, memory, automation, security, settings, tools
 │   └── shared/         # Shared widgets, utils
 ├── skills/             # Bundled + marketplace community skills
 └── docker-compose.yml
@@ -124,7 +125,7 @@ The Levantine model (`ggml-levantine-large-v3.bin`) should be moved to `backend/
 1. **Phase 1** (Weeks 1-4): Secure Foundation — Gateway, Auth, Sandbox, Flutter basic chat ✅
 2. **Phase 2** (Weeks 5-8): Intelligence Core — Multi-LLM router, memory system, search ✅
 3. **Phase 3** (Weeks 9-12): Voice & Persona — STT/TTS, PersonaPlex, avatar ✅
-4. **Phase 4** (Weeks 13-16): Computer Control — Screen vision, mouse/keyboard, code sandbox (**4-Pre ✅, 4A ✅, 4B ✅, 4C ✅, 4D design ✅**, 4E planned)
+4. **Phase 4** (Weeks 13-16): Computer Control — Screen vision, mouse/keyboard, code sandbox (**4-Pre ✅, 4A ✅, 4B ✅, 4C ✅, 4D ✅, 4E design ✅**)
 5. **Phase 5** (Weeks 17-20): Channels & Integrations — 20+ messaging platforms
 6. **Phase 6** (Weeks 21-24): Automation & Multi-Agent — Cron, workflows, agent cloning, MCP
 7. **Phase 7** (Weeks 25-32): Full Feature Set — Media, finance, health, social, smart home
@@ -136,8 +137,8 @@ The Levantine model (`ggml-levantine-large-v3.bin`) should be moved to `backend/
 | 4A: Screen Vision | ✅ Complete | screenshot.capture, ocr.extract, ui.detect_elements, ui.target_element |
 | 4C: Code Execution | ✅ Complete | code.run, code.install_package, code.generate, code.debug, git.ops (110 tests) |
 | 4B: Computer Control | ✅ Complete | mouse.control, keyboard.control, file.manage, app.control, clipboard.manage (191 tests) |
-| 4E: Flutter UI | Planned | Screen mirror, activity feed, tool browser |
 | 4D: Remote Control | ✅ Complete | ssh.connect, ssh.exec, sftp.manage (116 tests) |
+| 4E: Flutter Tool UI | Design Complete | Screen mirror, activity feed, tool browser — 12-task implementation plan ready |
 
 ## Claude Code Plugins & Skills for Development
 

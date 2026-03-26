@@ -47,7 +47,7 @@ FastAPI Gateway (Python 3.12+)
 
 ## Current Status
 
-Nobla Agent is in **active development**. Phases 1-3, 4-Pre, 4A, 4B, 4C, and 4D are complete.
+Nobla Agent is in **active development**. Phases 1-3, 4-Pre, 4A, 4B, 4C, and 4D are complete. Phase 4E design is complete (implementation pending).
 
 | Phase | Status | Scope |
 |-------|--------|-------|
@@ -59,7 +59,7 @@ Nobla Agent is in **active development**. Phases 1-3, 4-Pre, 4A, 4B, 4C, and 4D 
 | **Phase 4C**: Code Execution | Complete | Sandboxed code.run, package install, LLM codegen, debug assistant, git operations (110 tests) |
 | **Phase 4B**: Computer Control | Complete | mouse.control, keyboard.control, file.manage, app.control, clipboard.manage, Flutter approval UI (191 tests) |
 | **Phase 4D**: Remote Control | Complete | ssh.connect, ssh.exec, sftp.manage — SSH connection pooling, remote exec, SFTP transfers (116 tests) |
-| **Phase 4E**: Flutter UI | Planned | Screen mirror, activity feed, tool browser |
+| **Phase 4E**: Flutter Tool UI | Design Complete | Screen mirror, activity feed, tool browser — 12-task plan ready |
 | **Phase 5**: Channels | Planned | 20+ messaging platform integrations |
 | **Phase 6**: Automation | Planned | Cron jobs, workflows, agent cloning, MCP, A2A protocol |
 | **Phase 7**: Full Feature Set | Planned | Media, finance, health, social, smart home tools |
@@ -129,7 +129,7 @@ nobla-agent/
 │   └── db/             # Database models + repos
 ├── app/lib/
 │   ├── core/           # Theme, routing, DI (Riverpod)
-│   ├── features/       # auth, chat, dashboard, voice, persona, memory, settings
+│   ├── features/       # auth, chat, dashboard, voice, persona, memory, security, tools, settings
 │   └── shared/         # Shared widgets, utils
 ├── backend/tests/      # 95 test files
 ├── docs/superpowers/   # Design specs + implementation plans

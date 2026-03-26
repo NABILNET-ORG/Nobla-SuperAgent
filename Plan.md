@@ -368,10 +368,22 @@ TIER 4: ADMIN
 - [x] ComputerControlSettings with write_dirs subset validation (8 tests)
 - [x] Flutter approval bottom sheet with countdown timer + activity feed
 
-**Phase 4E: Flutter UI**
-- [ ] Screen mirror: see agent's screen in real-time
-- [ ] Activity feed: live log of what agent is doing
-- [ ] Tool browser: list available tools by category
+**Phase 4E: Flutter Tool UI** — Design Complete
+- [x] Design specification: `docs/superpowers/specs/2026-03-25-phase4e-flutter-tool-ui-design.md`
+- [x] Implementation plan: `docs/superpowers/plans/2026-03-25-phase4e-flutter-tool-ui.md`
+- [x] Continuation prompt: `docs/superpowers/prompts/phase4e-continuation-prompt.md`
+- [ ] Models: ToolCategory enum, ToolManifestEntry, MirrorState, ActivityFilter + ActivityEntry category field
+- [ ] Shared activity provider: extract from ApprovalNotifier, 200-entry buffer
+- [ ] NotificationDispatcher: wire tool.activity + tool.mirror.frame events
+- [ ] Tool catalog provider + browser widgets (ToolCard, ToolCategorySection)
+- [ ] Mirror provider: subscribe/unsubscribe/capture with compute() decode
+- [ ] Filtered activity provider: category/status filtering
+- [ ] Activity feed widgets: filter bar, list, detail sheet
+- [ ] Mirror view widget: InteractiveViewer + capture button
+- [ ] ToolsScreen + router: TabBar host (Mirror|Activity|Browse) + 6th nav tab
+- [ ] Backend: mirror_handlers.py (subscribe/unsubscribe/capture RPC)
+- [ ] Backend: executor mirror integration + disconnect cleanup
+- [ ] Full integration test + CLAUDE.md update
 
 **Phase 4D: Remote Control** ✅ Complete (116 tests)
 - [x] Design specification: `docs/superpowers/specs/2026-03-25-phase4d-remote-control-design.md`
