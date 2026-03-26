@@ -1049,8 +1049,8 @@ nobla-agent/
 | 12 | Package installation in sandbox | P1 | ✅ Complete |
 | 13 | Code generation from natural language | P0 | ✅ Complete |
 | 14 | Git integration (clone, commit, push, PR) | P1 | ✅ Complete |
-| 15 | SSH integration + audit logging | P1 | Phase 4D |
-| 16 | Remote command execution | P1 | Phase 4D |
+| 15 | SSH integration + audit logging | P1 | ✅ Complete |
+| 16 | Remote command execution | P1 | ✅ Complete |
 | 17 | Flutter screen mirror (real-time) | P1 | Phase 4E |
 | 18 | Flutter approval dialogs for actions | P0 | Phase 4B |
 | 19 | Flutter activity feed (live log) | P0 | Phase 4E |

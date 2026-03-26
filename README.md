@@ -15,6 +15,7 @@ Nobla Agent is an AI super agent that combines the best capabilities of 35+ exis
 - **See** your screen via OCR, UI element detection, and natural language targeting
 - **Speak** with customizable voice personas, including native Levantine Arabic support
 - **Control** your computer — mouse, keyboard, files, apps, clipboard with 6-layer security
+- **Control remote machines** via SSH with connection pooling, SFTP file transfer, and ADMIN-tier security
 - **Execute code** in sandboxed Docker containers with package management
 - **Search** the web with AI-powered result synthesis
 - **Integrate** with 20+ messaging platforms (Telegram, Discord, WhatsApp, Slack, and more)
@@ -33,12 +34,12 @@ FastAPI Gateway (Python 3.12+)
     +-- Brain: LLM Router (6 providers, smart routing)
     +-- Memory: 5-layer engine (episodic, semantic, procedural, knowledge graph, working)
     +-- Voice: STT/TTS pipeline (Whisper + Levantine Arabic, Fish Speech, PersonaPlex)
-    +-- Tools: Plugin platform (vision, computer control, code execution, search, and more)
+    +-- Tools: Plugin platform (vision, computer control, code execution, remote control, search, and more)
     +-- Security: 4-tier permissions, sandbox, audit trail, kill switch
     +-- Persona: Emotion-aware response styling with customizable personalities
 ```
 
-**Backend:** Python 3.12+ / FastAPI — 119 source files, 89 test files
+**Backend:** Python 3.12+ / FastAPI — 125 source files, 95 test files
 
 **Frontend:** Flutter 3.x / Dart — 57 source files with Riverpod state management
 
@@ -46,7 +47,7 @@ FastAPI Gateway (Python 3.12+)
 
 ## Current Status
 
-Nobla Agent is in **active development**. Phases 1-3, 4-Pre, 4A, 4B, 4C are complete. Phase 4D design is complete (implementation pending).
+Nobla Agent is in **active development**. Phases 1-3, 4-Pre, 4A, 4B, 4C, and 4D are complete.
 
 | Phase | Status | Scope |
 |-------|--------|-------|
@@ -57,7 +58,7 @@ Nobla Agent is in **active development**. Phases 1-3, 4-Pre, 4A, 4B, 4C are comp
 | **Phase 4A**: Screen Vision | Complete | Screenshot capture, OCR (Tesseract + EasyOCR), UI detection, NL element targeting (158 tests) |
 | **Phase 4C**: Code Execution | Complete | Sandboxed code.run, package install, LLM codegen, debug assistant, git operations (110 tests) |
 | **Phase 4B**: Computer Control | Complete | mouse.control, keyboard.control, file.manage, app.control, clipboard.manage, Flutter approval UI (191 tests) |
-| **Phase 4D**: Remote Control | Design Complete | ssh.connect, ssh.exec, sftp.manage — spec + plan ready, implementation pending |
+| **Phase 4D**: Remote Control | Complete | ssh.connect, ssh.exec, sftp.manage — SSH connection pooling, remote exec, SFTP transfers (116 tests) |
 | **Phase 4E**: Flutter UI | Planned | Screen mirror, activity feed, tool browser |
 | **Phase 5**: Channels | Planned | 20+ messaging platform integrations |
 | **Phase 6**: Automation | Planned | Cron jobs, workflows, agent cloning, MCP, A2A protocol |
@@ -120,7 +121,7 @@ nobla-agent/
 │   │   ├── vision/     # Screen vision (Phase 4A)
 │   │   ├── control/    # Computer control (Phase 4B)
 │   │   ├── code/       # Code execution (Phase 4C)
-│   │   ├── remote/     # Remote control — SSH/SFTP (Phase 4D, design complete)
+│   │   ├── remote/     # Remote control — SSH/SFTP (Phase 4D)
 │   │   └── search/     # AI search engine
 │   ├── security/       # Auth, sandbox, audit, encryption
 │   ├── persona/        # Emotion detection + persona engine
@@ -130,7 +131,7 @@ nobla-agent/
 │   ├── core/           # Theme, routing, DI (Riverpod)
 │   ├── features/       # auth, chat, dashboard, voice, persona, memory, settings
 │   └── shared/         # Shared widgets, utils
-├── backend/tests/      # 89 test files
+├── backend/tests/      # 95 test files
 ├── docs/superpowers/   # Design specs + implementation plans
 │   ├── specs/          # Approved design specifications
 │   ├── plans/          # Step-by-step implementation plans

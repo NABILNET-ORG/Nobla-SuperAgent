@@ -10,10 +10,10 @@ Python 3.12+ / FastAPI backend for [Nobla Agent](https://github.com/NABILNET-ORG
 | `nobla/brain/` | LLM router with 6 providers (Gemini, Groq, Ollama, OpenAI, Anthropic, DeepSeek), circuit breakers, complexity-based routing |
 | `nobla/memory/` | 5-layer memory engine — episodic (PostgreSQL), semantic (ChromaDB), procedural, knowledge graph (NetworkX), working memory |
 | `nobla/voice/` | STT (Whisper + Levantine Arabic), TTS (Fish Speech, CosyVoice, PersonaPlex), VAD, language detection |
-| `nobla/tools/` | Tool platform — BaseTool ABC, registry, executor, approval manager. Includes vision and search tools |
+| `nobla/tools/` | Tool platform — BaseTool ABC, registry, executor, approval manager. Includes vision, control, code, remote, and search tools |
 | `nobla/security/` | Auth (JWT + OAuth + API Key), sandbox (Docker/gVisor), audit (OpenTelemetry), permissions (4-tier), kill switch |
 | `nobla/persona/` | Emotion detection, persona engine, prompt builder, PersonaPlex integration |
-| `nobla/config/` | Centralized Pydantic settings (server, LLM, database, memory, auth, sandbox, voice, persona, tools, vision) |
+| `nobla/config/` | Centralized Pydantic settings (server, LLM, database, memory, auth, sandbox, voice, persona, tools, vision, computer control, remote control) |
 | `nobla/db/` | SQLAlchemy models, repository pattern |
 
 ## Setup
@@ -36,12 +36,12 @@ uvicorn nobla.main:app --reload --host 0.0.0.0 --port 8000
 pytest tests/ -v --cov=nobla
 ```
 
-89 test files across unit and integration tests. Key test areas:
+95 test files across unit and integration tests. Key test areas:
 - Security: auth, permissions, sandbox, kill switch, audit
 - Brain: router, providers, circuit breakers, streaming
 - Memory: all 5 layers, consolidation, retrieval
 - Voice: STT, TTS, VAD, pipeline, language detection
-- Tools: platform (registry, executor, approval), vision tools
+- Tools: platform (registry, executor, approval), vision, control, code execution, remote control (SSH/SFTP)
 - Gateway: WebSocket, chat flow, RPC handlers
 
 ## Configuration
@@ -65,6 +65,11 @@ LLM__PROVIDERS__OLLAMA__BASE_URL=http://localhost:11434
 VISION__ENABLED=true
 CODE__ENABLED=true
 VOICE__STT_MODEL=large-v3
+
+# Remote control (Phase 4D)
+REMOTE_CONTROL__ENABLED=true
+REMOTE_CONTROL__ALLOWED_HOSTS=["prod.example.com"]
+REMOTE_CONTROL__ALLOWED_USERS=["deploy"]
 ```
 
 ## Docker
@@ -76,7 +81,7 @@ docker-compose up            # Full stack (backend + PostgreSQL + Redis)
 
 ## Key Dependencies
 
-FastAPI, uvicorn, websockets, chromadb, sentence-transformers, networkx, faster-whisper, playwright, ollama, google-generativeai, groq, openai, anthropic, apscheduler, pydantic, structlog, docker
+FastAPI, uvicorn, websockets, chromadb, sentence-transformers, networkx, faster-whisper, playwright, ollama, google-generativeai, groq, openai, anthropic, apscheduler, pydantic, structlog, docker, asyncssh
 
 ---
 
