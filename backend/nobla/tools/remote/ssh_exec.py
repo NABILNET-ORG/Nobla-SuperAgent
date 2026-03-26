@@ -47,8 +47,9 @@ def _truncate_output(
         lines = lines[:max_lines]
         text = "\n".join(lines)
         truncated = True
-    if len(text.encode("utf-8", errors="replace")) > max_bytes:
-        text = text[:max_bytes]
+    encoded = text.encode("utf-8", errors="replace")
+    if len(encoded) > max_bytes:
+        text = encoded[:max_bytes].decode("utf-8", errors="ignore")
         truncated = True
     return text, truncated
 

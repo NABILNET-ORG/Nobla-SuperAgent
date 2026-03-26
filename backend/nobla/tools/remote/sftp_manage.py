@@ -133,7 +133,10 @@ class SFTPManageTool(BaseTool):
         if not params.args.get("connection_id"):
             raise ValueError("connection_id is required")
 
+        _NEEDS_REMOTE_PATH = {"upload", "download", "list", "delete", "stat"}
         remote_path = params.args.get("remote_path", "")
+        if action in _NEEDS_REMOTE_PATH and not remote_path:
+            raise ValueError("remote_path is required for " + action)
         if remote_path:
             _validate_remote_path(remote_path, rc.allowed_remote_dirs)
 
