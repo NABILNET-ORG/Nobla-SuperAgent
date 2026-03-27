@@ -25,6 +25,7 @@ from nobla.agents.models import (
     WorkflowState,
     WorkspaceConfig,
 )
+from nobla.agents.base import BaseAgent
 from nobla.security.permissions import Tier
 
 
@@ -176,3 +177,80 @@ class TestWorkspaceConfig:
             shared_pools=["workflow:wf-1"],
         )
         assert wc.shared_pools == ["workflow:wf-1"]
+
+
+# ── BaseAgent tests ──────────────────────────────────────────
+
+
+class _StubAgent(BaseAgent):
+    """Minimal concrete agent for testing the ABC."""
+
+    async def handle_task(self, task: AgentTask) -> AgentTask:
+        task.status = TaskStatus.COMPLETED
+        task.artifacts.append({"type": "text", "content": "done"})
+        return task
+
+
+class TestBaseAgent:
+    def _make_agent(self) -> _StubAgent:
+        config = AgentConfig(
+            name="stub", description="A stub", role="You are a stub.",
+            tier=Tier.STANDARD, allowed_tools=["search.web"],
+        )
+        agent = _StubAgent(config=config)
+        return agent
+
+    def test_properties_delegate_to_config(self):
+        agent = self._make_agent()
+        assert agent.name == "stub"
+        assert agent.description == "A stub"
+        assert agent.role == "You are a stub."
+
+    def test_initial_status_is_idle(self):
+        agent = self._make_agent()
+        assert agent.status == AgentStatus.IDLE
+
+    def test_instance_id_is_none_before_spawn(self):
+        agent = self._make_agent()
+        assert agent.instance_id is None
+
+    @pytest.mark.asyncio
+    async def test_handle_task(self):
+        agent = self._make_agent()
+        task = AgentTask(
+            workflow_id="wf-1", assigner="orch",
+            assignee="stub-1", instruction="Do something",
+        )
+        result = await agent.handle_task(task)
+        assert result.status == TaskStatus.COMPLETED
+        assert len(result.artifacts) == 1
+
+    @pytest.mark.asyncio
+    async def test_on_start_default_is_noop(self):
+        agent = self._make_agent()
+        await agent.on_start()  # should not raise
+
+    @pytest.mark.asyncio
+    async def test_on_stop_default_is_noop(self):
+        agent = self._make_agent()
+        await agent.on_stop()  # should not raise
+
+    @pytest.mark.asyncio
+    async def test_think_delegates_to_router(self):
+        agent = self._make_agent()
+        mock_router = AsyncMock()
+        mock_router.route.return_value = "LLM response"
+        agent.router = mock_router
+        result = await agent.think("What is 2+2?")
+        assert result == "LLM response"
+        mock_router.route.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_use_tool_delegates_to_workspace(self):
+        agent = self._make_agent()
+        mock_ws = AsyncMock()
+        mock_ws.execute_tool.return_value = MagicMock(success=True, data="ok")
+        agent.workspace = mock_ws
+        result = await agent.use_tool("search.web", {"query": "test"})
+        assert result.success is True
+        mock_ws.execute_tool.assert_called_once_with("search.web", {"query": "test"})
