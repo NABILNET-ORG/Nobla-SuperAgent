@@ -26,6 +26,8 @@ from nobla.agents.models import (
     WorkspaceConfig,
 )
 from nobla.agents.base import BaseAgent
+from nobla.agents.registry import AgentRegistry
+from nobla.agents.workspace import AgentWorkspace
 from nobla.security.permissions import Tier
 
 
@@ -254,3 +256,178 @@ class TestBaseAgent:
         result = await agent.use_tool("search.web", {"query": "test"})
         assert result.success is True
         mock_ws.execute_tool.assert_called_once_with("search.web", {"query": "test"})
+
+
+# ── Registry tests ───────────────────────────────────────────
+
+
+class TestAgentRegistry:
+    def _make_registry(self) -> AgentRegistry:
+        return AgentRegistry()
+
+    def _researcher_config(self) -> AgentConfig:
+        return AgentConfig(
+            name="researcher", description="Searches the web",
+            role="You are a researcher.", tier=Tier.STANDARD,
+        )
+
+    def _coder_config(self) -> AgentConfig:
+        return AgentConfig(
+            name="coder", description="Writes code",
+            role="You are a coder.", tier=Tier.ELEVATED,
+        )
+
+    def test_register_and_get(self):
+        reg = self._make_registry()
+        reg.register(_StubAgent, self._researcher_config())
+        result = reg.get("researcher")
+        assert result is not None
+        cls, config = result
+        assert cls is _StubAgent
+        assert config.name == "researcher"
+
+    def test_get_returns_none_for_unknown(self):
+        reg = self._make_registry()
+        assert reg.get("nonexistent") is None
+
+    def test_register_duplicate_raises(self):
+        reg = self._make_registry()
+        reg.register(_StubAgent, self._researcher_config())
+        with pytest.raises(ValueError, match="already registered"):
+            reg.register(_StubAgent, self._researcher_config())
+
+    def test_register_overwrite(self):
+        reg = self._make_registry()
+        reg.register(_StubAgent, self._researcher_config())
+        new_config = self._researcher_config()
+        new_config.description = "Updated"
+        reg.register(_StubAgent, new_config, allow_overwrite=True)
+        _, config = reg.get("researcher")
+        assert config.description == "Updated"
+
+    def test_unregister(self):
+        reg = self._make_registry()
+        reg.register(_StubAgent, self._researcher_config())
+        assert reg.unregister("researcher") is True
+        assert reg.get("researcher") is None
+
+    def test_unregister_unknown_returns_false(self):
+        reg = self._make_registry()
+        assert reg.unregister("nonexistent") is False
+
+    def test_list_all(self):
+        reg = self._make_registry()
+        reg.register(_StubAgent, self._researcher_config())
+        reg.register(_StubAgent, self._coder_config())
+        configs = reg.list_all()
+        assert len(configs) == 2
+        names = {c.name for c in configs}
+        assert names == {"researcher", "coder"}
+
+    def test_list_by_role(self):
+        reg = self._make_registry()
+        reg.register(_StubAgent, self._researcher_config())
+        reg.register(_StubAgent, self._coder_config())
+        results = reg.list_by_role("search")
+        assert len(results) == 1
+        assert results[0].name == "researcher"
+
+    def test_get_manifest(self):
+        reg = self._make_registry()
+        reg.register(_StubAgent, self._researcher_config())
+        manifest = reg.get_manifest()
+        assert len(manifest) == 1
+        assert manifest[0]["name"] == "researcher"
+        assert "description" in manifest[0]
+
+
+# ── Workspace tests ──────────────────────────────────────────
+
+
+class TestAgentWorkspace:
+    def _make_workspace(
+        self,
+        tool_whitelist=None,
+        isolation=IsolationLevel.FULL_ISOLATED,
+        max_tool_calls=50,
+    ) -> AgentWorkspace:
+        from nobla.agents.models import WorkspaceConfig
+        config = WorkspaceConfig(
+            isolation=isolation,
+            tool_whitelist=tool_whitelist or ["search.web"],
+            resource_limits=ResourceLimits(max_tool_calls=max_tool_calls),
+        )
+        mock_executor = AsyncMock()
+        mock_executor.execute.return_value = MagicMock(success=True, data="ok")
+        return AgentWorkspace(
+            instance_id="agent-1",
+            config=config,
+            tool_executor=mock_executor,
+            user_id="user-1",
+            agent_tier=Tier.STANDARD,
+            event_bus=None,
+            memory_orchestrator=None,
+        )
+
+    def test_available_tools(self):
+        ws = self._make_workspace(tool_whitelist=["search.web", "code.run"])
+        assert set(ws.available_tools()) == {"search.web", "code.run"}
+
+    @pytest.mark.asyncio
+    async def test_execute_tool_allowed(self):
+        ws = self._make_workspace()
+        result = await ws.execute_tool("search.web", {"query": "test"})
+        assert result.success is True
+
+    @pytest.mark.asyncio
+    async def test_execute_tool_blocked(self):
+        ws = self._make_workspace(tool_whitelist=["search.web"])
+        with pytest.raises(PermissionError, match="not in whitelist"):
+            await ws.execute_tool("code.run", {"code": "print(1)"})
+
+    @pytest.mark.asyncio
+    async def test_resource_limit_enforced(self):
+        ws = self._make_workspace(max_tool_calls=2)
+        await ws.execute_tool("search.web", {"q": "1"})
+        await ws.execute_tool("search.web", {"q": "2"})
+        with pytest.raises(RuntimeError, match="resource limit"):
+            await ws.execute_tool("search.web", {"q": "3"})
+
+    def test_usage_tracking(self):
+        ws = self._make_workspace()
+        usage = ws.usage()
+        assert usage["tool_calls"] == 0
+
+    @pytest.mark.asyncio
+    async def test_usage_increments(self):
+        ws = self._make_workspace()
+        await ws.execute_tool("search.web", {"q": "test"})
+        assert ws.usage()["tool_calls"] == 1
+
+    def test_within_limits_true(self):
+        ws = self._make_workspace()
+        assert ws.within_limits() is True
+
+    def test_artifacts(self):
+        ws = self._make_workspace()
+        ws.add_artifact({"type": "text", "content": "hello"})
+        assert len(ws.get_artifacts()) == 1
+        assert ws.get_artifacts()[0]["content"] == "hello"
+
+    def test_connection_state_has_agent_prefix(self):
+        ws = self._make_workspace()
+        assert ws._connection_state.connection_id == "agent:agent-1"
+        assert ws._connection_state.user_id == "user-1"
+        assert ws._connection_state.tier == Tier.STANDARD
+
+    @pytest.mark.asyncio
+    async def test_store_shared_blocked_when_isolated(self):
+        ws = self._make_workspace(isolation=IsolationLevel.FULL_ISOLATED)
+        with pytest.raises(PermissionError, match="SHARED_READWRITE"):
+            await ws.store_shared("pool-1", "key", "value")
+
+    @pytest.mark.asyncio
+    async def test_store_shared_allowed_when_readwrite(self):
+        ws = self._make_workspace(isolation=IsolationLevel.SHARED_READWRITE)
+        # Should not raise (memory_orchestrator is None so it's a no-op)
+        await ws.store_shared("pool-1", "key", "value")
