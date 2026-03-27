@@ -34,6 +34,7 @@ import nobla.gateway.provider_handlers  # noqa: F401
 import nobla.gateway.search_handlers  # noqa: F401
 import nobla.gateway.voice_handlers  # noqa: F401 — registers voice RPC methods
 import nobla.gateway.tool_handlers  # noqa: F401 — registers tool RPC methods
+import nobla.gateway.channel_handlers  # noqa: F401 — registers channel RPC methods
 from nobla.config import load_settings
 from nobla.brain.router import LLMRouter
 from nobla.brain.circuit_breaker import CircuitBreaker
@@ -74,6 +75,15 @@ async def _log_audit(entry: AuditEntry) -> None:
 async def lifespan(app: FastAPI):
     """Initialize LLM providers and security services on startup."""
     settings = load_settings()
+
+    # --- Event Bus (Phase 5-Foundation) — must init BEFORE all services ---
+    from nobla.events.bus import NoblaEventBus
+
+    event_bus = NoblaEventBus(
+        max_queue_depth=settings.event_bus.max_queue_depth,
+    )
+    await event_bus.start()
+    logger.info("event_bus_started")
 
     # --- LLM Providers ---
     providers = {}
@@ -192,6 +202,7 @@ async def lifespan(app: FastAPI):
         approval_manager=approval_manager,
         connection_manager=connection_manager,
         max_concurrent=settings.tools.max_concurrent_tools,
+        event_bus=event_bus,
     )
 
     ks = get_kill_switch()
@@ -201,6 +212,38 @@ async def lifespan(app: FastAPI):
     set_tool_executor(tool_executor)
     set_tool_registry(tool_registry)
     set_approval_manager(approval_manager)
+
+    # --- Channel Abstraction (Phase 5-Foundation) ---
+    from nobla.channels.manager import ChannelManager
+    from nobla.channels.linking import UserLinkingService
+    from nobla.gateway.channel_handlers import (
+        set_channel_manager,
+        set_linking_service,
+        set_event_bus,
+    )
+
+    linking_service = UserLinkingService()
+    channel_manager = ChannelManager(linking_service=linking_service)
+    set_channel_manager(channel_manager)
+    set_linking_service(linking_service)
+    set_event_bus(event_bus)
+    logger.info("channel_abstraction_ready")
+
+    # --- Skill Runtime (Phase 5-Foundation) ---
+    from nobla.skills.adapter import UniversalSkillAdapter
+    from nobla.skills.adapters.nobla import NoblaAdapter
+    from nobla.skills.runtime import SkillRuntime
+    from nobla.skills.security import SkillSecurityScanner
+
+    skill_adapter = UniversalSkillAdapter([NoblaAdapter()])
+    skill_scanner = SkillSecurityScanner()
+    skill_runtime = SkillRuntime(
+        tool_registry=tool_registry,
+        adapter=skill_adapter,
+        event_bus=event_bus,
+        security_scanner=skill_scanner,
+    )
+    logger.info("skill_runtime_ready")
 
     # --- Database & Memory System ---
     db = Database(settings)
@@ -361,6 +404,8 @@ async def lifespan(app: FastAPI):
     yield
 
     # Cleanup
+    await channel_manager.stop_all()
+    await event_bus.stop()
     await db.close()
     await sandbox_mgr.cleanup()
     logger.info("nobla_shutdown")

@@ -66,6 +66,26 @@ class ToolRegistry:
         """Tools the user can access at their current tier."""
         return [t for t in _TOOL_REGISTRY.values() if t.tier <= tier]
 
+    def register(self, instance: BaseTool, *, allow_overwrite: bool = False) -> None:
+        """Register a pre-built BaseTool instance (e.g. a SkillToolBridge).
+
+        Unlike the @register_tool decorator, this accepts an already-instantiated
+        tool. Used by SkillRuntime to register skill bridges at runtime.
+
+        Raises ValueError if a tool with the same name already exists
+        (unless allow_overwrite=True).
+        """
+        if instance.name in _TOOL_REGISTRY and not allow_overwrite:
+            raise ValueError(f"Duplicate tool name: {instance.name}")
+        _TOOL_REGISTRY[instance.name] = instance
+
+    def unregister(self, name: str) -> bool:
+        """Remove a tool by name. Returns True if it was removed."""
+        if name in _TOOL_REGISTRY:
+            del _TOOL_REGISTRY[name]
+            return True
+        return False
+
     def get_manifest(self, tier: Tier) -> list[dict]:
         """Tool descriptions for LLM function-calling and Flutter UI."""
         return [

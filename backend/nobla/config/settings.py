@@ -232,7 +232,7 @@ class RemoteControlSettings(BaseModel):
     )
     blocked_patterns: list[str] = Field(
         default_factory=lambda: [
-            r"rm\s+.*-.*r.*-.*f\s+/",
+            r"rm\s+.*-[^\s]*r[^\s]*f|rm\s+.*-[^\s]*f[^\s]*r",
             r"dd\s+.*of=/dev/",
             r">\s*/dev/sd",
             r"init\s+[06]",
@@ -278,6 +278,30 @@ class RemoteControlSettings(BaseModel):
         return self
 
 
+class EventBusSettings(BaseModel):
+    """Event bus configuration (Phase 5-Foundation)."""
+
+    max_queue_depth: int = 10_000
+    urgent_priority_threshold: int = 5
+
+
+class ChannelSettings(BaseModel):
+    """Channel abstraction configuration (Phase 5-Foundation)."""
+
+    enabled: bool = True
+    pairing_code_ttl_seconds: int = 300
+    pairing_code_length: int = 6
+
+
+class SkillRuntimeSettings(BaseModel):
+    """Skill runtime configuration (Phase 5-Foundation)."""
+
+    enabled: bool = True
+    default_dry_run_timeout_seconds: int = 10
+    mcp_dry_run_timeout_seconds: int = 20
+    max_installed_skills: int = 100
+
+
 class Settings(BaseSettings):
     server: ServerSettings = ServerSettings()
     llm: LLMSettings = LLMSettings()
@@ -297,6 +321,9 @@ class Settings(BaseSettings):
     code: CodeExecutionSettings = Field(default_factory=CodeExecutionSettings)
     computer_control: ComputerControlSettings = Field(default_factory=ComputerControlSettings)
     remote_control: RemoteControlSettings = Field(default_factory=RemoteControlSettings)
+    event_bus: EventBusSettings = Field(default_factory=EventBusSettings)
+    channels: ChannelSettings = Field(default_factory=ChannelSettings)
+    skill_runtime: SkillRuntimeSettings = Field(default_factory=SkillRuntimeSettings)
     secret_key: str = ""  # REQUIRED: set via SECRET_KEY env var
 
     model_config = {"env_prefix": "", "env_nested_delimiter": "__"}

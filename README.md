@@ -18,7 +18,8 @@ Nobla Agent is an AI super agent that combines the best capabilities of 35+ exis
 - **Control remote machines** via SSH with connection pooling, SFTP file transfer, and ADMIN-tier security
 - **Execute code** in sandboxed Docker containers with package management
 - **Search** the web with AI-powered result synthesis
-- **Integrate** with 20+ messaging platforms (Telegram, Discord, WhatsApp, Slack, and more)
+- **Integrate** with 20+ messaging platforms via a unified channel abstraction layer
+- **Extend** with a skill marketplace — install, sandbox-scan, and manage community skills at runtime
 
 All processing stays on your machine by default. No cloud required unless you explicitly enable it.
 
@@ -35,11 +36,14 @@ FastAPI Gateway (Python 3.12+)
     +-- Memory: 5-layer engine (episodic, semantic, procedural, knowledge graph, working)
     +-- Voice: STT/TTS pipeline (Whisper + Levantine Arabic, Fish Speech, PersonaPlex)
     +-- Tools: Plugin platform (vision, computer control, code execution, remote control, search, and more)
+    +-- Events: Async pub/sub event bus (wildcards, priority dispatch, backpressure)
+    +-- Channels: Unified channel abstraction (adapter → manager → user linking)
+    +-- Skills: Runtime skill marketplace (install, security scan, universal adapter)
     +-- Security: 4-tier permissions, sandbox, audit trail, kill switch
     +-- Persona: Emotion-aware response styling with customizable personalities
 ```
 
-**Backend:** Python 3.12+ / FastAPI — 125 source files, 95 test files
+**Backend:** Python 3.12+ / FastAPI — 135+ source files, 100+ test files
 
 **Frontend:** Flutter 3.x / Dart — 57 source files with Riverpod state management
 
@@ -47,7 +51,7 @@ FastAPI Gateway (Python 3.12+)
 
 ## Current Status
 
-Nobla Agent is in **active development**. Phases 1-3, 4-Pre, 4A, 4B, 4C, and 4D are complete. Phase 4E design is complete (implementation pending).
+Nobla Agent is in **active development**. Phases 1-4 and Phase 5-Foundation are complete. Phase 4E design complete (implementation pending).
 
 | Phase | Status | Scope |
 |-------|--------|-------|
@@ -60,7 +64,8 @@ Nobla Agent is in **active development**. Phases 1-3, 4-Pre, 4A, 4B, 4C, and 4D 
 | **Phase 4B**: Computer Control | Complete | mouse.control, keyboard.control, file.manage, app.control, clipboard.manage, Flutter approval UI (191 tests) |
 | **Phase 4D**: Remote Control | Complete | ssh.connect, ssh.exec, sftp.manage — SSH connection pooling, remote exec, SFTP transfers (116 tests) |
 | **Phase 4E**: Flutter Tool UI | Design Complete | Screen mirror, activity feed, tool browser — 12-task plan ready |
-| **Phase 5**: Channels | Planned | 20+ messaging platform integrations |
+| **Phase 5-Foundation** | Complete | Event bus (pub/sub, wildcards, priority, backpressure), channel abstraction, skill runtime, tool event wiring (106 tests) |
+| **Phase 5**: Channels | In Progress | 20+ messaging platform adapters (Telegram, Discord, WhatsApp, Slack, etc.) |
 | **Phase 6**: Automation | Planned | Cron jobs, workflows, agent cloning, MCP, A2A protocol |
 | **Phase 7**: Full Feature Set | Planned | Media, finance, health, social, smart home tools |
 
@@ -123,6 +128,9 @@ nobla-agent/
 │   │   ├── code/       # Code execution (Phase 4C)
 │   │   ├── remote/     # Remote control — SSH/SFTP (Phase 4D)
 │   │   └── search/     # AI search engine
+│   ├── events/         # Event bus — async pub/sub, wildcards, priority dispatch (Phase 5)
+│   ├── channels/       # Channel abstraction — base adapter, manager, user linking (Phase 5)
+│   ├── skills/         # Skill runtime — universal adapter, security scanner, tool bridge (Phase 5)
 │   ├── security/       # Auth, sandbox, audit, encryption
 │   ├── persona/        # Emotion detection + persona engine
 │   ├── config/         # Centralized settings

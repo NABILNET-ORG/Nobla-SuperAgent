@@ -10,6 +10,7 @@ from typing import Awaitable, Callable
 
 import structlog
 
+from nobla.events.models import NoblaEvent
 from nobla.security.audit import AuditEntry
 from nobla.security.permissions import InsufficientPermissions, PermissionChecker, Tier
 from nobla.tools.approval import ApprovalManager
@@ -30,6 +31,7 @@ class ToolExecutor:
         approval_manager: ApprovalManager,
         connection_manager=None,
         max_concurrent: int = 5,
+        event_bus=None,
     ):
         self.registry = registry
         self.checker = permission_checker
@@ -39,6 +41,7 @@ class ToolExecutor:
         self._max_concurrent = max_concurrent
         self._semaphore = asyncio.Semaphore(max_concurrent)
         self._running_tasks: set[asyncio.Task] = set()
+        self._event_bus = event_bus
 
     async def execute(self, tool_name: str, params: ToolParams) -> ToolResult:
         start = time.monotonic()
@@ -89,6 +92,7 @@ class ToolExecutor:
                 )
 
         # 5. Execute (with concurrency control and task tracking)
+        correlation_id = str(uuid.uuid4())
         async with self._semaphore:
             task = asyncio.current_task()
             if task:
@@ -100,21 +104,32 @@ class ToolExecutor:
                     (time.monotonic() - start) * 1000
                 )
                 await self._audit(tool, params, "success", start)
+                await self._emit_tool_event(
+                    "tool.executed", tool, params, result, correlation_id,
+                )
                 return result
             except asyncio.CancelledError:
                 await self._audit(tool, params, "killed", start)
-                return ToolResult(
+                result = ToolResult(
                     success=False,
                     error="Tool execution cancelled by kill switch",
                     execution_time_ms=int((time.monotonic() - start) * 1000),
                 )
+                await self._emit_tool_event(
+                    "tool.failed", tool, params, result, correlation_id,
+                )
+                return result
             except Exception as exc:
                 await self._audit(tool, params, "execution_error", start)
-                return ToolResult(
+                result = ToolResult(
                     success=False,
                     error=f"Tool execution failed: {exc}",
                     execution_time_ms=int((time.monotonic() - start) * 1000),
                 )
+                await self._emit_tool_event(
+                    "tool.failed", tool, params, result, correlation_id,
+                )
+                return result
             finally:
                 if task:
                     self._running_tasks.discard(task)
@@ -126,6 +141,31 @@ class ToolExecutor:
             task.cancel()
         self._running_tasks.clear()
         self._semaphore = asyncio.Semaphore(self._max_concurrent)
+
+    async def _emit_tool_event(
+        self, event_type: str, tool, params: ToolParams,
+        result: ToolResult, correlation_id: str,
+    ) -> None:
+        """Emit a tool.executed or tool.failed event on the event bus."""
+        if self._event_bus is None:
+            return
+        event = NoblaEvent(
+            event_type=event_type,
+            source=f"tool.{tool.name}",
+            payload={
+                "tool_name": tool.name,
+                "category": tool.category.value,
+                "success": result.success,
+                "execution_time_ms": result.execution_time_ms,
+                "error": result.error,
+            },
+            user_id=params.connection_state.user_id,
+            correlation_id=correlation_id,
+        )
+        try:
+            await self._event_bus.emit(event)
+        except Exception:
+            logger.warning("Failed to emit %s event for %s", event_type, tool.name)
 
     async def _audit(self, tool, params: ToolParams, status: str, start: float):
         latency = int((time.monotonic() - start) * 1000)

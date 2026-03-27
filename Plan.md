@@ -401,6 +401,15 @@ TIER 4: ADMIN
 ### Phase 5: Channels & Integrations (Weeks 17-20)
 **Goal:** Connect to every messaging platform + productivity tools.
 
+**Phase 5-Foundation (Complete — 106 tests):**
+- [x] Event Bus — NoblaEvent frozen dataclass, NoblaEventBus with async pub/sub, fnmatch wildcard subscriptions, priority dispatch, handler isolation, backpressure (10K queue, urgent bypass), start/stop lifecycle with drain (25 tests)
+- [x] Channel Abstraction — BaseChannelAdapter ABC, ChannelMessage/ChannelResponse models, ChannelManager (register/unregister, start_all/stop_all, deliver with fallback, broadcast, health check), UserLinkingService (link/unlink/resolve, pairing code flow with 5-min TTL), ChannelConnectionState bridge (31 tests)
+- [x] Skill Runtime — SkillManifest dataclass (enabled=False default), NoblaSkill ABC, SkillToolBridge (wraps skills for ToolRegistry), UniversalSkillAdapter (priority-ordered format detection), NoblaAdapter (native format), SkillRuntime (transactional install with rollback, uninstall, enable/disable, upgrade, event emission), SkillSecurityScanner (dependency blocklist, tier escalation, source code patterns, manifest sanity) (39 tests)
+- [x] Tool Event Wiring — ToolExecutor emits tool.executed/tool.failed events via event bus with correlation_id, wired in gateway lifespan
+- [x] Settings Models — EventBusSettings, ChannelSettings, SkillRuntimeSettings in config/settings.py
+- [x] Gateway Wiring — Event bus inits first in lifespan, channel manager + skill runtime init after tool platform, cleanup on shutdown
+- [x] Integration Tests — End-to-end event bus → channel manager → skill runtime pipeline (11 tests)
+
 **Messaging Channels:**
 - [ ] Telegram bot
 - [ ] Discord bot

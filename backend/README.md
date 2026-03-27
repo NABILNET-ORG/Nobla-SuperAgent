@@ -11,9 +11,12 @@ Python 3.12+ / FastAPI backend for [Nobla Agent](https://github.com/NABILNET-ORG
 | `nobla/memory/` | 5-layer memory engine — episodic (PostgreSQL), semantic (ChromaDB), procedural, knowledge graph (NetworkX), working memory |
 | `nobla/voice/` | STT (Whisper + Levantine Arabic), TTS (Fish Speech, CosyVoice, PersonaPlex), VAD, language detection |
 | `nobla/tools/` | Tool platform — BaseTool ABC, registry, executor, approval manager. Includes vision, control, code, remote, and search tools |
+| `nobla/events/` | Async event bus — pub/sub with fnmatch wildcards, priority dispatch, backpressure (10K queue, urgent bypass) |
+| `nobla/channels/` | Channel abstraction — BaseChannelAdapter ABC, ChannelManager (lifecycle, delivery routing, health), UserLinkingService (pairing codes, multi-channel identity) |
+| `nobla/skills/` | Skill runtime — UniversalSkillAdapter (format detection), SkillSecurityScanner (blocklist, tier escalation, source patterns), SkillToolBridge (registry integration) |
 | `nobla/security/` | Auth (JWT + OAuth + API Key), sandbox (Docker/gVisor), audit (OpenTelemetry), permissions (4-tier), kill switch |
 | `nobla/persona/` | Emotion detection, persona engine, prompt builder, PersonaPlex integration |
-| `nobla/config/` | Centralized Pydantic settings (server, LLM, database, memory, auth, sandbox, voice, persona, tools, vision, computer control, remote control) |
+| `nobla/config/` | Centralized Pydantic settings (server, LLM, database, memory, auth, sandbox, voice, persona, tools, vision, computer control, remote control, event bus, channels, skills) |
 | `nobla/db/` | SQLAlchemy models, repository pattern |
 
 ## Setup
@@ -36,12 +39,16 @@ uvicorn nobla.main:app --reload --host 0.0.0.0 --port 8000
 pytest tests/ -v --cov=nobla
 ```
 
-95 test files across unit and integration tests. Key test areas:
+100+ test files across unit and integration tests. Key test areas:
 - Security: auth, permissions, sandbox, kill switch, audit
 - Brain: router, providers, circuit breakers, streaming
 - Memory: all 5 layers, consolidation, retrieval
 - Voice: STT, TTS, VAD, pipeline, language detection
 - Tools: platform (registry, executor, approval), vision, control, code execution, remote control (SSH/SFTP)
+- Events: event bus pub/sub, wildcards, priority, backpressure, overflow (25 tests)
+- Channels: adapter lifecycle, manager routing, user linking, pairing codes (31 tests)
+- Skills: manifest models, adapter detection, runtime install/uninstall/upgrade, security scanner (39 tests)
+- Integration: cross-component event pipeline, tool→bus→subscriber, handler isolation (11 tests)
 - Gateway: WebSocket, chat flow, RPC handlers
 
 ## Configuration
@@ -70,6 +77,13 @@ VOICE__STT_MODEL=large-v3
 REMOTE_CONTROL__ENABLED=true
 REMOTE_CONTROL__ALLOWED_HOSTS=["prod.example.com"]
 REMOTE_CONTROL__ALLOWED_USERS=["deploy"]
+
+# Event bus (Phase 5-Foundation)
+EVENT_BUS__MAX_QUEUE_DEPTH=10000
+
+# Skills (Phase 5-Foundation)
+SKILL_RUNTIME__SKILLS_DIR=skills/
+SKILL_RUNTIME__MAX_INSTALLED=100
 ```
 
 ## Docker

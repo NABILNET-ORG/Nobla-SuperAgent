@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Nobla Agent** is an open-source, privacy-first AI super agent that unifies 35+ AI agent projects while fixing their security vulnerabilities. Currently in **active development** — Phases 1-3 + Phase 4-Pre + Phase 4A + Phase 4B + Phase 4C + Phase 4D complete. Phase 4E design complete (implementation pending).
+**Nobla Agent** is an open-source, privacy-first AI super agent that unifies 35+ AI agent projects while fixing their security vulnerabilities. Currently in **active development** — Phases 1-3 + Phase 4 + Phase 5-Foundation complete. Phase 4E design complete (implementation pending).
 
 - **PRD.md** — Full product requirements, competitive analysis, feature specs
 - **Plan.md** — 7-phase development roadmap with detailed task breakdowns
@@ -20,6 +20,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Phase 4C**: Code Execution — code.run, code.install_package, code.generate, code.debug, git.ops (110 tests)
 - **Phase 4D**: Remote Control — ssh.connect, ssh.exec, sftp.manage (116 tests)
 - **Phase 4E**: Flutter Tool UI — design complete, implementation pending (screen mirror, activity feed, tool browser)
+- **Phase 5-Foundation**: Event bus, channel abstraction, skill runtime, tool event wiring (106 tests)
 
 ## Architecture (Two Codebases)
 
@@ -90,7 +91,9 @@ nobla-agent/
 │   │   ├── remote/     # Remote control: SSH connect, exec, SFTP manage (Phase 4D)
 │   │   └── search/     # AI search engine (Phase 2B)
 │   ├── security/       # Auth (JWT), sandbox (Docker/gVisor), audit (OpenTelemetry), encryption (AES-256)
-│   ├── channels/       # 20+ platforms (Telegram, Discord, WhatsApp, Slack, etc.)
+│   ├── events/         # Event bus: async pub/sub, wildcard subscriptions, priority dispatch (Phase 5)
+│   ├── channels/       # Channel abstraction: base adapter, manager, user linking, bridge (Phase 5)
+│   ├── skills/         # Skill runtime: universal adapter, security scanner, tool bridge (Phase 5)
 │   ├── agents/         # Multi-agent orchestrator (cloning, A2A protocol, MCP)
 │   └── automation/     # APScheduler cron, webhooks, workflows
 ├── app/lib/
@@ -126,7 +129,7 @@ The Levantine model (`ggml-levantine-large-v3.bin`) should be moved to `backend/
 2. **Phase 2** (Weeks 5-8): Intelligence Core — Multi-LLM router, memory system, search ✅
 3. **Phase 3** (Weeks 9-12): Voice & Persona — STT/TTS, PersonaPlex, avatar ✅
 4. **Phase 4** (Weeks 13-16): Computer Control — Screen vision, mouse/keyboard, code sandbox (**4-Pre ✅, 4A ✅, 4B ✅, 4C ✅, 4D ✅, 4E design ✅**)
-5. **Phase 5** (Weeks 17-20): Channels & Integrations — 20+ messaging platforms
+5. **Phase 5** (Weeks 17-20): Channels & Integrations — 20+ messaging platforms (**5-Foundation ✅**)
 6. **Phase 6** (Weeks 21-24): Automation & Multi-Agent — Cron, workflows, agent cloning, MCP
 7. **Phase 7** (Weeks 25-32): Full Feature Set — Media, finance, health, social, smart home
 
@@ -139,6 +142,12 @@ The Levantine model (`ggml-levantine-large-v3.bin`) should be moved to `backend/
 | 4B: Computer Control | ✅ Complete | mouse.control, keyboard.control, file.manage, app.control, clipboard.manage (191 tests) |
 | 4D: Remote Control | ✅ Complete | ssh.connect, ssh.exec, sftp.manage (116 tests) |
 | 4E: Flutter Tool UI | Design Complete | Screen mirror, activity feed, tool browser — 12-task implementation plan ready |
+
+### Phase 5 Sub-phases
+| Sub-phase | Status | Scope |
+|-----------|--------|-------|
+| 5-Foundation | ✅ Complete | Event bus (pub/sub, wildcards, priority, backpressure), channel abstraction (base adapter, manager, user linking, bridge), skill runtime (universal adapter, security scanner, tool bridge), tool event wiring, settings models (106 tests) |
+| 5-Channels | Pending | 20+ platform adapters (Telegram, Discord, WhatsApp, Slack, etc.) |
 
 ## Claude Code Plugins & Skills for Development
 

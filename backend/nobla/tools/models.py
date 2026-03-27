@@ -20,6 +20,7 @@ class ToolCategory(str, Enum):
     SSH = "ssh"
     CLIPBOARD = "clipboard"
     SEARCH = "search"
+    SKILL = "skill"  # Catch-all for marketplace skill categories
 
 
 class ApprovalStatus(str, Enum):
