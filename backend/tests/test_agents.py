@@ -27,7 +27,9 @@ from nobla.agents.models import (
 )
 from nobla.agents.base import BaseAgent
 from nobla.agents.registry import AgentRegistry
+from nobla.agents.executor import AgentExecutor
 from nobla.agents.workspace import AgentWorkspace
+from nobla.events.bus import NoblaEventBus
 from nobla.security.permissions import Tier
 
 
@@ -431,3 +433,152 @@ class TestAgentWorkspace:
         ws = self._make_workspace(isolation=IsolationLevel.SHARED_READWRITE)
         # Should not raise (memory_orchestrator is None so it's a no-op)
         await ws.store_shared("pool-1", "key", "value")
+
+
+# ── Executor tests ───────────────────────────────────────────
+
+
+class TestAgentExecutor:
+    def _make_executor(self, max_concurrent=10) -> tuple[AgentExecutor, AgentRegistry, NoblaEventBus]:
+        registry = AgentRegistry()
+        registry.register(
+            _StubAgent,
+            AgentConfig(
+                name="stub", description="A stub", role="Stub role",
+                tier=Tier.STANDARD, allowed_tools=["search.web"],
+            ),
+        )
+        event_bus = NoblaEventBus(max_queue_depth=100)
+        mock_tool_registry = MagicMock()
+        mock_tool_executor = AsyncMock()
+        mock_tool_executor.execute.return_value = MagicMock(success=True)
+        mock_router = AsyncMock()
+
+        executor = AgentExecutor(
+            registry=registry,
+            tool_registry=mock_tool_registry,
+            tool_executor=mock_tool_executor,
+            event_bus=event_bus,
+            router=mock_router,
+            max_concurrent_agents=max_concurrent,
+        )
+        return executor, registry, event_bus
+
+    @pytest.mark.asyncio
+    async def test_spawn_creates_instance(self):
+        executor, _, bus = self._make_executor()
+        await bus.start()
+        agent = await executor.spawn("stub", user_tier=Tier.STANDARD)
+        assert agent.instance_id is not None
+        assert agent.status == AgentStatus.IDLE
+        assert agent.workspace is not None
+        assert agent.name == "stub"
+        await bus.stop()
+
+    @pytest.mark.asyncio
+    async def test_spawn_unknown_agent_raises(self):
+        executor, _, bus = self._make_executor()
+        await bus.start()
+        with pytest.raises(ValueError, match="not registered"):
+            await executor.spawn("nonexistent", user_tier=Tier.STANDARD)
+        await bus.stop()
+
+    @pytest.mark.asyncio
+    async def test_spawn_tier_validation(self):
+        executor, _, bus = self._make_executor()
+        await bus.start()
+        executor._registry.register(
+            _StubAgent,
+            AgentConfig(
+                name="elevated", description="e", role="e",
+                tier=Tier.ELEVATED,
+            ),
+        )
+        with pytest.raises(PermissionError, match="tier"):
+            await executor.spawn("elevated", user_tier=Tier.STANDARD)
+        await bus.stop()
+
+    @pytest.mark.asyncio
+    async def test_stop_agent(self):
+        executor, _, bus = self._make_executor()
+        await bus.start()
+        agent = await executor.spawn("stub", user_tier=Tier.STANDARD)
+        await executor.stop(agent.instance_id)
+        assert executor.get(agent.instance_id) is None
+        await bus.stop()
+
+    @pytest.mark.asyncio
+    async def test_kill_agent(self):
+        executor, _, bus = self._make_executor()
+        await bus.start()
+        agent = await executor.spawn("stub", user_tier=Tier.STANDARD)
+        await executor.kill(agent.instance_id)
+        assert executor.get(agent.instance_id) is None
+        await bus.stop()
+
+    @pytest.mark.asyncio
+    async def test_kill_all(self):
+        executor, _, bus = self._make_executor()
+        await bus.start()
+        await executor.spawn("stub", user_tier=Tier.STANDARD)
+        await executor.spawn("stub", user_tier=Tier.STANDARD)
+        assert len(executor.list_running()) == 2
+        await executor.kill_all()
+        assert len(executor.list_running()) == 0
+        await bus.stop()
+
+    @pytest.mark.asyncio
+    async def test_stop_all(self):
+        executor, _, bus = self._make_executor()
+        await bus.start()
+        await executor.spawn("stub", user_tier=Tier.STANDARD)
+        await executor.spawn("stub", user_tier=Tier.STANDARD)
+        await executor.stop_all()
+        assert len(executor.list_running()) == 0
+        await bus.stop()
+
+    @pytest.mark.asyncio
+    async def test_list_running(self):
+        executor, _, bus = self._make_executor()
+        await bus.start()
+        a1 = await executor.spawn("stub", user_tier=Tier.STANDARD)
+        a2 = await executor.spawn("stub", user_tier=Tier.STANDARD)
+        running = executor.list_running()
+        assert len(running) == 2
+        ids = {r["instance_id"] for r in running}
+        assert a1.instance_id in ids
+        assert a2.instance_id in ids
+        await bus.stop()
+
+    @pytest.mark.asyncio
+    async def test_concurrency_limit(self):
+        executor, _, bus = self._make_executor(max_concurrent=1)
+        await bus.start()
+        await executor.spawn("stub", user_tier=Tier.STANDARD)
+        with pytest.raises(RuntimeError, match="concurrent"):
+            await executor.spawn("stub", user_tier=Tier.STANDARD)
+        await bus.stop()
+
+    @pytest.mark.asyncio
+    async def test_spawn_emits_event(self):
+        executor, _, bus = self._make_executor()
+        await bus.start()
+        captured = []
+        bus.subscribe("agent.spawned", lambda e: captured.append(e))
+        await executor.spawn("stub", user_tier=Tier.STANDARD)
+        await asyncio.sleep(0.05)
+        assert len(captured) == 1
+        assert captured[0].event_type == "agent.spawned"
+        await bus.stop()
+
+    @pytest.mark.asyncio
+    async def test_stop_emits_event(self):
+        executor, _, bus = self._make_executor()
+        await bus.start()
+        agent = await executor.spawn("stub", user_tier=Tier.STANDARD)
+        captured = []
+        bus.subscribe("agent.stopped", lambda e: captured.append(e))
+        await executor.stop(agent.instance_id)
+        await asyncio.sleep(0.05)
+        assert len(captured) == 1
+        await bus.stop()
