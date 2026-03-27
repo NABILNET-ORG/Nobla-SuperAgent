@@ -464,19 +464,26 @@ TIER 4: ADMIN
 - [ ] Web scraping: automated data collection from websites
 - [ ] Form filling: auto-complete web forms
 
-**Multi-Agent System:**
-- [ ] Agent cloning: spawn multiple instances for parallel work
-- [ ] Sub-agents: specialized agents for specific tasks
-- [ ] Agent-to-Agent communication (A2A protocol)
-- [ ] Role-based agents (CrewAI-style): researcher, coder, reviewer
-- [ ] Shared memory between agents (configurable isolation)
-- [ ] Agent orchestrator: coordinate multi-agent workflows
-- [ ] Independent agent workspaces
+**Multi-Agent System (v2 complete — 148 tests):**
+- [x] Agent cloning: spawn multiple instances for parallel work
+- [x] Sub-agents: specialized agents for specific tasks
+- [x] Agent-to-Agent communication (A2A protocol)
+- [x] Role-based agents (CrewAI-style): researcher, coder
+- [x] Shared memory between agents (configurable isolation)
+- [x] Agent orchestrator: coordinate multi-agent workflows
+- [x] Independent agent workspaces (scoped tool/memory sandbox)
+- [x] Parallel execution: dependency-aware task tiers with asyncio.gather
+- [x] Depth-limited delegation: sub-workflow spawn with depth checking
+- [x] Capability discovery: query/response via Future pattern over event bus
+- [x] Task dependency graphs: topological sort, cascade failure on dependency errors
 
-**MCP Integration:**
-- [ ] MCP Client: connect to external MCP servers
-- [ ] MCP Server: expose Nobla capabilities to other tools
-- [ ] Dynamic tool discovery via MCP
+**MCP Integration (v2 complete — real transports):**
+- [x] MCP Client: connect to external MCP servers
+- [x] MCP Server: expose Nobla capabilities to other tools
+- [x] Dynamic tool discovery via MCP
+- [x] Stdio transport: subprocess JSON-RPC 2.0, async read loop, process lifecycle
+- [x] SSE transport: httpx stream, HTTP POST requests, endpoint discovery
+- [x] MCP Server endpoints: FastAPI router with /mcp/sse + /mcp/message
 - [ ] MCP marketplace: discover and install MCP servers
 
 **Community Marketplace (Skills + Plugins):**

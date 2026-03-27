@@ -41,7 +41,7 @@ FastAPI Gateway (Python 3.12+)
     |     +-- Telegram adapter (polling + webhook, MarkdownV2)
     |     +-- Discord adapter (WebSocket gateway, ui.Button views)
     +-- Automation: NL Scheduled Tasks (dateparser + recurrent + APScheduler + LLM interpreter)
-    +-- Agents: Multi-agent orchestrator (A2A protocol, MCP client/server, workspace isolation)
+    +-- Agents: Multi-agent orchestrator (parallel tiers, A2A protocol, capability discovery, MCP stdio/SSE)
     +-- Skills: Runtime skill marketplace (install, security scan, universal adapter)
     +-- Security: 4-tier permissions, sandbox, audit trail, kill switch
     +-- Persona: Emotion-aware response styling with customizable personalities
@@ -55,7 +55,7 @@ FastAPI Gateway (Python 3.12+)
 
 ## Current Status
 
-Nobla Agent is in **active development**. Phases 1-4E + Phase 5A + Phase 6 (NL Scheduler + Multi-Agent System) complete. 530 tests passing (85 Flutter + 445 backend).
+Nobla Agent is in **active development**. Phases 1-4E + Phase 5A + Phase 6 (NL Scheduler + Multi-Agent System v2) complete. 586 tests passing (85 Flutter + 501 backend).
 
 | Phase | Status | Scope |
 |-------|--------|-------|
@@ -72,7 +72,7 @@ Nobla Agent is in **active development**. Phases 1-4E + Phase 5A + Phase 6 (NL S
 | **Phase 5A**: Telegram + Discord | Complete | Telegram adapter (polling + webhook), Discord adapter (WebSocket gateway), MarkdownV2/Markdown formatting, media handlers, pairing/linking, group mention-only, inline buttons (173 tests) |
 | **Phase 5**: Channels | In Progress | 15 remaining platform adapters (WhatsApp, Slack, Signal, Teams, etc.) |
 | **Phase 6**: NL Scheduler | Complete | NLP time parser (dateparser + recurrent), LLM task interpreter, APScheduler wrapper, user confirmation flow (76 tests) |
-| **Phase 6**: Multi-Agent System | Complete | BaseAgent ABC, registry, executor, orchestrator, A2A protocol, workspace isolation, task decomposer, MCP client/server, bridge/cloning, researcher + coder agents (92 tests) |
+| **Phase 6**: Multi-Agent System v2 | Complete | Parallel orchestrator (dependency tiers, asyncio.gather), A2A protocol + capability discovery, depth-limited delegation, MCP client (stdio + SSE), MCP server (FastAPI SSE endpoints), dependency-aware task decomposer, workspace isolation, bridge/cloning, researcher + coder agents (148 tests) |
 | **Phase 6**: Automation | In Progress | Webhooks, workflows, community marketplace |
 | **Phase 7**: Full Feature Set | Planned | Media, finance, health, social, smart home tools |
 

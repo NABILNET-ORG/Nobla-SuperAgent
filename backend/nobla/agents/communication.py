@@ -27,6 +27,7 @@ class A2AProtocol:
     def __init__(self, event_bus: NoblaEventBus) -> None:
         self._event_bus = event_bus
         self._pending: dict[str, asyncio.Future[AgentTask]] = {}
+        self._pending_caps: dict[str, asyncio.Future[dict]] = {}
 
         # Subscribe to result/error events to resolve futures
         self._event_bus.subscribe(
@@ -34,6 +35,9 @@ class A2AProtocol:
         )
         self._event_bus.subscribe(
             f"{EVENT_PREFIX}.task.error", self._on_task_complete,
+        )
+        self._event_bus.subscribe(
+            f"{EVENT_PREFIX}.capability.response", self._on_capability_response,
         )
 
     async def send_task(
@@ -91,14 +95,29 @@ class A2AProtocol:
         ))
 
     async def query_capabilities(
-        self, sender: str, recipient: str,
+        self, sender: str, recipient: str, timeout: float = 30,
     ) -> dict:
-        """Query an agent's capabilities. Deferred to Phase 6 v2.
+        """Query an agent's capabilities via Future pattern.
 
-        TODO(phase6-v2): Implement request/response via Future pattern
-        using agent.a2a.capability.query / agent.a2a.capability.response events.
+        Emits a capability.query event and waits for the matching
+        capability.response event from the recipient agent.
         """
-        raise NotImplementedError("Capability discovery deferred to v2")
+        correlation_id = f"cap-{sender}-{recipient}"
+        loop = asyncio.get_running_loop()
+        future: asyncio.Future[dict] = loop.create_future()
+        self._pending_caps[correlation_id] = future
+
+        await self._event_bus.emit(NoblaEvent(
+            event_type=f"{EVENT_PREFIX}.capability.query",
+            source=f"agent.{sender}",
+            payload={"sender": sender, "recipient": recipient},
+            correlation_id=correlation_id,
+        ))
+
+        try:
+            return await asyncio.wait_for(future, timeout=timeout)
+        finally:
+            self._pending_caps.pop(correlation_id, None)
 
     async def wait_for_result(
         self, task_id: str, timeout: float = 300,
@@ -122,3 +141,12 @@ class A2AProtocol:
         task_data = event.payload.get("task", {})
         task = AgentTask.model_validate(task_data)
         future.set_result(task)
+
+    async def _on_capability_response(self, event: NoblaEvent) -> None:
+        cid = event.correlation_id
+        if not cid:
+            return
+        future = self._pending_caps.get(cid)
+        if future is None or future.done():
+            return
+        future.set_result(event.payload.get("capabilities", {}))

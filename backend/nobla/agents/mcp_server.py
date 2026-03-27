@@ -2,12 +2,16 @@
 
 External clients connect via SSE and invoke Nobla capabilities.
 Tools are opt-in via expose_tool()/expose_agent().
+Serves HTTP+SSE transport via FastAPI router.
 """
 
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
-from typing import TYPE_CHECKING
+import uuid
+from typing import TYPE_CHECKING, Any
 
 from nobla.security.permissions import Tier
 
@@ -43,6 +47,8 @@ class MCPServer:
         self._exposed_tools: set[str] = set()
         self._exposed_agents: set[str] = set()
 
+        self._clients: dict[str, asyncio.Queue[str]] = {}
+
     async def start(self) -> None:
         if self._event_bus:
             from nobla.events.models import NoblaEvent
@@ -54,6 +60,9 @@ class MCPServer:
         logger.info("mcp_server_started on %s:%d", self._host, self._port)
 
     async def stop(self) -> None:
+        for q in self._clients.values():
+            await q.put("")  # signal close
+        self._clients.clear()
         logger.info("mcp_server_stopped")
 
     def expose_tool(self, tool_name: str) -> None:
@@ -135,3 +144,95 @@ class MCPServer:
             return {"success": False, "error": f"Tool '{tool_name}' not exposed"}
 
         return {"success": False, "error": "Direct tool execution via MCP not yet implemented"}
+
+    # ── JSON-RPC dispatch ──
+
+    async def dispatch(
+        self, method: str, params: dict, client_id: str,
+    ) -> dict[str, Any]:
+        """Route a JSON-RPC method to the appropriate handler."""
+        if method == "initialize":
+            return await self.handle_initialize(params)
+        if method == "tools/list":
+            return {"tools": await self.handle_tools_list()}
+        if method == "tools/call":
+            return await self.handle_tools_call(
+                params.get("name", ""),
+                params.get("arguments", {}),
+                client_id,
+            )
+        return {"error": {"code": -32601, "message": f"Unknown method: {method}"}}
+
+    def _send_to_client(self, client_id: str, msg: dict) -> None:
+        q = self._clients.get(client_id)
+        if q is not None:
+            q.put_nowait(json.dumps(msg))
+
+    # ── FastAPI router ──
+
+    def create_router(self) -> Any:
+        """Return a FastAPI APIRouter with /sse and /message endpoints."""
+        from fastapi import APIRouter, Request
+        from fastapi.responses import StreamingResponse
+
+        router = APIRouter(prefix="/mcp", tags=["mcp"])
+
+        @router.get("/sse")
+        async def sse_endpoint(request: Request) -> StreamingResponse:
+            client_id = str(uuid.uuid4())
+            queue: asyncio.Queue[str] = asyncio.Queue()
+            self._clients[client_id] = queue
+
+            async def event_stream():
+                # First event: tell client where to POST messages
+                yield (
+                    f"event: endpoint\n"
+                    f"data: /mcp/message?client_id={client_id}\n\n"
+                )
+                try:
+                    while True:
+                        if await request.is_disconnected():
+                            break
+                        try:
+                            data = await asyncio.wait_for(
+                                queue.get(), timeout=30,
+                            )
+                        except asyncio.TimeoutError:
+                            yield ": keepalive\n\n"
+                            continue
+                        if not data:
+                            break
+                        yield f"event: message\ndata: {data}\n\n"
+                finally:
+                    self._clients.pop(client_id, None)
+
+            return StreamingResponse(
+                event_stream(), media_type="text/event-stream",
+            )
+
+        @router.post("/message")
+        async def message_endpoint(
+            request: Request, client_id: str = "",
+        ) -> dict:
+            body = await request.json()
+            req_id = body.get("id")
+            method = body.get("method", "")
+            params = body.get("params", {})
+
+            result = await self.dispatch(method, params, client_id)
+
+            # Notifications have no id — no response needed
+            if req_id is None:
+                return {"jsonrpc": "2.0", "result": "ok"}
+
+            response = {"jsonrpc": "2.0", "id": req_id}
+            if "error" in result and isinstance(result["error"], dict):
+                response["error"] = result["error"]
+            else:
+                response["result"] = result
+
+            # Also push via SSE stream
+            self._send_to_client(client_id, response)
+            return response
+
+        return router

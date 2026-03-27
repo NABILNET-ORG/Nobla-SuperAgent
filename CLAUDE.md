@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Nobla Agent** is an open-source, privacy-first AI super agent that unifies 35+ AI agent projects while fixing their security vulnerabilities. Currently in **active development** — Phases 1-4E + Phase 5A + Phase 6 (NL Scheduler + Multi-Agent System) complete. 530 tests passing (85 Flutter + 445 backend).
+**Nobla Agent** is an open-source, privacy-first AI super agent that unifies 35+ AI agent projects while fixing their security vulnerabilities. Currently in **active development** — Phases 1-4E + Phase 5A + Phase 6 (NL Scheduler + Multi-Agent System v2) complete. 586 tests passing (85 Flutter + 501 backend).
 
 - **PRD.md** — Full product requirements, competitive analysis, feature specs
 - **Plan.md** — 7-phase development roadmap with detailed task breakdowns
@@ -23,7 +23,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Phase 5-Foundation**: Event bus, channel abstraction, skill runtime, tool event wiring (106 tests)
 - **Phase 5A**: Telegram adapter (polling + webhook, 95 tests), Discord adapter (WebSocket gateway, 78 tests)
 - **Phase 6-Scheduler**: NL Scheduled Tasks — dateparser + recurrent + LLM interpreter + APScheduler + confirmation flow (76 tests)
-- **Phase 6-MultiAgent**: Multi-Agent System — BaseAgent ABC, registry, executor, orchestrator, A2A protocol, workspace isolation, task decomposer, bridge/cloning, MCP client/server, researcher + coder agents, gateway wiring with kill switch (92 tests)
+- **Phase 6-MultiAgent**: Multi-Agent System v2 — BaseAgent ABC, registry, executor, parallel orchestrator (dependency tiers + asyncio.gather), A2A protocol with capability discovery, depth-limited delegation, workspace isolation, task decomposer with dependency graphs, bridge/cloning, MCP client (stdio + SSE transports) + MCP server (FastAPI SSE endpoints), researcher + coder agents, gateway wiring with kill switch (148 tests)
 
 ## Architecture (Two Codebases)
 
@@ -160,7 +160,7 @@ The Levantine model (`ggml-levantine-large-v3.bin`) should be moved to `backend/
 | Sub-phase | Status | Scope |
 |-----------|--------|-------|
 | 6-Scheduler: NL Scheduled Tasks | ✅ Complete | NLP time parser (dateparser + recurrent), LLM task interpreter with fallback, APScheduler wrapper (add/remove/pause/resume), user confirmation flow with timeout, scheduler service orchestrator, event bus integration (76 tests) |
-| 6-MultiAgent: Multi-Agent System | ✅ Complete | BaseAgent ABC, AgentRegistry, AgentExecutor, AgentOrchestrator, A2A protocol, AgentWorkspace (scoped isolation), MCPClientManager + MCPServer, TaskDecomposer, AgentToolBridge, cloning, researcher + coder agents, gateway wiring with kill switch (92 tests) |
+| 6-MultiAgent: Multi-Agent System v2 | ✅ Complete | BaseAgent ABC, AgentRegistry, AgentExecutor, parallel orchestrator (dependency tiers, asyncio.gather, cascade failure), A2A protocol + capability discovery (Future pattern), depth-limited delegation, AgentWorkspace, MCPClientManager (stdio + SSE transports, JSON-RPC 2.0), MCPServer (FastAPI SSE endpoints), TaskDecomposer (dependency-aware graphs), AgentToolBridge, cloning, researcher + coder agents, gateway wiring with kill switch + MCP router (148 tests) |
 | 6-Webhooks | Pending | Receive and process external events |
 | 6-Workflows | Pending | Multi-step workflow builder in natural language |
 

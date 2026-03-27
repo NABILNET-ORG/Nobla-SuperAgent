@@ -14,7 +14,7 @@ Python 3.12+ / FastAPI backend for [Nobla Agent](https://github.com/NABILNET-ORG
 | `nobla/events/` | Async event bus — pub/sub with fnmatch wildcards, priority dispatch, backpressure (10K queue, urgent bypass) |
 | `nobla/channels/` | Channel abstraction — BaseChannelAdapter ABC, ChannelManager, UserLinkingService. Includes Telegram adapter (polling + webhook, MarkdownV2) and Discord adapter (WebSocket gateway, ui.Button views) |
 | `nobla/automation/` | NL Scheduled Tasks — NLP time parser (dateparser + recurrent), LLM task interpreter, APScheduler wrapper, user confirmation flow, scheduler service orchestrator |
-| `nobla/agents/` | Multi-agent system (Phase 6) — BaseAgent ABC, AgentRegistry, AgentExecutor, AgentOrchestrator, A2A protocol (Future-based wait), AgentWorkspace (scoped tool/memory isolation), TaskDecomposer (LLM + heuristic), AgentToolBridge, MCPClientManager, MCPServer, built-in agents (researcher, coder), gateway wiring with kill switch |
+| `nobla/agents/` | Multi-agent system v2 (Phase 6) — BaseAgent ABC, AgentRegistry, AgentExecutor, parallel AgentOrchestrator (dependency tiers, asyncio.gather, cascade failure), A2A protocol + capability discovery (Future-based), depth-limited delegation, AgentWorkspace (scoped tool/memory isolation), TaskDecomposer (dependency-aware LLM + heuristic), AgentToolBridge, MCPClientManager (stdio + SSE transports, JSON-RPC 2.0), MCPServer (FastAPI SSE endpoints), built-in agents (researcher, coder), gateway wiring with kill switch + MCP router |
 | `nobla/skills/` | Skill runtime — UniversalSkillAdapter (format detection), SkillSecurityScanner (blocklist, tier escalation, source patterns), SkillToolBridge (registry integration) |
 | `nobla/security/` | Auth (JWT + OAuth + API Key), sandbox (Docker/gVisor), audit (OpenTelemetry), permissions (4-tier), kill switch |
 | `nobla/persona/` | Emotion detection, persona engine, prompt builder, PersonaPlex integration |
@@ -53,7 +53,7 @@ pytest tests/ -v --cov=nobla
 - Discord: settings, formatter, media handler, commands, guild activation, interactions (78 tests)
 - Scheduler: NL parser, interpreter, APScheduler wrapper, confirmation flow, service orchestration (76 tests)
 - Skills: manifest models, adapter detection, runtime install/uninstall/upgrade, security scanner (39 tests)
-- Agents: models/enums, BaseAgent, registry, workspace, executor, A2A protocol, decomposer, orchestrator, bridge/cloning, MCP client/server, researcher, coder, integration (92 tests)
+- Agents: models/enums, BaseAgent, registry, workspace, executor, A2A protocol + capability discovery, parallel orchestrator (dependency tiers, cascade failure), depth-limited delegation, decomposer (dependency graphs), bridge/cloning, MCP client (stdio + SSE), MCP server (FastAPI SSE), researcher, coder, integration (148 tests)
 - Integration: cross-component event pipeline, tool→bus→subscriber, handler isolation (11 tests)
 - Gateway: WebSocket, chat flow, RPC handlers
 

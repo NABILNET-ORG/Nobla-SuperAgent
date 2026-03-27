@@ -59,6 +59,17 @@ class BaseAgent(ABC):
         """Process an assigned task. Return updated task with artifacts/status."""
         ...
 
+    def get_capabilities(self) -> dict:
+        """Return a capabilities dict for discovery. Override to customise."""
+        return {
+            "name": self.name,
+            "role": self.role,
+            "description": self.description,
+            "allowed_tools": list(self.config.allowed_tools),
+            "llm_tier": self.config.llm_tier,
+            "max_concurrent_tasks": self.config.max_concurrent_tasks,
+        }
+
     # ── Lifecycle hooks ──
 
     async def on_start(self) -> None:

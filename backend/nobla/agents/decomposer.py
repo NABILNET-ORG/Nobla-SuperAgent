@@ -23,7 +23,12 @@ DECOMPOSE_PROMPT = """You are a task decomposer for a multi-agent system.
 Given a user instruction, break it into a list of tasks that agents can execute.
 Available agents: {agents}
 
-Return JSON: {{"tasks": [{{"instruction": "...", "agent": "agent_name"}}]}}
+Each task has an "id" (short unique label like "t1", "t2") and an optional
+"depends_on" list of ids it must wait for. Tasks without dependencies run in
+parallel.
+
+Return JSON:
+{{"tasks": [{{"id": "t1", "instruction": "...", "agent": "agent_name", "depends_on": []}}]}}
 Only return valid JSON, no other text.
 
 User instruction: {instruction}"""
@@ -59,18 +64,34 @@ class TaskDecomposer:
         )
         response = await self._router.route(prompt, tier="balanced")
 
-        # Parse JSON response
+        # Parse JSON response — build tasks then resolve dependency ids
         data = json.loads(response)
-        tasks = []
-        for item in data.get("tasks", []):
-            tasks.append(AgentTask(
+        raw_items = data.get("tasks", [])
+        if not raw_items:
+            return self._heuristic_decompose(instruction, workflow_id)
+
+        # First pass: create tasks, map LLM-assigned id -> real task_id
+        id_map: dict[str, str] = {}
+        tasks: list[AgentTask] = []
+        for item in raw_items:
+            task = AgentTask(
                 workflow_id=workflow_id,
                 assigner="orchestrator",
                 assignee=item.get("agent", ""),
                 instruction=item.get("instruction", instruction),
-            ))
-        if not tasks:
-            return self._heuristic_decompose(instruction, workflow_id)
+            )
+            llm_id = item.get("id", "")
+            if llm_id:
+                id_map[llm_id] = task.task_id
+            tasks.append(task)
+
+        # Second pass: resolve depends_on from LLM ids to real task_ids
+        for item, task in zip(raw_items, tasks):
+            for dep in item.get("depends_on", []):
+                real_id = id_map.get(dep)
+                if real_id:
+                    task.depends_on.append(real_id)
+
         return tasks
 
     def _heuristic_decompose(

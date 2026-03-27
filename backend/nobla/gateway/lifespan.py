@@ -525,6 +525,22 @@ async def lifespan(app: FastAPI):
             ks.on_hard_kill(agent_executor.kill_all)
 
         await agent_orchestrator.start()
+
+        # MCP server — expose agents/tools via HTTP+SSE
+        if settings.agents.mcp_server.enabled:
+            from nobla.agents.mcp_server import MCPServer
+            mcp_server = MCPServer(
+                tool_registry=tool_registry,
+                agent_registry=agent_registry,
+                orchestrator=agent_orchestrator,
+                event_bus=event_bus,
+                host=settings.agents.mcp_server.host,
+                port=settings.agents.mcp_server.port,
+            )
+            app.include_router(mcp_server.create_router())
+            await mcp_server.start()
+            logger.info("mcp_server_started")
+
         logger.info("multi_agent_system_started")
     else:
         agent_orchestrator = None

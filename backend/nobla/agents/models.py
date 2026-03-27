@@ -79,6 +79,7 @@ class AgentTask(BaseModel):
     assignee: str
     instruction: str
     status: TaskStatus = TaskStatus.PENDING
+    depends_on: list[str] = Field(default_factory=list)
     artifacts: list[dict[str, Any]] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     deadline: datetime | None = None
@@ -109,3 +110,52 @@ class WorkflowState:
     status: str
     depth: int
     created_at: datetime
+
+
+def topological_sort_tasks(tasks: list[AgentTask]) -> list[list[AgentTask]]:
+    """Group tasks into execution tiers via Kahn's algorithm.
+
+    Each tier is a list of tasks whose dependencies are satisfied by all
+    preceding tiers. Tasks within a tier can run in parallel.
+
+    Raises ``ValueError`` on cycles or missing dependency references.
+    """
+    if not tasks:
+        return []
+
+    by_id: dict[str, AgentTask] = {t.task_id: t for t in tasks}
+    valid_ids = set(by_id)
+
+    # Validate all dependency refs exist
+    for t in tasks:
+        bad = set(t.depends_on) - valid_ids
+        if bad:
+            raise ValueError(f"Task {t.task_id!r} depends on unknown tasks: {bad}")
+
+    in_degree: dict[str, int] = {t.task_id: 0 for t in tasks}
+    dependents: dict[str, list[str]] = {t.task_id: [] for t in tasks}
+    for t in tasks:
+        for dep_id in t.depends_on:
+            in_degree[t.task_id] += 1
+            dependents[dep_id].append(t.task_id)
+
+    tiers: list[list[AgentTask]] = []
+    ready = [tid for tid, deg in in_degree.items() if deg == 0]
+
+    visited = 0
+    while ready:
+        tier = [by_id[tid] for tid in ready]
+        tiers.append(tier)
+        visited += len(tier)
+        next_ready: list[str] = []
+        for tid in ready:
+            for child in dependents[tid]:
+                in_degree[child] -= 1
+                if in_degree[child] == 0:
+                    next_ready.append(child)
+        ready = next_ready
+
+    if visited != len(tasks):
+        raise ValueError("Cycle detected in task dependency graph")
+
+    return tiers
