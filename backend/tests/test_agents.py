@@ -27,6 +27,7 @@ from nobla.agents.models import (
 )
 from nobla.agents.base import BaseAgent
 from nobla.agents.registry import AgentRegistry
+from nobla.agents.communication import A2AProtocol
 from nobla.agents.executor import AgentExecutor
 from nobla.agents.workspace import AgentWorkspace
 from nobla.events.bus import NoblaEventBus
@@ -581,4 +582,119 @@ class TestAgentExecutor:
         await executor.stop(agent.instance_id)
         await asyncio.sleep(0.05)
         assert len(captured) == 1
+        await bus.stop()
+
+
+# ── A2A Protocol tests ───────────────────────────────────────
+
+
+class TestA2AProtocol:
+    @pytest.mark.asyncio
+    async def test_send_task_emits_event(self):
+        bus = NoblaEventBus(max_queue_depth=100)
+        await bus.start()
+        protocol = A2AProtocol(event_bus=bus)
+
+        captured = []
+        bus.subscribe("agent.a2a.task.assign", lambda e: captured.append(e))
+
+        task = AgentTask(
+            workflow_id="wf-1", assigner="orch",
+            assignee="agent-1", instruction="Search",
+        )
+        await protocol.send_task("orch", "agent-1", task)
+        await asyncio.sleep(0.05)
+        assert len(captured) == 1
+        assert captured[0].payload["task"]["instruction"] == "Search"
+        await bus.stop()
+
+    @pytest.mark.asyncio
+    async def test_send_result_emits_event(self):
+        bus = NoblaEventBus(max_queue_depth=100)
+        await bus.start()
+        protocol = A2AProtocol(event_bus=bus)
+
+        captured = []
+        bus.subscribe("agent.a2a.task.result", lambda e: captured.append(e))
+
+        task = AgentTask(
+            workflow_id="wf-1", assigner="orch",
+            assignee="agent-1", instruction="x",
+            status=TaskStatus.COMPLETED,
+            artifacts=[{"type": "text", "content": "done"}],
+        )
+        await protocol.send_result("agent-1", task)
+        await asyncio.sleep(0.05)
+        assert len(captured) == 1
+        await bus.stop()
+
+    @pytest.mark.asyncio
+    async def test_send_error_emits_event(self):
+        bus = NoblaEventBus(max_queue_depth=100)
+        await bus.start()
+        protocol = A2AProtocol(event_bus=bus)
+
+        captured = []
+        bus.subscribe("agent.a2a.task.error", lambda e: captured.append(e))
+
+        task = AgentTask(
+            workflow_id="wf-1", assigner="orch",
+            assignee="agent-1", instruction="x",
+        )
+        await protocol.send_error("agent-1", task, "Something broke")
+        await asyncio.sleep(0.05)
+        assert len(captured) == 1
+        assert captured[0].payload["error"] == "Something broke"
+        await bus.stop()
+
+    @pytest.mark.asyncio
+    async def test_wait_for_result_resolves(self):
+        bus = NoblaEventBus(max_queue_depth=100)
+        await bus.start()
+        protocol = A2AProtocol(event_bus=bus)
+
+        task = AgentTask(
+            task_id="task-123", workflow_id="wf-1",
+            assigner="orch", assignee="a", instruction="x",
+        )
+
+        async def _deliver_result():
+            await asyncio.sleep(0.05)
+            completed = task.model_copy(update={"status": TaskStatus.COMPLETED})
+            await protocol.send_result("a", completed)
+
+        asyncio.create_task(_deliver_result())
+        result = await protocol.wait_for_result("task-123", timeout=2.0)
+        assert result.status == TaskStatus.COMPLETED
+        await bus.stop()
+
+    @pytest.mark.asyncio
+    async def test_wait_for_result_timeout(self):
+        bus = NoblaEventBus(max_queue_depth=100)
+        await bus.start()
+        protocol = A2AProtocol(event_bus=bus)
+
+        with pytest.raises(asyncio.TimeoutError):
+            await protocol.wait_for_result("nonexistent", timeout=0.1)
+        await bus.stop()
+
+    @pytest.mark.asyncio
+    async def test_wait_for_result_error_resolves(self):
+        bus = NoblaEventBus(max_queue_depth=100)
+        await bus.start()
+        protocol = A2AProtocol(event_bus=bus)
+
+        task = AgentTask(
+            task_id="task-err", workflow_id="wf-1",
+            assigner="orch", assignee="a", instruction="x",
+        )
+
+        async def _deliver_error():
+            await asyncio.sleep(0.05)
+            failed = task.model_copy(update={"status": TaskStatus.FAILED})
+            await protocol.send_error("a", failed, "broke")
+
+        asyncio.create_task(_deliver_error())
+        result = await protocol.wait_for_result("task-err", timeout=2.0)
+        assert result.status == TaskStatus.FAILED
         await bus.stop()
