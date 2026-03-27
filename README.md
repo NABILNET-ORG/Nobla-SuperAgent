@@ -38,6 +38,9 @@ FastAPI Gateway (Python 3.12+)
     +-- Tools: Plugin platform (vision, computer control, code execution, remote control, search, and more)
     +-- Events: Async pub/sub event bus (wildcards, priority dispatch, backpressure)
     +-- Channels: Unified channel abstraction (adapter → manager → user linking)
+    |     +-- Telegram adapter (polling + webhook, MarkdownV2)
+    |     +-- Discord adapter (WebSocket gateway, ui.Button views)
+    +-- Automation: NL Scheduled Tasks (dateparser + recurrent + APScheduler + LLM interpreter)
     +-- Skills: Runtime skill marketplace (install, security scan, universal adapter)
     +-- Security: 4-tier permissions, sandbox, audit trail, kill switch
     +-- Persona: Emotion-aware response styling with customizable personalities
@@ -51,7 +54,7 @@ FastAPI Gateway (Python 3.12+)
 
 ## Current Status
 
-Nobla Agent is in **active development**. Phases 1-4 and Phase 5-Foundation are complete. Phase 4E design complete (implementation pending).
+Nobla Agent is in **active development**. Phases 1-5A complete + Phase 6 NL Scheduler. 344 tests passing.
 
 | Phase | Status | Scope |
 |-------|--------|-------|
@@ -65,8 +68,10 @@ Nobla Agent is in **active development**. Phases 1-4 and Phase 5-Foundation are 
 | **Phase 4D**: Remote Control | Complete | ssh.connect, ssh.exec, sftp.manage — SSH connection pooling, remote exec, SFTP transfers (116 tests) |
 | **Phase 4E**: Flutter Tool UI | Design Complete | Screen mirror, activity feed, tool browser — 12-task plan ready |
 | **Phase 5-Foundation** | Complete | Event bus (pub/sub, wildcards, priority, backpressure), channel abstraction, skill runtime, tool event wiring (106 tests) |
-| **Phase 5**: Channels | In Progress | 20+ messaging platform adapters (Telegram, Discord, WhatsApp, Slack, etc.) |
-| **Phase 6**: Automation | Planned | Cron jobs, workflows, agent cloning, MCP, A2A protocol |
+| **Phase 5A**: Telegram + Discord | Complete | Telegram adapter (polling + webhook), Discord adapter (WebSocket gateway), MarkdownV2/Markdown formatting, media handlers, pairing/linking, group mention-only, inline buttons (173 tests) |
+| **Phase 5**: Channels | In Progress | 15 remaining platform adapters (WhatsApp, Slack, Signal, Teams, etc.) |
+| **Phase 6**: NL Scheduler | Complete | NLP time parser (dateparser + recurrent), LLM task interpreter, APScheduler wrapper, user confirmation flow (76 tests) |
+| **Phase 6**: Automation | In Progress | Webhooks, workflows, agent cloning, MCP, A2A protocol |
 | **Phase 7**: Full Feature Set | Planned | Media, finance, health, social, smart home tools |
 
 ## Quick Start
@@ -129,7 +134,8 @@ nobla-agent/
 │   │   ├── remote/     # Remote control — SSH/SFTP (Phase 4D)
 │   │   └── search/     # AI search engine
 │   ├── events/         # Event bus — async pub/sub, wildcards, priority dispatch (Phase 5)
-│   ├── channels/       # Channel abstraction — base adapter, manager, user linking (Phase 5)
+│   ├── channels/       # Channel abstraction + Telegram + Discord adapters (Phase 5A)
+│   ├── automation/     # NL Scheduled Tasks — parser, interpreter, scheduler, confirmation (Phase 6)
 │   ├── skills/         # Skill runtime — universal adapter, security scanner, tool bridge (Phase 5)
 │   ├── security/       # Auth, sandbox, audit, encryption
 │   ├── persona/        # Emotion detection + persona engine

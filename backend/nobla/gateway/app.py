@@ -229,6 +229,50 @@ async def lifespan(app: FastAPI):
     set_event_bus(event_bus)
     logger.info("channel_abstraction_ready")
 
+    # --- Telegram Adapter (Phase 5A) ---
+    if settings.telegram.enabled and settings.telegram.bot_token:
+        from nobla.channels.telegram.handlers import TelegramHandlers
+        from nobla.channels.telegram.adapter import TelegramAdapter
+
+        tg_handlers = TelegramHandlers(
+            linking=linking_service,
+            event_bus=event_bus,
+            max_file_size_mb=settings.telegram.max_file_size_mb,
+        )
+        tg_adapter = TelegramAdapter(
+            settings=settings.telegram,
+            handlers=tg_handlers,
+        )
+        channel_manager.register(tg_adapter)
+        await tg_adapter.start()
+        logger.info(
+            "telegram_adapter_started",
+            mode=settings.telegram.mode,
+        )
+    else:
+        logger.info("telegram_adapter_disabled")
+
+    # --- Discord Adapter (Phase 5A) ---
+    if settings.discord.enabled and settings.discord.bot_token:
+        from nobla.channels.discord.handlers import DiscordHandlers
+        from nobla.channels.discord.adapter import DiscordAdapter
+
+        dc_handlers = DiscordHandlers(
+            linking=linking_service,
+            event_bus=event_bus,
+            command_prefix=settings.discord.command_prefix,
+            max_file_size_mb=settings.discord.max_file_size_mb,
+        )
+        dc_adapter = DiscordAdapter(
+            settings=settings.discord,
+            handlers=dc_handlers,
+        )
+        channel_manager.register(dc_adapter)
+        await dc_adapter.start()
+        logger.info("discord_adapter_started")
+    else:
+        logger.info("discord_adapter_disabled")
+
     # --- Skill Runtime (Phase 5-Foundation) ---
     from nobla.skills.adapter import UniversalSkillAdapter
     from nobla.skills.adapters.nobla import NoblaAdapter
@@ -391,10 +435,40 @@ async def lifespan(app: FastAPI):
         "ollama": {"display_name": "Ollama (Local)", "auth_methods": ["local"], "model": "llama3.1"},
     })
 
+    # --- NL Scheduled Tasks (Phase 6) ---
+    from nobla.automation.scheduler import NoblaScheduler
+    from nobla.automation.confirmation import ConfirmationManager
+    from nobla.automation.service import SchedulerService
+
+    nl_scheduler = NoblaScheduler(
+        event_bus=event_bus,
+        timezone=settings.scheduler.default_timezone,
+        misfire_grace_seconds=settings.scheduler.misfire_grace_seconds,
+    )
+    confirmation_mgr = ConfirmationManager(
+        event_bus=event_bus,
+        timeout_seconds=settings.scheduler.confirmation_timeout_seconds,
+    )
+    scheduler_service = SchedulerService(
+        scheduler=nl_scheduler,
+        confirmation=confirmation_mgr,
+        router=router,
+        tool_registry=tool_registry,
+        event_bus=event_bus,
+        default_timezone=settings.scheduler.default_timezone,
+        max_tasks_per_user=settings.scheduler.max_tasks_per_user,
+    )
+
+    if settings.scheduler.enabled:
+        await scheduler_service.start()
+        logger.info("scheduler_service_started")
+    else:
+        logger.info("scheduler_service_disabled")
+
     logger.info(
         "nobla_started",
         providers=list(providers.keys()),
-        phase="3B",
+        phase="6",
         security="enabled",
         memory="enabled",
         voice="enabled" if whisper_stt else "disabled",
@@ -404,6 +478,7 @@ async def lifespan(app: FastAPI):
     yield
 
     # Cleanup
+    await scheduler_service.stop()
     await channel_manager.stop_all()
     await event_bus.stop()
     await db.close()

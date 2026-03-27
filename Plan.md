@@ -411,8 +411,8 @@ TIER 4: ADMIN
 - [x] Integration Tests — End-to-end event bus → channel manager → skill runtime pipeline (11 tests)
 
 **Messaging Channels:**
-- [ ] Telegram bot
-- [ ] Discord bot
+- [x] Telegram bot — TelegramAdapter (polling + webhook modes), MarkdownV2 formatter, media handler, /start /link /unlink /status commands, group mention-only activation, inline keyboard for tool approvals, event bus integration (95 tests)
+- [x] Discord bot — DiscordAdapter (persistent WebSocket gateway), discord.ui.Button views, media handler, !start !link !unlink !status commands, guild mention-only activation, interaction handling, event bus integration (78 tests)
 - [ ] WhatsApp (via WhatsApp Business API or Baileys)
 - [ ] Slack bot
 - [ ] Signal (via signal-cli)
@@ -433,7 +433,7 @@ TIER 4: ADMIN
 - [ ] Unified message format across all channels
 - [ ] Media handling: images, audio, video, files across channels
 - [ ] Group chat support with activation modes
-- [ ] Channel-specific formatting (Markdown, Block Kit, etc.)
+- [x] Channel-specific formatting (Markdown, Block Kit, etc.) — Telegram MarkdownV2 escaping, Discord standard Markdown
 - [ ] DM pairing/security (like OpenClaw but better)
 
 **Productivity Integrations:**
@@ -454,7 +454,7 @@ TIER 4: ADMIN
 **Goal:** Workflows, cron jobs, multi-agent collaboration, and community skill/plugin marketplace.
 
 **Automation Engine:**
-- [ ] Cron jobs: schedule recurring tasks with APScheduler
+- [x] NL Scheduled Tasks: hybrid NLP time parser (dateparser + recurrent) + LLM task interpreter + APScheduler execution + user confirmation flow (76 tests)
 - [ ] Webhooks: receive and process external events
 - [ ] Workflow builder: create multi-step workflows in natural language
 - [ ] IFTTT-style triggers: "When X happens, do Y"

@@ -293,6 +293,61 @@ class ChannelSettings(BaseModel):
     pairing_code_length: int = 6
 
 
+class TelegramSettings(BaseModel):
+    """Telegram bot adapter configuration (Phase 5A)."""
+
+    enabled: bool = False
+    bot_token: str = ""
+    mode: str = "polling"  # "polling" or "webhook"
+    webhook_url: str | None = None
+    webhook_secret: str | None = None
+    webhook_path: str = "/webhook/telegram"
+    allowed_updates: list[str] = Field(
+        default_factory=lambda: ["message", "callback_query", "edited_message"]
+    )
+    group_activation: str = "mention"  # "mention" only for now
+    max_file_size_mb: int = 50
+    download_timeout: int = 30
+    rate_limit_per_second: int = 30
+
+    @model_validator(mode="after")
+    def validate_webhook_config(self):
+        if self.mode == "webhook" and not self.webhook_url:
+            raise ValueError("webhook_url is required when mode is 'webhook'")
+        if self.mode not in ("polling", "webhook"):
+            raise ValueError(f"mode must be 'polling' or 'webhook', got '{self.mode}'")
+        return self
+
+
+class DiscordSettings(BaseModel):
+    """Discord bot adapter configuration (Phase 5A)."""
+
+    enabled: bool = False
+    bot_token: str = ""
+    command_prefix: str = "!"
+    group_activation: str = "mention"  # "mention" only for now
+    max_file_size_mb: int = 25  # 100 with Nitro boost
+    sync_commands_on_start: bool = True
+
+    @model_validator(mode="after")
+    def validate_prefix(self):
+        if not self.command_prefix:
+            raise ValueError("command_prefix must not be empty")
+        return self
+
+
+class SchedulerSettings(BaseModel):
+    """NL Scheduled Tasks configuration (Phase 6)."""
+
+    enabled: bool = True
+    max_tasks_per_user: int = 50
+    default_timezone: str = "UTC"
+    confirmation_timeout_seconds: int = 60
+    max_concurrent_jobs: int = 10
+    job_history_retention_days: int = 30
+    misfire_grace_seconds: int = 300
+
+
 class SkillRuntimeSettings(BaseModel):
     """Skill runtime configuration (Phase 5-Foundation)."""
 
@@ -323,6 +378,9 @@ class Settings(BaseSettings):
     remote_control: RemoteControlSettings = Field(default_factory=RemoteControlSettings)
     event_bus: EventBusSettings = Field(default_factory=EventBusSettings)
     channels: ChannelSettings = Field(default_factory=ChannelSettings)
+    telegram: TelegramSettings = Field(default_factory=TelegramSettings)
+    discord: DiscordSettings = Field(default_factory=DiscordSettings)
+    scheduler: SchedulerSettings = Field(default_factory=SchedulerSettings)
     skill_runtime: SkillRuntimeSettings = Field(default_factory=SkillRuntimeSettings)
     secret_key: str = ""  # REQUIRED: set via SECRET_KEY env var
 

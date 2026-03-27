@@ -46,6 +46,11 @@ dependencies = [
     "pydub>=0.25.1",
     "soundfile>=0.12.1",
     "asyncssh>=2.14.0,<3.0.0",
+    "python-telegram-bot>=21.0",
+    "discord.py>=2.3.0",
+    "apscheduler>=3.10.0,<4.0.0",
+    "dateparser>=1.2.0",
+    "recurrent>=0.4.0",
 ]
 
 [project.optional-dependencies]
