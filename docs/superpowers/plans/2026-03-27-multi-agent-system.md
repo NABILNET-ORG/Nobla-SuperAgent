@@ -415,7 +415,7 @@ class MCPServerSettings(BaseModel):
     port: int = 8100
     transport: str = "sse"
     require_auth: bool = True
-    default_tier: int = 2  # STANDARD
+    default_tier: int = 2  # Tier.STANDARD value; use int for Pydantic serialization
     exposed_tools: list[str] = Field(default_factory=list)
     exposed_agents: list[str] = Field(default_factory=list)
 ```
@@ -1778,6 +1778,16 @@ class A2AProtocol:
             correlation_id=task.task_id,
         ))
 
+    async def query_capabilities(
+        self, sender: str, recipient: str,
+    ) -> dict:
+        """Query an agent's capabilities. Deferred to Phase 6 v2.
+
+        TODO(phase6-v2): Implement request/response via Future pattern
+        using agent.a2a.capability.query / agent.a2a.capability.response events.
+        """
+        raise NotImplementedError("Capability discovery deferred to v2")
+
     async def wait_for_result(
         self, task_id: str, timeout: float = 300,
     ) -> AgentTask:
@@ -2093,7 +2103,7 @@ class TestAgentOrchestrator:
             user_tier=Tier.STANDARD,
         )
         assert result is not None
-        assert result.status in ("completed", "running")
+        assert result.status in ("completed", "failed")
         await orch.stop()
         await bus.stop()
 
@@ -2248,7 +2258,9 @@ class AgentOrchestrator:
                 task.assignee = agent.instance_id
                 workflow.agent_assignments[task.task_id] = agent.instance_id
 
-                # Execute task directly (orchestrator-centric)
+                # Phase 6 v1: synchronous execution per task.
+                # TODO(phase6-v2): Use protocol.send_task() + protocol.wait_for_result()
+                # for async parallel execution across agents.
                 task.status = TaskStatus.RUNNING
                 try:
                     result_task = await agent.handle_task(task)
@@ -2270,7 +2282,7 @@ class AgentOrchestrator:
         if all(s == TaskStatus.COMPLETED for s in statuses):
             workflow.status = "completed"
         elif any(s == TaskStatus.FAILED for s in statuses):
-            workflow.status = "completed"  # partial success
+            workflow.status = "failed"
         else:
             workflow.status = "completed"
 
@@ -2290,7 +2302,13 @@ class AgentOrchestrator:
             await self.kill_workflow(wf_id)
 
     async def _handle_delegation(self, event: NoblaEvent) -> None:
-        """Handle agent delegation requests (depth-limited)."""
+        """Handle agent delegation requests (depth-limited).
+
+        Phase 6 v1: logs the delegation request. Full implementation
+        (spawn sub-agent, check depth, assign via protocol) deferred to v2.
+        TODO(phase6-v2): Implement full delegation with depth checking,
+        agent selection, and async task assignment.
+        """
         payload = event.payload
         task_data = payload.get("task", {})
         if not task_data:
@@ -2422,26 +2440,14 @@ class AgentToolBridge(BaseTool):
     ) -> None:
         self._agent_config = config
         self._orchestrator = orchestrator
-
-    @property
-    def name(self) -> str:
-        return f"agent.{self._agent_config.name}"
-
-    @property
-    def description(self) -> str:
-        return self._agent_config.description
-
-    @property
-    def category(self) -> ToolCategory:
-        return ToolCategory.AGENT
-
-    @property
-    def tier(self):
-        return self._agent_config.tier
-
-    @property
-    def requires_approval(self) -> bool:
-        return self._agent_config.requires_approval
+        # Set class-level attributes that BaseTool expects.
+        # Uses properties would also work (Python descriptor protocol),
+        # but direct attributes match the existing tool pattern.
+        self.name = f"agent.{config.name}"
+        self.description = config.description
+        self.category = ToolCategory.AGENT
+        self.tier = config.tier
+        self.requires_approval = config.requires_approval
 
     async def execute(self, params: ToolParams) -> ToolResult:
         instruction = params.args.get("instruction", "")
@@ -3113,7 +3119,7 @@ Expected: FAIL
 from __future__ import annotations
 
 from nobla.agents.base import BaseAgent
-from nobla.agents.models import AgentConfig, AgentTask, IsolationLevel, TaskStatus
+from nobla.agents.models import AgentConfig, AgentStatus, AgentTask, IsolationLevel, TaskStatus
 from nobla.security.permissions import Tier
 
 RESEARCHER_CONFIG = AgentConfig(
@@ -3135,7 +3141,7 @@ class ResearcherAgent(BaseAgent):
     """Reference agent: research, search, summarize."""
 
     async def handle_task(self, task: AgentTask) -> AgentTask:
-        self.status = self.status.__class__("busy")
+        self.status = AgentStatus.BUSY
         try:
             response = await self.think(
                 f"{self.role}\n\nTask: {task.instruction}"
@@ -3159,7 +3165,7 @@ class ResearcherAgent(BaseAgent):
 from __future__ import annotations
 
 from nobla.agents.base import BaseAgent
-from nobla.agents.models import AgentConfig, AgentTask, IsolationLevel, TaskStatus
+from nobla.agents.models import AgentConfig, AgentStatus, AgentTask, IsolationLevel, TaskStatus
 from nobla.security.permissions import Tier
 
 CODER_CONFIG = AgentConfig(
@@ -3181,7 +3187,7 @@ class CoderAgent(BaseAgent):
     """Reference agent: code generation, debugging, review."""
 
     async def handle_task(self, task: AgentTask) -> AgentTask:
-        self.status = self.status.__class__("busy")
+        self.status = AgentStatus.BUSY
         try:
             response = await self.think(
                 f"{self.role}\n\nTask: {task.instruction}"
