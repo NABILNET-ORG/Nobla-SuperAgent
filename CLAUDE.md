@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Nobla Agent** is an open-source, privacy-first AI super agent that unifies 35+ AI agent projects while fixing their security vulnerabilities. Currently in **active development** — Phases 1-4 + Phase 5A + Phase 6 (NL Scheduler + Multi-Agent System) complete. 436 tests passing. Phase 4E design complete (implementation pending).
+**Nobla Agent** is an open-source, privacy-first AI super agent that unifies 35+ AI agent projects while fixing their security vulnerabilities. Currently in **active development** — Phases 1-4E + Phase 5A + Phase 6 (NL Scheduler + Multi-Agent System) complete. 530 tests passing (85 Flutter + 445 backend).
 
 - **PRD.md** — Full product requirements, competitive analysis, feature specs
 - **Plan.md** — 7-phase development roadmap with detailed task breakdowns
@@ -19,7 +19,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Phase 4B**: Computer Control — mouse.control, keyboard.control, file.manage, app.control, clipboard.manage (191 tests)
 - **Phase 4C**: Code Execution — code.run, code.install_package, code.generate, code.debug, git.ops (110 tests)
 - **Phase 4D**: Remote Control — ssh.connect, ssh.exec, sftp.manage (116 tests)
-- **Phase 4E**: Flutter Tool UI — design complete, implementation pending (screen mirror, activity feed, tool browser)
+- **Phase 4E**: Flutter Tool UI — ToolsScreen with 3-tab TabBar (Mirror/Activity/Browse), shared activity provider, filtered activity feed, mirror provider with subscribe/capture/decode, tool catalog browser with category sections, backend mirror RPC handlers, executor mirror integration (85 Flutter + 9 backend tests)
 - **Phase 5-Foundation**: Event bus, channel abstraction, skill runtime, tool event wiring (106 tests)
 - **Phase 5A**: Telegram adapter (polling + webhook, 95 tests), Discord adapter (WebSocket gateway, 78 tests)
 - **Phase 6-Scheduler**: NL Scheduled Tasks — dateparser + recurrent + LLM interpreter + APScheduler + confirmation flow (76 tests)
@@ -147,7 +147,7 @@ The Levantine model (`ggml-levantine-large-v3.bin`) should be moved to `backend/
 | 4C: Code Execution | ✅ Complete | code.run, code.install_package, code.generate, code.debug, git.ops (110 tests) |
 | 4B: Computer Control | ✅ Complete | mouse.control, keyboard.control, file.manage, app.control, clipboard.manage (191 tests) |
 | 4D: Remote Control | ✅ Complete | ssh.connect, ssh.exec, sftp.manage (116 tests) |
-| 4E: Flutter Tool UI | Design Complete | Screen mirror, activity feed, tool browser — 12-task implementation plan ready |
+| 4E: Flutter Tool UI | ✅ Complete | Screen mirror, activity feed, tool browser, 6th nav tab, backend mirror handlers (85 Flutter + 9 backend tests) |
 
 ### Phase 5 Sub-phases
 | Sub-phase | Status | Scope |

@@ -7,6 +7,7 @@ Mobile-first client for [Nobla Agent](https://github.com/NABILNET-ORG/Nobla-Supe
 - **Real-time chat** via WebSocket with the Nobla backend
 - **Voice UI** with avatar animations and lip-sync playback
 - **Security dashboard** with kill switch control
+- **Tools UI** — screen mirror (pinch-to-zoom), filterable activity feed, tool catalog browser
 - **Persona management** — browse, create, and switch AI personalities
 - **Memory viewer** — explore conversation history and knowledge graph
 - **Settings** — server connection, theme, security tier management
@@ -24,8 +25,9 @@ app/lib/
 │   ├── dashboard/      # Home screen with security controls
 │   ├── memory/         # Memory viewer and knowledge graph
 │   ├── persona/        # Persona browser and management
+│   ├── tools/          # Tool mirror, activity feed, catalog browser (Phase 4E)
 │   └── settings/       # App and server configuration
-└── shared/         # Shared widgets, utils, constants
+└── shared/         # Shared widgets, utils, providers (tool activity)
 ```
 
 ## Setup
@@ -53,6 +55,7 @@ dart format lib/
 - `record` — Audio recording for STT
 - `rive` / `lottie` — Avatar animations
 - `go_router` — Navigation
+- `shimmer` — Loading placeholders
 
 ## Connection
 

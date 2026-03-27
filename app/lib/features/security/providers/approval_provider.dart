@@ -7,40 +7,31 @@ import 'package:nobla_agent/features/security/models/approval_models.dart';
 class ApprovalState {
   final ApprovalRequest? current;
   final int remainingSeconds;
-  final List<ActivityEntry> activities;
 
   const ApprovalState({
     this.current,
     this.remainingSeconds = 0,
-    this.activities = const [],
   });
 
   ApprovalState copyWith({
     ApprovalRequest? current,
     int? remainingSeconds,
-    List<ActivityEntry>? activities,
     bool clearCurrent = false,
   }) {
     return ApprovalState(
       current: clearCurrent ? null : (current ?? this.current),
       remainingSeconds: remainingSeconds ?? this.remainingSeconds,
-      activities: activities ?? this.activities,
     );
   }
 }
 
-/// Manages approval requests queue, countdown timer, and activity feed.
+/// Manages approval requests queue and countdown timer.
 ///
-/// [sendWebSocketMessage] is a callback the notifier uses to push
-/// approve / deny responses back to the backend over the existing
-/// WebSocket connection.
+/// Activity feed is now managed by [ToolActivityNotifier] in shared providers.
 class ApprovalNotifier extends StateNotifier<ApprovalState> {
   final void Function(Map<String, dynamic>) sendWebSocketMessage;
   final Queue<ApprovalRequest> _queue = Queue<ApprovalRequest>();
   Timer? _countdownTimer;
-
-  /// Maximum number of activity entries kept in memory.
-  static const int _maxActivities = 50;
 
   ApprovalNotifier({required this.sendWebSocketMessage})
       : super(const ApprovalState());
@@ -70,16 +61,6 @@ class ApprovalNotifier extends StateNotifier<ApprovalState> {
     if (state.current?.requestId != requestId) return;
     _respond(requestId, approved: false);
     _processNext();
-  }
-
-  /// Called when a tool-activity notification arrives from the backend.
-  void onActivity(ActivityEntry entry) {
-    final updated = [entry, ...state.activities];
-    if (updated.length > _maxActivities) {
-      state = state.copyWith(activities: updated.sublist(0, _maxActivities));
-    } else {
-      state = state.copyWith(activities: updated);
-    }
   }
 
   // ---------------------------------------------------------------------------

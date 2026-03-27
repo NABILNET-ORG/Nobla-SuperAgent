@@ -55,7 +55,7 @@ FastAPI Gateway (Python 3.12+)
 
 ## Current Status
 
-Nobla Agent is in **active development**. Phases 1-5A + Phase 6 (NL Scheduler + Multi-Agent System) complete. 436 tests passing.
+Nobla Agent is in **active development**. Phases 1-4E + Phase 5A + Phase 6 (NL Scheduler + Multi-Agent System) complete. 530 tests passing (85 Flutter + 445 backend).
 
 | Phase | Status | Scope |
 |-------|--------|-------|
@@ -67,7 +67,7 @@ Nobla Agent is in **active development**. Phases 1-5A + Phase 6 (NL Scheduler + 
 | **Phase 4C**: Code Execution | Complete | Sandboxed code.run, package install, LLM codegen, debug assistant, git operations (110 tests) |
 | **Phase 4B**: Computer Control | Complete | mouse.control, keyboard.control, file.manage, app.control, clipboard.manage, Flutter approval UI (191 tests) |
 | **Phase 4D**: Remote Control | Complete | ssh.connect, ssh.exec, sftp.manage — SSH connection pooling, remote exec, SFTP transfers (116 tests) |
-| **Phase 4E**: Flutter Tool UI | Design Complete | Screen mirror, activity feed, tool browser — 12-task plan ready |
+| **Phase 4E**: Flutter Tool UI | Complete | ToolsScreen with 3-tab TabBar (Mirror/Activity/Browse), shared activity provider, filtered feed, mirror provider, tool catalog browser, backend mirror RPC handlers (94 tests) |
 | **Phase 5-Foundation** | Complete | Event bus (pub/sub, wildcards, priority, backpressure), channel abstraction, skill runtime, tool event wiring (106 tests) |
 | **Phase 5A**: Telegram + Discord | Complete | Telegram adapter (polling + webhook), Discord adapter (WebSocket gateway), MarkdownV2/Markdown formatting, media handlers, pairing/linking, group mention-only, inline buttons (173 tests) |
 | **Phase 5**: Channels | In Progress | 15 remaining platform adapters (WhatsApp, Slack, Signal, Teams, etc.) |

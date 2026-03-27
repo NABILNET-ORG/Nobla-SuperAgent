@@ -6,7 +6,7 @@ Python 3.12+ / FastAPI backend for [Nobla Agent](https://github.com/NABILNET-ORG
 
 | Module | Purpose |
 |--------|---------|
-| `nobla/gateway/` | WebSocket + REST API, JSON-RPC protocol, connection management |
+| `nobla/gateway/` | WebSocket + REST API, JSON-RPC protocol, connection management, mirror subscription/capture RPC |
 | `nobla/brain/` | LLM router with 6 providers (Gemini, Groq, Ollama, OpenAI, Anthropic, DeepSeek), circuit breakers, complexity-based routing |
 | `nobla/memory/` | 5-layer memory engine — episodic (PostgreSQL), semantic (ChromaDB), procedural, knowledge graph (NetworkX), working memory |
 | `nobla/voice/` | STT (Whisper + Levantine Arabic), TTS (Fish Speech, CosyVoice, PersonaPlex), VAD, language detection |

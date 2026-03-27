@@ -16,6 +16,11 @@ from nobla.security.permissions import InsufficientPermissions, PermissionChecke
 from nobla.tools.approval import ApprovalManager
 from nobla.tools.models import ApprovalRequest, ApprovalStatus, ToolParams, ToolResult
 from nobla.tools.registry import ToolRegistry
+from nobla.gateway.mirror_handlers import (
+    is_mirror_active,
+    is_capture_in_progress,
+    capture_and_send,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -198,3 +203,7 @@ class ToolExecutor:
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                 },
             })
+
+            # Mirror: capture screenshot if subscriber is active
+            if is_mirror_active(conn_id) and not is_capture_in_progress():
+                asyncio.create_task(capture_and_send(conn_id))

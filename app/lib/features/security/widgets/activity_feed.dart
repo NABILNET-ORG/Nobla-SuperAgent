@@ -1,20 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nobla_agent/features/security/models/approval_models.dart';
-import 'package:nobla_agent/features/security/providers/approval_provider.dart';
+import 'package:nobla_agent/shared/providers/tool_activity_provider.dart';
 
 /// Scrollable list showing real-time tool execution activity.
 ///
-/// Displays entries from the [ApprovalNotifier] activity feed, most recent
-/// first, capped at 50 entries (enforced by the notifier).
+/// Displays entries from the shared [ToolActivityNotifier], most recent
+/// first, capped at 200 entries (enforced by the notifier).
 class ActivityFeed extends ConsumerWidget {
-  final StateNotifierProvider<ApprovalNotifier, ApprovalState> provider;
-
-  const ActivityFeed({super.key, required this.provider});
+  const ActivityFeed({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final activities = ref.watch(provider).activities;
+    final activities = ref.watch(toolActivityProvider);
 
     if (activities.isEmpty) {
       return Center(

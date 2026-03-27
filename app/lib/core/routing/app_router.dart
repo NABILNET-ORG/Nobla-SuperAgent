@@ -11,6 +11,7 @@ import 'package:nobla_agent/shared/widgets/kill_switch_fab.dart';
 import 'package:nobla_agent/features/persona/screens/persona_list_screen.dart';
 import 'package:nobla_agent/features/persona/screens/persona_detail_screen.dart';
 import 'package:nobla_agent/features/persona/screens/persona_edit_screen.dart';
+import 'package:nobla_agent/features/tools/screens/tools_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -74,6 +75,10 @@ GoRouter createRouter(AuthState authState) {
             ),
           ),
           GoRoute(
+            path: '/home/tools',
+            builder: (context, state) => const ToolsScreen(),
+          ),
+          GoRoute(
             path: '/home/settings',
             builder: (context, state) => const SettingsScreen(),
           ),
@@ -106,6 +111,8 @@ class HomeShell extends StatelessWidget {
             case 3:
               context.go('/home/persona');
             case 4:
+              context.go('/home/tools');
+            case 5:
               context.go('/home/settings');
           }
         },
@@ -131,6 +138,11 @@ class HomeShell extends StatelessWidget {
             label: 'Persona',
           ),
           NavigationDestination(
+            icon: Icon(Icons.build_outlined),
+            selectedIcon: Icon(Icons.build),
+            label: 'Tools',
+          ),
+          NavigationDestination(
             icon: Icon(Icons.settings_outlined),
             selectedIcon: Icon(Icons.settings),
             label: 'Settings',
@@ -144,7 +156,8 @@ class HomeShell extends StatelessWidget {
     if (location.startsWith('/home/dashboard')) return 1;
     if (location.startsWith('/home/memory')) return 2;
     if (location.startsWith('/home/persona')) return 3;
-    if (location.startsWith('/home/settings')) return 4;
+    if (location.startsWith('/home/tools')) return 4;
+    if (location.startsWith('/home/settings')) return 5;
     return 0;
   }
 }

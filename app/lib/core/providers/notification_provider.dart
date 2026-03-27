@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nobla_agent/core/network/jsonrpc_client.dart';
+import 'package:nobla_agent/features/security/models/approval_models.dart';
+import 'package:nobla_agent/shared/providers/tool_activity_provider.dart';
+import 'package:nobla_agent/features/tools/providers/tool_mirror_provider.dart';
 
 enum KillState { running, softKilling, killed }
 
@@ -67,6 +70,14 @@ class NotificationDispatcher {
           limit: (params['limit'] as num?)?.toDouble() ?? 0,
           spent: (params['spent'] as num?)?.toDouble() ?? 0,
         );
+      case 'tool.activity':
+        _ref
+            .read(toolActivityProvider.notifier)
+            .addEntry(ActivityEntry.fromJson(params));
+      case 'tool.mirror.frame':
+        _ref
+            .read(toolMirrorProvider.notifier)
+            .onScreenshotNotification(params);
     }
   }
 

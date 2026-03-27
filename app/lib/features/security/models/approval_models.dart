@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:nobla_agent/features/tools/models/tool_models.dart';
 
 /// A pending tool-approval request received over WebSocket.
 @immutable
@@ -41,6 +42,7 @@ class ActivityEntry {
   final String action;
   final String description;
   final ActivityStatus status;
+  final ToolCategory? category;
   final int? executionTimeMs;
   final DateTime timestamp;
 
@@ -49,6 +51,7 @@ class ActivityEntry {
     required this.action,
     required this.description,
     required this.status,
+    this.category,
     this.executionTimeMs,
     required this.timestamp,
   });
@@ -59,6 +62,7 @@ class ActivityEntry {
       action: json['action'] as String? ?? '',
       description: json['description'] as String? ?? '',
       status: _parseStatus(json['status'] as String? ?? 'success'),
+      category: ToolCategory.fromString(json['category'] as String?),
       executionTimeMs: json['execution_time_ms'] as int?,
       timestamp:
           DateTime.tryParse(json['timestamp'] as String? ?? '') ?? DateTime.now(),

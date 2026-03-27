@@ -368,22 +368,22 @@ TIER 4: ADMIN
 - [x] ComputerControlSettings with write_dirs subset validation (8 tests)
 - [x] Flutter approval bottom sheet with countdown timer + activity feed
 
-**Phase 4E: Flutter Tool UI** — Design Complete
+**Phase 4E: Flutter Tool UI** ✅ Complete (85 Flutter + 9 backend tests)
 - [x] Design specification: `docs/superpowers/specs/2026-03-25-phase4e-flutter-tool-ui-design.md`
 - [x] Implementation plan: `docs/superpowers/plans/2026-03-25-phase4e-flutter-tool-ui.md`
 - [x] Continuation prompt: `docs/superpowers/prompts/phase4e-continuation-prompt.md`
-- [ ] Models: ToolCategory enum, ToolManifestEntry, MirrorState, ActivityFilter + ActivityEntry category field
-- [ ] Shared activity provider: extract from ApprovalNotifier, 200-entry buffer
-- [ ] NotificationDispatcher: wire tool.activity + tool.mirror.frame events
-- [ ] Tool catalog provider + browser widgets (ToolCard, ToolCategorySection)
-- [ ] Mirror provider: subscribe/unsubscribe/capture with compute() decode
-- [ ] Filtered activity provider: category/status filtering
-- [ ] Activity feed widgets: filter bar, list, detail sheet
-- [ ] Mirror view widget: InteractiveViewer + capture button
-- [ ] ToolsScreen + router: TabBar host (Mirror|Activity|Browse) + 6th nav tab
-- [ ] Backend: mirror_handlers.py (subscribe/unsubscribe/capture RPC)
-- [ ] Backend: executor mirror integration + disconnect cleanup
-- [ ] Full integration test + CLAUDE.md update
+- [x] Models: ToolCategory enum (9 categories), ToolManifestEntry, MirrorState, ActivityFilter + ActivityEntry category field
+- [x] Shared activity provider: extracted from ApprovalNotifier, 200-entry buffer
+- [x] NotificationDispatcher: wired tool.activity + tool.mirror.frame events
+- [x] Tool catalog provider + browser widgets (ToolCard with tier badge, ToolCategorySection with collapse)
+- [x] Mirror provider: subscribe/unsubscribe/capture with compute() base64 decode
+- [x] Filtered activity provider: category/status filtering with derived provider
+- [x] Activity feed widgets: filter chip bar, list with category icons + status dots, detail bottom sheet
+- [x] Mirror view widget: InteractiveViewer (pinch-to-zoom) + capture button + live/paused indicator
+- [x] ToolsScreen + router: TabBar host (Mirror|Activity|Browse) + 6th nav tab at index 4
+- [x] Backend: mirror_handlers.py (subscribe/unsubscribe/capture RPC + background capture_and_send)
+- [x] Backend: executor mirror integration (asyncio.create_task after audit) + disconnect cleanup
+- [x] Full integration test (530 tests passing) + CLAUDE.md update
 
 **Phase 4D: Remote Control** ✅ Complete (116 tests)
 - [x] Design specification: `docs/superpowers/specs/2026-03-25-phase4d-remote-control-design.md`

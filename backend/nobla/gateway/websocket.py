@@ -89,6 +89,9 @@ class ConnectionManager:
     def disconnect(self, connection_id: str) -> None:
         """Remove a connection from the active set."""
         self._connections.pop(connection_id, None)
+        # Clean up mirror subscriptions
+        from nobla.gateway.mirror_handlers import remove_subscriber
+        remove_subscriber(connection_id)
         logger.info("ws.disconnected", connection_id=connection_id)
 
     @property
