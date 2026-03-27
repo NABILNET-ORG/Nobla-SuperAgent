@@ -21,6 +21,7 @@ class ToolCategory(str, Enum):
     CLIPBOARD = "clipboard"
     SEARCH = "search"
     SKILL = "skill"  # Catch-all for marketplace skill categories
+    AGENT = "agent"
 
 
 class ApprovalStatus(str, Enum):

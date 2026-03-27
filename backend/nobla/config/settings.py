@@ -348,6 +348,32 @@ class SchedulerSettings(BaseModel):
     misfire_grace_seconds: int = 300
 
 
+class AgentSettings(BaseModel):
+    enabled: bool = True
+    max_concurrent_agents: int = 10
+    max_workflow_depth: int = 5
+    max_tasks_per_workflow: int = 20
+    default_isolation: str = "full_isolated"
+
+
+class MCPClientSettings(BaseModel):
+    enabled: bool = False
+    max_connections: int = 20
+    default_timeout: float = 30.0
+    allowed_servers: list[str] = Field(default_factory=list)
+
+
+class MCPServerSettings(BaseModel):
+    enabled: bool = False
+    host: str = "127.0.0.1"
+    port: int = 8100
+    transport: str = "sse"
+    require_auth: bool = True
+    default_tier: int = 2  # Tier.STANDARD value; use int for Pydantic serialization
+    exposed_tools: list[str] = Field(default_factory=list)
+    exposed_agents: list[str] = Field(default_factory=list)
+
+
 class SkillRuntimeSettings(BaseModel):
     """Skill runtime configuration (Phase 5-Foundation)."""
 
@@ -382,6 +408,9 @@ class Settings(BaseSettings):
     discord: DiscordSettings = Field(default_factory=DiscordSettings)
     scheduler: SchedulerSettings = Field(default_factory=SchedulerSettings)
     skill_runtime: SkillRuntimeSettings = Field(default_factory=SkillRuntimeSettings)
+    agents: AgentSettings = Field(default_factory=AgentSettings)
+    mcp_client: MCPClientSettings = Field(default_factory=MCPClientSettings)
+    mcp_server: MCPServerSettings = Field(default_factory=MCPServerSettings)
     secret_key: str = ""  # REQUIRED: set via SECRET_KEY env var
 
     model_config = {"env_prefix": "", "env_nested_delimiter": "__"}
