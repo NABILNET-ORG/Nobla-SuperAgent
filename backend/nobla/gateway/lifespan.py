@@ -484,6 +484,52 @@ async def lifespan(app: FastAPI):
     else:
         logger.info("scheduler_service_disabled")
 
+    # --- Multi-Agent System (Phase 6) ---
+    if settings.agents.enabled:
+        from nobla.agents.registry import AgentRegistry
+        from nobla.agents.executor import AgentExecutor
+        from nobla.agents.communication import A2AProtocol
+        from nobla.agents.decomposer import TaskDecomposer
+        from nobla.agents.orchestrator import AgentOrchestrator
+        from nobla.agents.builtins.researcher import ResearcherAgent, RESEARCHER_CONFIG
+        from nobla.agents.builtins.coder import CoderAgent, CODER_CONFIG
+
+        agent_registry = AgentRegistry()
+        agent_executor = AgentExecutor(
+            registry=agent_registry,
+            tool_registry=tool_registry,
+            tool_executor=tool_executor,
+            event_bus=event_bus,
+            router=router,
+            memory_orchestrator=memory_orchestrator,
+            max_concurrent_agents=settings.agents.max_concurrent_agents,
+        )
+        a2a_protocol = A2AProtocol(event_bus=event_bus)
+        decomposer = TaskDecomposer(router=router, registry=agent_registry)
+        agent_orchestrator = AgentOrchestrator(
+            executor=agent_executor,
+            protocol=a2a_protocol,
+            decomposer=decomposer,
+            event_bus=event_bus,
+            tool_registry=tool_registry,
+            max_workflow_depth=settings.agents.max_workflow_depth,
+            max_tasks_per_workflow=settings.agents.max_tasks_per_workflow,
+        )
+
+        agent_registry.register(ResearcherAgent, RESEARCHER_CONFIG)
+        agent_registry.register(CoderAgent, CODER_CONFIG)
+
+        if ks:
+            ks.on_soft_kill(agent_executor.stop_all)
+            ks.on_soft_kill(agent_orchestrator.kill_all_workflows)
+            ks.on_hard_kill(agent_executor.kill_all)
+
+        await agent_orchestrator.start()
+        logger.info("multi_agent_system_started")
+    else:
+        agent_orchestrator = None
+        logger.info("multi_agent_system_disabled")
+
     logger.info(
         "nobla_started",
         providers=list(providers.keys()),
@@ -497,6 +543,8 @@ async def lifespan(app: FastAPI):
     yield
 
     # Cleanup
+    if agent_orchestrator:
+        await agent_orchestrator.stop()
     await scheduler_service.stop()
     await channel_manager.stop_all()
     await event_bus.stop()
