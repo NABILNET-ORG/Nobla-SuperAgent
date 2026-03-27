@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Nobla Agent** is an open-source, privacy-first AI super agent that unifies 35+ AI agent projects while fixing their security vulnerabilities. Currently in **active development** — Phases 1-4 + Phase 5A + Phase 6 NL Scheduler complete. Multi-Agent System designed (14-task implementation plan ready). 344 tests passing. Phase 4E design complete (implementation pending).
+**Nobla Agent** is an open-source, privacy-first AI super agent that unifies 35+ AI agent projects while fixing their security vulnerabilities. Currently in **active development** — Phases 1-4 + Phase 5A + Phase 6 (NL Scheduler + Multi-Agent System) complete. 436 tests passing. Phase 4E design complete (implementation pending).
 
 - **PRD.md** — Full product requirements, competitive analysis, feature specs
 - **Plan.md** — 7-phase development roadmap with detailed task breakdowns
@@ -23,7 +23,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Phase 5-Foundation**: Event bus, channel abstraction, skill runtime, tool event wiring (106 tests)
 - **Phase 5A**: Telegram adapter (polling + webhook, 95 tests), Discord adapter (WebSocket gateway, 78 tests)
 - **Phase 6-Scheduler**: NL Scheduled Tasks — dateparser + recurrent + LLM interpreter + APScheduler + confirmation flow (76 tests)
-- **Phase 6-MultiAgent**: Multi-Agent System — design complete, implementation plan ready (14 tasks). Orchestrator-centric architecture with BaseAgent ABC, registry, executor, A2A protocol, workspace isolation, MCP client/server, researcher + coder reference agents.
+- **Phase 6-MultiAgent**: Multi-Agent System — BaseAgent ABC, registry, executor, orchestrator, A2A protocol, workspace isolation, task decomposer, bridge/cloning, MCP client/server, researcher + coder agents, gateway wiring with kill switch (92 tests)
 
 ## Architecture (Two Codebases)
 
@@ -101,7 +101,7 @@ nobla-agent/
 │   │   └── discord/    # Discord adapter: WebSocket gateway, ui.Button views, media, commands (Phase 5A)
 │   ├── automation/     # NL Scheduled Tasks: parser, interpreter, scheduler, confirmation (Phase 6)
 │   ├── skills/         # Skill runtime: universal adapter, security scanner, tool bridge (Phase 5)
-│   ├── agents/         # Multi-agent orchestrator, A2A protocol, MCP client/server (Phase 6 — design complete, 14-task plan)
+│   ├── agents/         # Multi-agent orchestrator, A2A protocol, MCP client/server (Phase 6)
 ├── app/lib/
 │   ├── core/           # Theme, routing, DI (Riverpod), network
 │   ├── features/       # auth, chat, dashboard, voice, persona, memory, automation, security, settings, tools
@@ -160,7 +160,7 @@ The Levantine model (`ggml-levantine-large-v3.bin`) should be moved to `backend/
 | Sub-phase | Status | Scope |
 |-----------|--------|-------|
 | 6-Scheduler: NL Scheduled Tasks | ✅ Complete | NLP time parser (dateparser + recurrent), LLM task interpreter with fallback, APScheduler wrapper (add/remove/pause/resume), user confirmation flow with timeout, scheduler service orchestrator, event bus integration (76 tests) |
-| 6-MultiAgent: Multi-Agent System | Design Complete | Orchestrator-centric architecture: BaseAgent ABC, AgentRegistry, AgentExecutor, AgentOrchestrator, A2A protocol (task-based messaging), AgentWorkspace (scoped tool/memory isolation), MCPClientManager + MCPServer (bidirectional), TaskDecomposer (LLM-driven), AgentToolBridge, researcher + coder built-in agents. 14-task implementation plan ready (~120 tests expected) |
+| 6-MultiAgent: Multi-Agent System | ✅ Complete | BaseAgent ABC, AgentRegistry, AgentExecutor, AgentOrchestrator, A2A protocol, AgentWorkspace (scoped isolation), MCPClientManager + MCPServer, TaskDecomposer, AgentToolBridge, cloning, researcher + coder agents, gateway wiring with kill switch (92 tests) |
 | 6-Webhooks | Pending | Receive and process external events |
 | 6-Workflows | Pending | Multi-step workflow builder in natural language |
 
