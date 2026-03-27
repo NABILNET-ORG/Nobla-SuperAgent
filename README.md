@@ -41,6 +41,7 @@ FastAPI Gateway (Python 3.12+)
     |     +-- Telegram adapter (polling + webhook, MarkdownV2)
     |     +-- Discord adapter (WebSocket gateway, ui.Button views)
     +-- Automation: NL Scheduled Tasks (dateparser + recurrent + APScheduler + LLM interpreter)
+    +-- Agents: Multi-agent orchestrator (design complete — A2A protocol, MCP client/server, workspace isolation)
     +-- Skills: Runtime skill marketplace (install, security scan, universal adapter)
     +-- Security: 4-tier permissions, sandbox, audit trail, kill switch
     +-- Persona: Emotion-aware response styling with customizable personalities
@@ -54,7 +55,7 @@ FastAPI Gateway (Python 3.12+)
 
 ## Current Status
 
-Nobla Agent is in **active development**. Phases 1-5A complete + Phase 6 NL Scheduler. 344 tests passing.
+Nobla Agent is in **active development**. Phases 1-5A + Phase 6 NL Scheduler complete. Multi-Agent System designed (implementation next). 344 tests passing.
 
 | Phase | Status | Scope |
 |-------|--------|-------|
@@ -71,7 +72,8 @@ Nobla Agent is in **active development**. Phases 1-5A complete + Phase 6 NL Sche
 | **Phase 5A**: Telegram + Discord | Complete | Telegram adapter (polling + webhook), Discord adapter (WebSocket gateway), MarkdownV2/Markdown formatting, media handlers, pairing/linking, group mention-only, inline buttons (173 tests) |
 | **Phase 5**: Channels | In Progress | 15 remaining platform adapters (WhatsApp, Slack, Signal, Teams, etc.) |
 | **Phase 6**: NL Scheduler | Complete | NLP time parser (dateparser + recurrent), LLM task interpreter, APScheduler wrapper, user confirmation flow (76 tests) |
-| **Phase 6**: Automation | In Progress | Webhooks, workflows, agent cloning, MCP, A2A protocol |
+| **Phase 6**: Multi-Agent System | Design Complete | BaseAgent, registry, executor, orchestrator, A2A protocol, workspace isolation, MCP client/server, researcher + coder agents — 14-task plan ready |
+| **Phase 6**: Automation | In Progress | Webhooks, workflows, community marketplace |
 | **Phase 7**: Full Feature Set | Planned | Media, finance, health, social, smart home tools |
 
 ## Quick Start
@@ -136,6 +138,7 @@ nobla-agent/
 │   ├── events/         # Event bus — async pub/sub, wildcards, priority dispatch (Phase 5)
 │   ├── channels/       # Channel abstraction + Telegram + Discord adapters (Phase 5A)
 │   ├── automation/     # NL Scheduled Tasks — parser, interpreter, scheduler, confirmation (Phase 6)
+│   ├── agents/         # Multi-agent orchestrator, A2A protocol, MCP client/server (Phase 6 — design complete)
 │   ├── skills/         # Skill runtime — universal adapter, security scanner, tool bridge (Phase 5)
 │   ├── security/       # Auth, sandbox, audit, encryption
 │   ├── persona/        # Emotion detection + persona engine

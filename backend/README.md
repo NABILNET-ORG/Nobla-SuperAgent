@@ -14,10 +14,11 @@ Python 3.12+ / FastAPI backend for [Nobla Agent](https://github.com/NABILNET-ORG
 | `nobla/events/` | Async event bus — pub/sub with fnmatch wildcards, priority dispatch, backpressure (10K queue, urgent bypass) |
 | `nobla/channels/` | Channel abstraction — BaseChannelAdapter ABC, ChannelManager, UserLinkingService. Includes Telegram adapter (polling + webhook, MarkdownV2) and Discord adapter (WebSocket gateway, ui.Button views) |
 | `nobla/automation/` | NL Scheduled Tasks — NLP time parser (dateparser + recurrent), LLM task interpreter, APScheduler wrapper, user confirmation flow, scheduler service orchestrator |
+| `nobla/agents/` | Multi-agent system (Phase 6 — design complete, implementation pending) — BaseAgent ABC, AgentRegistry, AgentExecutor, AgentOrchestrator, A2A protocol, AgentWorkspace (scoped tool/memory isolation), MCPClientManager, MCPServer, built-in agents (researcher, coder) |
 | `nobla/skills/` | Skill runtime — UniversalSkillAdapter (format detection), SkillSecurityScanner (blocklist, tier escalation, source patterns), SkillToolBridge (registry integration) |
 | `nobla/security/` | Auth (JWT + OAuth + API Key), sandbox (Docker/gVisor), audit (OpenTelemetry), permissions (4-tier), kill switch |
 | `nobla/persona/` | Emotion detection, persona engine, prompt builder, PersonaPlex integration |
-| `nobla/config/` | Centralized Pydantic settings (server, LLM, database, memory, auth, sandbox, voice, persona, tools, vision, computer control, remote control, event bus, channels, telegram, discord, scheduler, skills) |
+| `nobla/config/` | Centralized Pydantic settings (server, LLM, database, memory, auth, sandbox, voice, persona, tools, vision, computer control, remote control, event bus, channels, telegram, discord, scheduler, skills, agents, MCP client/server) |
 | `nobla/db/` | SQLAlchemy models, repository pattern |
 
 ## Setup
@@ -103,6 +104,14 @@ DISCORD__COMMAND_PREFIX=!
 SCHEDULER__ENABLED=true
 SCHEDULER__DEFAULT_TIMEZONE=UTC
 SCHEDULER__MAX_TASKS_PER_USER=50
+
+# Multi-Agent System (Phase 6 — design complete, implementation pending)
+AGENTS__ENABLED=true
+AGENTS__MAX_CONCURRENT_AGENTS=10
+AGENTS__MAX_WORKFLOW_DEPTH=5
+MCP_CLIENT__ENABLED=false
+MCP_SERVER__ENABLED=false
+MCP_SERVER__PORT=8100
 ```
 
 ## Docker

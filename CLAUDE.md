@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Nobla Agent** is an open-source, privacy-first AI super agent that unifies 35+ AI agent projects while fixing their security vulnerabilities. Currently in **active development** — Phases 1-4 + Phase 5A + Phase 6 NL Scheduler complete. 344 tests passing. Phase 4E design complete (implementation pending).
+**Nobla Agent** is an open-source, privacy-first AI super agent that unifies 35+ AI agent projects while fixing their security vulnerabilities. Currently in **active development** — Phases 1-4 + Phase 5A + Phase 6 NL Scheduler complete. Multi-Agent System designed (14-task implementation plan ready). 344 tests passing. Phase 4E design complete (implementation pending).
 
 - **PRD.md** — Full product requirements, competitive analysis, feature specs
 - **Plan.md** — 7-phase development roadmap with detailed task breakdowns
@@ -23,6 +23,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Phase 5-Foundation**: Event bus, channel abstraction, skill runtime, tool event wiring (106 tests)
 - **Phase 5A**: Telegram adapter (polling + webhook, 95 tests), Discord adapter (WebSocket gateway, 78 tests)
 - **Phase 6-Scheduler**: NL Scheduled Tasks — dateparser + recurrent + LLM interpreter + APScheduler + confirmation flow (76 tests)
+- **Phase 6-MultiAgent**: Multi-Agent System — design complete, implementation plan ready (14 tasks). Orchestrator-centric architecture with BaseAgent ABC, registry, executor, A2A protocol, workspace isolation, MCP client/server, researcher + coder reference agents.
 
 ## Architecture (Two Codebases)
 
@@ -100,7 +101,7 @@ nobla-agent/
 │   │   └── discord/    # Discord adapter: WebSocket gateway, ui.Button views, media, commands (Phase 5A)
 │   ├── automation/     # NL Scheduled Tasks: parser, interpreter, scheduler, confirmation (Phase 6)
 │   ├── skills/         # Skill runtime: universal adapter, security scanner, tool bridge (Phase 5)
-│   ├── agents/         # Multi-agent orchestrator (cloning, A2A protocol, MCP)
+│   ├── agents/         # Multi-agent orchestrator, A2A protocol, MCP client/server (Phase 6 — design complete, 14-task plan)
 ├── app/lib/
 │   ├── core/           # Theme, routing, DI (Riverpod), network
 │   ├── features/       # auth, chat, dashboard, voice, persona, memory, automation, security, settings, tools
@@ -135,7 +136,7 @@ The Levantine model (`ggml-levantine-large-v3.bin`) should be moved to `backend/
 3. **Phase 3** (Weeks 9-12): Voice & Persona — STT/TTS, PersonaPlex, avatar ✅
 4. **Phase 4** (Weeks 13-16): Computer Control — Screen vision, mouse/keyboard, code sandbox (**4-Pre ✅, 4A ✅, 4B ✅, 4C ✅, 4D ✅, 4E design ✅**)
 5. **Phase 5** (Weeks 17-20): Channels & Integrations — 20+ messaging platforms (**5-Foundation ✅, 5A ✅**)
-6. **Phase 6** (Weeks 21-24): Automation & Multi-Agent — NL Scheduler ✅, workflows, agent cloning, MCP
+6. **Phase 6** (Weeks 21-24): Automation & Multi-Agent — NL Scheduler ✅, **Multi-Agent design ✅**, workflows, MCP
 7. **Phase 7** (Weeks 25-32): Full Feature Set — Media, finance, health, social, smart home
 
 ### Phase 4 Sub-phases
@@ -159,9 +160,9 @@ The Levantine model (`ggml-levantine-large-v3.bin`) should be moved to `backend/
 | Sub-phase | Status | Scope |
 |-----------|--------|-------|
 | 6-Scheduler: NL Scheduled Tasks | ✅ Complete | NLP time parser (dateparser + recurrent), LLM task interpreter with fallback, APScheduler wrapper (add/remove/pause/resume), user confirmation flow with timeout, scheduler service orchestrator, event bus integration (76 tests) |
+| 6-MultiAgent: Multi-Agent System | Design Complete | Orchestrator-centric architecture: BaseAgent ABC, AgentRegistry, AgentExecutor, AgentOrchestrator, A2A protocol (task-based messaging), AgentWorkspace (scoped tool/memory isolation), MCPClientManager + MCPServer (bidirectional), TaskDecomposer (LLM-driven), AgentToolBridge, researcher + coder built-in agents. 14-task implementation plan ready (~120 tests expected) |
 | 6-Webhooks | Pending | Receive and process external events |
 | 6-Workflows | Pending | Multi-step workflow builder in natural language |
-| 6-Multi-Agent | Pending | Agent cloning, A2A protocol, MCP client/server |
 
 ## Claude Code Plugins & Skills for Development
 
