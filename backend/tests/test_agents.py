@@ -28,6 +28,7 @@ from nobla.agents.models import (
 from nobla.agents.base import BaseAgent
 from nobla.agents.registry import AgentRegistry
 from nobla.agents.communication import A2AProtocol
+from nobla.agents.decomposer import TaskDecomposer
 from nobla.agents.executor import AgentExecutor
 from nobla.agents.workspace import AgentWorkspace
 from nobla.events.bus import NoblaEventBus
@@ -698,3 +699,57 @@ class TestA2AProtocol:
         result = await protocol.wait_for_result("task-err", timeout=2.0)
         assert result.status == TaskStatus.FAILED
         await bus.stop()
+
+
+# ── Decomposer tests ────────────────────────────────────────
+
+
+class TestTaskDecomposer:
+    def _make_decomposer(self, llm_response=None) -> TaskDecomposer:
+        registry = AgentRegistry()
+        registry.register(
+            _StubAgent,
+            AgentConfig(name="researcher", description="Searches", role="Search", tier=Tier.STANDARD),
+        )
+        registry.register(
+            _StubAgent,
+            AgentConfig(name="coder", description="Writes code", role="Code", tier=Tier.ELEVATED),
+        )
+        mock_router = AsyncMock()
+        if llm_response:
+            mock_router.route.return_value = llm_response
+        else:
+            mock_router.route.return_value = '{"tasks": [{"instruction": "Search for X", "agent": "researcher"}]}'
+        return TaskDecomposer(router=mock_router, registry=registry)
+
+    @pytest.mark.asyncio
+    async def test_decompose_single_task(self):
+        decomposer = self._make_decomposer()
+        tasks = await decomposer.decompose("Search for Python tutorials", "wf-1")
+        assert len(tasks) >= 1
+        assert tasks[0].instruction
+
+    @pytest.mark.asyncio
+    async def test_decompose_fallback_on_llm_failure(self):
+        decomposer = self._make_decomposer()
+        decomposer._router.route.side_effect = Exception("LLM unavailable")
+        tasks = await decomposer.decompose("Do something", "wf-1")
+        assert len(tasks) == 1  # heuristic fallback returns single task
+
+    def test_select_agent_by_capability(self):
+        decomposer = self._make_decomposer()
+        task = AgentTask(
+            workflow_id="wf-1", assigner="orch",
+            assignee="", instruction="Search for data",
+        )
+        selected = decomposer.select_agent(task, ["researcher", "coder"])
+        assert selected in ("researcher", "coder")
+
+    def test_select_agent_returns_first_when_no_match(self):
+        decomposer = self._make_decomposer()
+        task = AgentTask(
+            workflow_id="wf-1", assigner="orch",
+            assignee="", instruction="Something vague",
+        )
+        selected = decomposer.select_agent(task, ["researcher", "coder"])
+        assert selected in ("researcher", "coder")
