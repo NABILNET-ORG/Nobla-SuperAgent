@@ -25,8 +25,11 @@ from nobla.agents.models import (
 )
 from nobla.agents.base import BaseAgent
 from nobla.agents.communication import A2AProtocol
+from nobla.agents.bridge import AgentToolBridge
+from nobla.agents.cloning import clone_agent
 from nobla.agents.decomposer import TaskDecomposer
 from nobla.agents.executor import AgentExecutor
+from nobla.agents.mcp_client import MCPClientManager, MCPConnection, MCPToolDef
 from nobla.agents.orchestrator import AgentOrchestrator
 from nobla.agents.registry import AgentRegistry
 from nobla.agents.workspace import AgentWorkspace
@@ -189,3 +192,143 @@ class TestAgentOrchestrator:
         assert result is not None
         await orch.stop()
         await bus.stop()
+
+
+# ── Bridge & Cloning tests ──────────────────────────────────
+
+
+class TestAgentToolBridge:
+    def test_bridge_wraps_agent_as_tool(self):
+        config = AgentConfig(
+            name="researcher", description="Searches", role="Search",
+            tier=Tier.STANDARD,
+        )
+        mock_orchestrator = AsyncMock()
+        bridge = AgentToolBridge(config=config, orchestrator=mock_orchestrator)
+        assert bridge.name == "agent.researcher"
+        assert bridge.category.value == "agent"
+        assert bridge.tier == Tier.STANDARD
+
+    @pytest.mark.asyncio
+    async def test_bridge_execute_calls_orchestrator(self):
+        config = AgentConfig(
+            name="researcher", description="Searches", role="Search",
+            tier=Tier.STANDARD,
+        )
+        mock_orchestrator = AsyncMock()
+        mock_workflow = MagicMock()
+        mock_workflow.status = "completed"
+        mock_workflow.task_graph = {}
+        mock_orchestrator.run_workflow.return_value = mock_workflow
+
+        bridge = AgentToolBridge(config=config, orchestrator=mock_orchestrator)
+        from nobla.tools.models import ToolParams
+        params = ToolParams(
+            args={"instruction": "Search for X"},
+            connection_state=MagicMock(user_id="u", tier=Tier.STANDARD),
+        )
+        result = await bridge.execute(params)
+        assert result.success is True
+        mock_orchestrator.run_workflow.assert_called_once()
+
+
+class TestCloneAgent:
+    def test_clone_creates_new_config(self):
+        original = AgentConfig(
+            name="researcher", description="Searches", role="Search",
+            tier=Tier.STANDARD, allowed_tools=["search.web"],
+        )
+        cloned = clone_agent(original, name="researcher-v2", llm_tier="strong")
+        assert cloned.name == "researcher-v2"
+        assert cloned.llm_tier == "strong"
+        assert cloned.allowed_tools == ["search.web"]
+        assert cloned.role == "Search"
+
+    def test_clone_preserves_original(self):
+        original = AgentConfig(
+            name="researcher", description="Searches", role="Search",
+            tier=Tier.STANDARD,
+        )
+        cloned = clone_agent(original, name="clone")
+        assert original.name == "researcher"
+
+
+# ── MCP Client tests ────────────────────────────────────────
+
+
+class TestMCPClientManager:
+    def test_init(self):
+        mgr = MCPClientManager()
+        assert mgr.list_connections() == []
+
+    @pytest.mark.asyncio
+    async def test_connect_and_list(self):
+        mgr = MCPClientManager()
+        with patch.object(mgr, '_do_connect', new_callable=AsyncMock) as mock_conn:
+            mock_conn.return_value = MCPConnection(
+                connection_id="conn-1",
+                server_uri="stdio://test",
+                transport="stdio",
+                server_info={"name": "test-server", "version": "1.0"},
+                capabilities={"tools": True},
+                status="connected",
+            )
+            conn_id = await mgr.connect("stdio://test")
+            assert conn_id == "conn-1"
+            conns = mgr.list_connections()
+            assert len(conns) == 1
+
+    @pytest.mark.asyncio
+    async def test_disconnect(self):
+        mgr = MCPClientManager()
+        with patch.object(mgr, '_do_connect', new_callable=AsyncMock) as mock_conn:
+            mock_conn.return_value = MCPConnection(
+                connection_id="conn-1", server_uri="stdio://test",
+                transport="stdio", server_info={}, capabilities={},
+                status="connected",
+            )
+            await mgr.connect("stdio://test")
+            await mgr.disconnect("conn-1")
+            assert mgr.list_connections() == []
+
+    @pytest.mark.asyncio
+    async def test_disconnect_all(self):
+        mgr = MCPClientManager()
+        with patch.object(mgr, '_do_connect', new_callable=AsyncMock) as mock_conn:
+            mock_conn.return_value = MCPConnection(
+                connection_id="c1", server_uri="s1", transport="stdio",
+                server_info={}, capabilities={}, status="connected",
+            )
+            await mgr.connect("s1")
+            mock_conn.return_value = MCPConnection(
+                connection_id="c2", server_uri="s2", transport="stdio",
+                server_info={}, capabilities={}, status="connected",
+            )
+            await mgr.connect("s2")
+            await mgr.disconnect_all()
+            assert mgr.list_connections() == []
+
+    @pytest.mark.asyncio
+    async def test_call_tool(self):
+        mgr = MCPClientManager()
+        with patch.object(mgr, '_do_connect', new_callable=AsyncMock) as mock_conn:
+            mock_conn.return_value = MCPConnection(
+                connection_id="conn-1", server_uri="test",
+                transport="stdio", server_info={}, capabilities={},
+                status="connected",
+            )
+            await mgr.connect("test")
+        with patch.object(mgr, '_do_call_tool', new_callable=AsyncMock) as mock_call:
+            mock_call.return_value = {"result": "data"}
+            result = await mgr.call_tool("conn-1", "tool_name", {"arg": "val"})
+            assert result == {"result": "data"}
+
+    @pytest.mark.asyncio
+    async def test_call_tool_unknown_connection(self):
+        mgr = MCPClientManager()
+        with pytest.raises(ValueError, match="not found"):
+            await mgr.call_tool("nonexistent", "tool", {})
+
+    def test_max_connections_default(self):
+        mgr = MCPClientManager(max_connections=5)
+        assert mgr._max_connections == 5
