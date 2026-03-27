@@ -29,7 +29,10 @@ from nobla.agents.bridge import AgentToolBridge
 from nobla.agents.cloning import clone_agent
 from nobla.agents.decomposer import TaskDecomposer
 from nobla.agents.executor import AgentExecutor
+from nobla.agents.builtins.coder import CoderAgent, CODER_CONFIG
+from nobla.agents.builtins.researcher import ResearcherAgent, RESEARCHER_CONFIG
 from nobla.agents.mcp_client import MCPClientManager, MCPConnection, MCPToolDef
+from nobla.agents.mcp_server import MCPServer
 from nobla.agents.orchestrator import AgentOrchestrator
 from nobla.agents.registry import AgentRegistry
 from nobla.agents.workspace import AgentWorkspace
@@ -332,3 +335,228 @@ class TestMCPClientManager:
     def test_max_connections_default(self):
         mgr = MCPClientManager(max_connections=5)
         assert mgr._max_connections == 5
+
+
+# ── MCP Server tests ────────────────────────────────────────
+
+
+class TestMCPServer:
+    def test_init(self):
+        server = MCPServer(
+            tool_registry=MagicMock(),
+            agent_registry=AgentRegistry(),
+            orchestrator=AsyncMock(),
+        )
+        assert server._exposed_tools == set()
+        assert server._exposed_agents == set()
+
+    def test_expose_and_hide_tool(self):
+        server = MCPServer(
+            tool_registry=MagicMock(),
+            agent_registry=AgentRegistry(),
+            orchestrator=AsyncMock(),
+        )
+        server.expose_tool("search.web")
+        assert "search.web" in server._exposed_tools
+        server.hide_tool("search.web")
+        assert "search.web" not in server._exposed_tools
+
+    def test_expose_agent(self):
+        registry = AgentRegistry()
+        registry.register(
+            _StubAgent,
+            AgentConfig(name="researcher", description="Search", role="R", tier=Tier.STANDARD),
+        )
+        server = MCPServer(
+            tool_registry=MagicMock(),
+            agent_registry=registry,
+            orchestrator=AsyncMock(),
+        )
+        server.expose_agent("researcher")
+        assert "researcher" in server._exposed_agents
+
+    @pytest.mark.asyncio
+    async def test_handle_initialize(self):
+        server = MCPServer(
+            tool_registry=MagicMock(),
+            agent_registry=AgentRegistry(),
+            orchestrator=AsyncMock(),
+        )
+        result = await server.handle_initialize({})
+        assert "serverInfo" in result
+        assert result["serverInfo"]["name"] == "nobla-agent"
+
+    @pytest.mark.asyncio
+    async def test_handle_tools_list(self):
+        mock_tool_reg = MagicMock()
+        mock_tool = MagicMock()
+        mock_tool.name = "search.web"
+        mock_tool.description = "Web search"
+        mock_tool_reg.get.return_value = mock_tool
+        server = MCPServer(
+            tool_registry=mock_tool_reg,
+            agent_registry=AgentRegistry(),
+            orchestrator=AsyncMock(),
+        )
+        server.expose_tool("search.web")
+        tools = await server.handle_tools_list()
+        assert len(tools) == 1
+        assert tools[0]["name"] == "search.web"
+
+    @pytest.mark.asyncio
+    async def test_handle_tools_call_routes_to_orchestrator_for_agent(self):
+        mock_orch = AsyncMock()
+        mock_wf = MagicMock()
+        mock_wf.status = "completed"
+        mock_wf.task_graph = {}
+        mock_wf.workflow_id = "wf-1"
+        mock_orch.run_workflow.return_value = mock_wf
+
+        registry = AgentRegistry()
+        registry.register(
+            _StubAgent,
+            AgentConfig(name="researcher", description="S", role="R", tier=Tier.STANDARD),
+        )
+        server = MCPServer(
+            tool_registry=MagicMock(),
+            agent_registry=registry,
+            orchestrator=mock_orch,
+        )
+        server.expose_agent("researcher")
+        result = await server.handle_tools_call(
+            "agent.researcher", {"instruction": "Search"}, "client-1",
+        )
+        assert result["success"] is True
+        mock_orch.run_workflow.assert_called_once()
+
+
+# ── Built-in agent tests ────────────────────────────────────
+
+
+class TestResearcherAgent:
+    def test_config(self):
+        assert RESEARCHER_CONFIG.name == "researcher"
+        assert RESEARCHER_CONFIG.tier == Tier.STANDARD
+        assert RESEARCHER_CONFIG.llm_tier == "balanced"
+        assert RESEARCHER_CONFIG.default_isolation == IsolationLevel.SHARED_READWRITE
+
+    @pytest.mark.asyncio
+    async def test_handle_task(self):
+        agent = ResearcherAgent(config=RESEARCHER_CONFIG)
+        agent.router = AsyncMock()
+        agent.router.route.return_value = "Here are the findings about X."
+        agent.workspace = AsyncMock()
+
+        task = AgentTask(
+            workflow_id="wf-1", assigner="orch",
+            assignee="r-1", instruction="Research Python async patterns",
+        )
+        result = await agent.handle_task(task)
+        assert result.status == TaskStatus.COMPLETED
+        assert len(result.artifacts) >= 1
+
+
+class TestCoderAgent:
+    def test_config(self):
+        assert CODER_CONFIG.name == "coder"
+        assert CODER_CONFIG.tier == Tier.ELEVATED
+        assert CODER_CONFIG.llm_tier == "strong"
+        assert CODER_CONFIG.default_isolation == IsolationLevel.SHARED_READ
+
+    @pytest.mark.asyncio
+    async def test_handle_task(self):
+        agent = CoderAgent(config=CODER_CONFIG)
+        agent.router = AsyncMock()
+        agent.router.route.return_value = "def hello():\n    print('hello')"
+        agent.workspace = AsyncMock()
+
+        task = AgentTask(
+            workflow_id="wf-1", assigner="orch",
+            assignee="c-1", instruction="Write a hello world function",
+        )
+        result = await agent.handle_task(task)
+        assert result.status == TaskStatus.COMPLETED
+        assert len(result.artifacts) >= 1
+
+
+# ── Integration tests ────────────────────────────────────────
+
+
+class TestAgentSystemIntegration:
+    """Full pipeline: registry → executor → protocol → orchestrator → workflow."""
+
+    @pytest.mark.asyncio
+    async def test_full_workflow_pipeline(self):
+        bus = NoblaEventBus(max_queue_depth=100)
+        await bus.start()
+
+        registry = AgentRegistry()
+        registry.register(
+            _StubAgent,
+            AgentConfig(
+                name="stub", description="A stub agent", role="Stub",
+                tier=Tier.STANDARD, allowed_tools=[],
+            ),
+        )
+
+        mock_tool_registry = MagicMock()
+        mock_tool_executor = AsyncMock()
+        mock_tool_executor.execute.return_value = MagicMock(success=True)
+        mock_router = AsyncMock()
+        mock_router.route.return_value = '{"tasks": [{"instruction": "Do it", "agent": "stub"}]}'
+
+        executor = AgentExecutor(
+            registry=registry, tool_registry=mock_tool_registry,
+            tool_executor=mock_tool_executor, event_bus=bus,
+            router=mock_router,
+        )
+        protocol = A2AProtocol(event_bus=bus)
+        decomposer = TaskDecomposer(router=mock_router, registry=registry)
+        orch = AgentOrchestrator(
+            executor=executor, protocol=protocol,
+            decomposer=decomposer, event_bus=bus,
+            tool_registry=mock_tool_registry,
+        )
+
+        await orch.start()
+        result = await orch.run_workflow(
+            instruction="Test the full pipeline",
+            user_id="test-user",
+            user_tier=Tier.STANDARD,
+        )
+        assert result.status == "completed"
+        assert len(result.task_graph) >= 1
+        assert len(executor.list_running()) == 0
+
+        await orch.stop()
+        await bus.stop()
+
+    @pytest.mark.asyncio
+    async def test_bridge_exposes_agent_as_tool(self):
+        from nobla.tools.models import ToolCategory
+
+        config = AgentConfig(
+            name="stub", description="Stub", role="Stub", tier=Tier.STANDARD,
+        )
+        mock_orch = AsyncMock()
+        mock_wf = MagicMock()
+        mock_wf.status = "completed"
+        mock_wf.task_graph = {}
+        mock_wf.workflow_id = "wf-test"
+        mock_orch.run_workflow.return_value = mock_wf
+
+        bridge = AgentToolBridge(config=config, orchestrator=mock_orch)
+        assert bridge.category == ToolCategory.AGENT
+        assert bridge.name == "agent.stub"
+
+    @pytest.mark.asyncio
+    async def test_cloning_preserves_config(self):
+        original = AgentConfig(
+            name="researcher", description="Searches", role="Search",
+            tier=Tier.STANDARD, allowed_tools=["search.web"],
+        )
+        clone = clone_agent(original, name="fast-researcher", llm_tier="cheap")
+        assert clone.name == "fast-researcher"
+        assert clone.llm_tier == "cheap"
+        assert clone.allowed_tools == ["search.web"]
+        assert original.name == "researcher"
