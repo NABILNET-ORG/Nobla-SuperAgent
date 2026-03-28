@@ -12,6 +12,7 @@ import 'package:nobla_agent/features/persona/screens/persona_list_screen.dart';
 import 'package:nobla_agent/features/persona/screens/persona_detail_screen.dart';
 import 'package:nobla_agent/features/persona/screens/persona_edit_screen.dart';
 import 'package:nobla_agent/features/tools/screens/tools_screen.dart';
+import 'package:nobla_agent/features/automation/screens/automation_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -79,6 +80,10 @@ GoRouter createRouter(AuthState authState) {
             builder: (context, state) => const ToolsScreen(),
           ),
           GoRoute(
+            path: '/home/automation',
+            builder: (context, state) => const AutomationScreen(),
+          ),
+          GoRoute(
             path: '/home/settings',
             builder: (context, state) => const SettingsScreen(),
           ),
@@ -113,6 +118,8 @@ class HomeShell extends StatelessWidget {
             case 4:
               context.go('/home/tools');
             case 5:
+              context.go('/home/automation');
+            case 6:
               context.go('/home/settings');
           }
         },
@@ -143,6 +150,11 @@ class HomeShell extends StatelessWidget {
             label: 'Tools',
           ),
           NavigationDestination(
+            icon: Icon(Icons.account_tree_outlined),
+            selectedIcon: Icon(Icons.account_tree),
+            label: 'Automation',
+          ),
+          NavigationDestination(
             icon: Icon(Icons.settings_outlined),
             selectedIcon: Icon(Icons.settings),
             label: 'Settings',
@@ -157,7 +169,8 @@ class HomeShell extends StatelessWidget {
     if (location.startsWith('/home/memory')) return 2;
     if (location.startsWith('/home/persona')) return 3;
     if (location.startsWith('/home/tools')) return 4;
-    if (location.startsWith('/home/settings')) return 5;
+    if (location.startsWith('/home/automation')) return 5;
+    if (location.startsWith('/home/settings')) return 6;
     return 0;
   }
 }

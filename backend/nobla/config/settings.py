@@ -348,6 +348,37 @@ class SchedulerSettings(BaseModel):
     misfire_grace_seconds: int = 300
 
 
+class WebhookSettings(BaseModel):
+    """Webhook system configuration (Phase 6)."""
+
+    enabled: bool = True
+    max_webhooks_per_user: int = 50
+    default_signature_scheme: str = "hmac-sha256"
+    inbound_path_prefix: str = "/webhooks/inbound"
+    max_payload_bytes: int = 1_048_576  # 1 MB
+    max_retries: int = 3
+    retry_backoff_base: float = 2.0  # Exponential: 2s, 8s, 32s
+    retry_backoff_multiplier: float = 4.0
+    dead_letter_retention_days: int = 30
+    event_log_retention_days: int = 7
+    health_window_hours: int = 24  # Health computed over last N hours
+    outbound_timeout_seconds: float = 10.0
+
+
+class WorkflowSettings(BaseModel):
+    """Workflow engine configuration (Phase 6)."""
+
+    enabled: bool = True
+    max_workflows_per_user: int = 100
+    max_steps_per_workflow: int = 50
+    max_triggers_per_workflow: int = 10
+    max_concurrent_executions: int = 5
+    default_step_timeout_seconds: int = 300
+    max_step_retries: int = 5
+    deduplication_window_seconds: float = 5.0
+    execution_history_retention_days: int = 30
+
+
 class AgentSettings(BaseModel):
     enabled: bool = True
     max_concurrent_agents: int = 10
@@ -407,6 +438,8 @@ class Settings(BaseSettings):
     telegram: TelegramSettings = Field(default_factory=TelegramSettings)
     discord: DiscordSettings = Field(default_factory=DiscordSettings)
     scheduler: SchedulerSettings = Field(default_factory=SchedulerSettings)
+    webhooks: WebhookSettings = Field(default_factory=WebhookSettings)
+    workflows: WorkflowSettings = Field(default_factory=WorkflowSettings)
     skill_runtime: SkillRuntimeSettings = Field(default_factory=SkillRuntimeSettings)
     agents: AgentSettings = Field(default_factory=AgentSettings)
     mcp_client: MCPClientSettings = Field(default_factory=MCPClientSettings)

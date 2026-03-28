@@ -484,6 +484,84 @@ async def lifespan(app: FastAPI):
     else:
         logger.info("scheduler_service_disabled")
 
+    # --- Webhooks (Phase 6) ---
+    webhook_manager = None
+    outbound_handler = None
+    if settings.webhooks.enabled:
+        from nobla.automation.webhooks.manager import WebhookManager
+        from nobla.automation.webhooks.outbound import OutboundWebhookHandler
+        from nobla.gateway.webhook_handlers import set_webhook_manager, create_webhook_router
+
+        webhook_manager = WebhookManager(
+            event_bus=event_bus,
+            max_webhooks_per_user=settings.webhooks.max_webhooks_per_user,
+            max_retries=settings.webhooks.max_retries,
+            max_payload_bytes=settings.webhooks.max_payload_bytes,
+        )
+        outbound_handler = OutboundWebhookHandler(
+            webhook_manager=webhook_manager,
+            event_bus=event_bus,
+            max_retries=settings.webhooks.max_retries,
+            retry_backoff_base=settings.webhooks.retry_backoff_base,
+            retry_backoff_multiplier=settings.webhooks.retry_backoff_multiplier,
+            timeout=settings.webhooks.outbound_timeout_seconds,
+        )
+        set_webhook_manager(webhook_manager)
+        app.include_router(create_webhook_router())
+        await outbound_handler.start()
+        logger.info("webhook_system_started")
+    else:
+        logger.info("webhook_system_disabled")
+
+    # --- Workflows (Phase 6) ---
+    workflow_service = None
+    if settings.workflows.enabled:
+        from nobla.automation.workflows.executor import WorkflowExecutor
+        from nobla.automation.workflows.interpreter import WorkflowInterpreter
+        from nobla.automation.workflows.trigger_matcher import TriggerMatcher
+        from nobla.automation.workflows.service import WorkflowService
+        from nobla.gateway.workflow_handlers import set_workflow_service, create_workflow_router
+
+        wf_trigger_matcher = TriggerMatcher(
+            event_bus=event_bus,
+            dedup_window_seconds=settings.workflows.deduplication_window_seconds,
+        )
+        wf_executor = WorkflowExecutor(event_bus=event_bus)
+        wf_interpreter = WorkflowInterpreter(router=router)
+        workflow_service = WorkflowService(
+            executor=wf_executor,
+            interpreter=wf_interpreter,
+            trigger_matcher=wf_trigger_matcher,
+            event_bus=event_bus,
+            max_workflows_per_user=settings.workflows.max_workflows_per_user,
+            max_concurrent_executions=settings.workflows.max_concurrent_executions,
+        )
+        set_workflow_service(workflow_service)
+        app.include_router(create_workflow_router())
+        await workflow_service.start()
+
+        if ks:
+            ks.on_soft_kill(workflow_service.stop)
+
+        logger.info("workflow_system_started")
+    else:
+        logger.info("workflow_system_disabled")
+
+    # --- Template Registry (Phase 6) ---
+    from nobla.automation.workflows.template_registry import TemplateRegistry
+    from nobla.gateway.template_handlers import (
+        set_template_registry,
+        set_template_workflow_service,
+        create_template_router,
+    )
+
+    template_registry = TemplateRegistry(load_bundled=True)
+    set_template_registry(template_registry)
+    if workflow_service:
+        set_template_workflow_service(workflow_service)
+    app.include_router(create_template_router())
+    logger.info("template_registry_started count=%d", template_registry.count)
+
     # --- Multi-Agent System (Phase 6) ---
     if settings.agents.enabled:
         from nobla.agents.registry import AgentRegistry
@@ -561,6 +639,10 @@ async def lifespan(app: FastAPI):
     # Cleanup
     if agent_orchestrator:
         await agent_orchestrator.stop()
+    if workflow_service:
+        await workflow_service.stop()
+    if outbound_handler:
+        await outbound_handler.stop()
     await scheduler_service.stop()
     await channel_manager.stop_all()
     await event_bus.stop()

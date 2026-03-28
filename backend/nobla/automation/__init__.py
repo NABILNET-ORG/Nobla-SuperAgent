@@ -1,1 +1,1 @@
-"""NL Scheduled Tasks — automation engine (Phase 6)."""
+"""Automation engine — scheduled tasks, webhooks, workflows (Phase 6)."""
