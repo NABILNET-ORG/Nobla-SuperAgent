@@ -413,7 +413,7 @@ TIER 4: ADMIN
 **Messaging Channels:**
 - [x] Telegram bot — TelegramAdapter (polling + webhook modes), MarkdownV2 formatter, media handler, /start /link /unlink /status commands, group mention-only activation, inline keyboard for tool approvals, event bus integration (95 tests)
 - [x] Discord bot — DiscordAdapter (persistent WebSocket gateway), discord.ui.Button views, media handler, !start !link !unlink !status commands, guild mention-only activation, interaction handling, event bus integration (78 tests)
-- [ ] WhatsApp (via WhatsApp Business API or Baileys)
+- [x] WhatsApp — WhatsAppAdapter (Business Cloud API, webhook-only), HMAC-SHA256 signature verification, Graph API media upload/download, interactive messages (reply buttons + lists), keyword commands (!start/!link/!unlink/!status), message status tracking (sent/delivered/read), reaction events, WhatsAppSettings + gateway wiring (94 tests)
 - [ ] Slack bot
 - [ ] Signal (via signal-cli)
 - [ ] iMessage (via BlueBubbles on macOS)

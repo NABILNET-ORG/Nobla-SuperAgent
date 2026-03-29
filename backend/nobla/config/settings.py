@@ -336,6 +336,31 @@ class DiscordSettings(BaseModel):
         return self
 
 
+class WhatsAppSettings(BaseModel):
+    """WhatsApp Business Cloud API adapter configuration (Phase 5-Channels)."""
+
+    enabled: bool = False
+    access_token: str = ""
+    phone_number_id: str = ""
+    business_account_id: str = ""
+    app_secret: str = ""  # For webhook signature verification (HMAC-SHA256)
+    verify_token: str = ""  # Webhook subscription verification token
+    webhook_path: str = "/webhook/whatsapp"
+    api_version: str = "v21.0"
+    group_activation: str = "mention"
+    max_file_size_mb: int = 100
+    download_timeout: int = 30
+    message_ttl_days: int = 30
+
+    @model_validator(mode="after")
+    def validate_secrets(self):
+        if self.enabled and not self.access_token:
+            raise ValueError("access_token is required when WhatsApp is enabled")
+        if self.enabled and not self.phone_number_id:
+            raise ValueError("phone_number_id is required when WhatsApp is enabled")
+        return self
+
+
 class SchedulerSettings(BaseModel):
     """NL Scheduled Tasks configuration (Phase 6)."""
 
@@ -454,6 +479,7 @@ class Settings(BaseSettings):
     channels: ChannelSettings = Field(default_factory=ChannelSettings)
     telegram: TelegramSettings = Field(default_factory=TelegramSettings)
     discord: DiscordSettings = Field(default_factory=DiscordSettings)
+    whatsapp: WhatsAppSettings = Field(default_factory=WhatsAppSettings)
     scheduler: SchedulerSettings = Field(default_factory=SchedulerSettings)
     webhooks: WebhookSettings = Field(default_factory=WebhookSettings)
     workflows: WorkflowSettings = Field(default_factory=WorkflowSettings)

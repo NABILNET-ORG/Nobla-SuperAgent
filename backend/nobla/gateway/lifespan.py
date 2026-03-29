@@ -139,7 +139,7 @@ def _init_providers(llm_config) -> dict:
 
 
 async def _init_channels(settings, linking_service, channel_manager, event_bus):
-    """Initialize channel adapters (Telegram, Discord)."""
+    """Initialize channel adapters (Telegram, Discord, WhatsApp)."""
     # --- Telegram Adapter (Phase 5A) ---
     if settings.telegram.enabled and settings.telegram.bot_token:
         from nobla.channels.telegram.handlers import TelegramHandlers
@@ -183,6 +183,29 @@ async def _init_channels(settings, linking_service, channel_manager, event_bus):
         logger.info("discord_adapter_started")
     else:
         logger.info("discord_adapter_disabled")
+
+    # --- WhatsApp Adapter (Phase 5-Channels) ---
+    if settings.whatsapp.enabled and settings.whatsapp.access_token:
+        from nobla.channels.whatsapp.handlers import WhatsAppHandlers
+        from nobla.channels.whatsapp.adapter import WhatsAppAdapter
+
+        wa_handlers = WhatsAppHandlers(
+            linking=linking_service,
+            event_bus=event_bus,
+            access_token=settings.whatsapp.access_token,
+            phone_number_id=settings.whatsapp.phone_number_id,
+            api_version=settings.whatsapp.api_version,
+            max_file_size_mb=settings.whatsapp.max_file_size_mb,
+        )
+        wa_adapter = WhatsAppAdapter(
+            settings=settings.whatsapp,
+            handlers=wa_handlers,
+        )
+        channel_manager.register(wa_adapter)
+        await wa_adapter.start()
+        logger.info("whatsapp_adapter_started")
+    else:
+        logger.info("whatsapp_adapter_disabled")
 
 
 def _init_voice(settings, router):

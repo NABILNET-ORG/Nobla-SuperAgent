@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Nobla Agent** is an open-source, privacy-first AI super agent that unifies 35+ AI agent projects while fixing their security vulnerabilities. Currently in **active development** — Phases 1-4E + Phase 5A + Phase 5B.1-5B.2 + Phase 6 (NL Scheduler + Multi-Agent System v2 + Webhooks & Workflows + Templates & Import/Export) complete. 1321 tests passing (273 Flutter + 1048 backend).
+**Nobla Agent** is an open-source, privacy-first AI super agent that unifies 35+ AI agent projects while fixing their security vulnerabilities. Currently in **active development** — Phases 1-4E + Phase 5A + Phase 5B.1-5B.2 + Phase 5-Channels (WhatsApp) + Phase 6 (NL Scheduler + Multi-Agent System v2 + Webhooks & Workflows + Templates & Import/Export) complete. 1415 tests passing (273 Flutter + 1142 backend).
 
 - **PRD.md** — Full product requirements, competitive analysis, feature specs
 - **Plan.md** — 7-phase development roadmap with detailed task breakdowns
@@ -22,6 +22,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Phase 4E**: Flutter Tool UI — ToolsScreen with 3-tab TabBar (Mirror/Activity/Browse), shared activity provider, filtered activity feed, mirror provider with subscribe/capture/decode, tool catalog browser with category sections, backend mirror RPC handlers, executor mirror integration (85 Flutter + 9 backend tests)
 - **Phase 5-Foundation**: Event bus, channel abstraction, skill runtime, tool event wiring (106 tests)
 - **Phase 5A**: Telegram adapter (polling + webhook, 95 tests), Discord adapter (WebSocket gateway, 78 tests)
+- **Phase 5-Channels (WhatsApp)**: WhatsApp Business Cloud API adapter — webhook-only (HMAC-SHA256 signature verification), Graph API media upload/download, interactive messages (reply buttons + lists), keyword commands (!start/!link/!unlink/!status), message status tracking (sent/delivered/read), reaction events, WhatsAppSettings + gateway wiring (94 tests)
 - **Phase 6-Scheduler**: NL Scheduled Tasks — dateparser + recurrent + LLM interpreter + APScheduler + confirmation flow (76 tests)
 - **Phase 6-MultiAgent**: Multi-Agent System v2 — BaseAgent ABC, registry, executor, parallel orchestrator (dependency tiers + asyncio.gather), A2A protocol with capability discovery, depth-limited delegation, workspace isolation, task decomposer with dependency graphs, bridge/cloning, MCP client (stdio + SSE transports) + MCP server (FastAPI SSE endpoints), researcher + coder agents, gateway wiring with kill switch (148 tests)
 - **Phase 6-Webhooks**: Webhook system — pluggable signature verification (HMAC-SHA256/SHA1 + custom), inbound/outbound webhooks, exponential retry, dead letter queue with user notifications, health monitoring, REST API (110 tests)
@@ -100,10 +101,11 @@ nobla-agent/
 │   │   └── search/     # AI search engine (Phase 2B)
 │   ├── security/       # Auth (JWT), sandbox (Docker/gVisor), audit (OpenTelemetry), encryption (AES-256)
 │   ├── events/         # Event bus: async pub/sub, wildcard subscriptions, priority dispatch (Phase 5)
-│   ├── channels/       # Channel abstraction + Telegram + Discord adapters (Phase 5A)
+│   ├── channels/       # Channel abstraction + adapters (Phase 5)
 │   │   ├── base.py, manager.py, linking.py, bridge.py  # Channel foundation (Phase 5)
 │   │   ├── telegram/   # Telegram adapter: polling + webhook, MarkdownV2, media, commands (Phase 5A)
-│   │   └── discord/    # Discord adapter: WebSocket gateway, ui.Button views, media, commands (Phase 5A)
+│   │   ├── discord/    # Discord adapter: WebSocket gateway, ui.Button views, media, commands (Phase 5A)
+│   │   └── whatsapp/   # WhatsApp adapter: Cloud API webhook, Graph API media, interactive messages (Phase 5-Channels)
 │   ├── automation/     # NL Scheduled Tasks + Webhooks + Workflows + Templates (Phase 6)
 │   │   ├── parser.py, interpreter.py, scheduler.py, confirmation.py, service.py  # NL Scheduler
 │   │   ├── webhooks/   # Webhook system: models, verification, manager, outbound (Phase 6)
@@ -145,7 +147,7 @@ The Levantine model (`ggml-levantine-large-v3.bin`) should be moved to `backend/
 2. **Phase 2** (Weeks 5-8): Intelligence Core — Multi-LLM router, memory system, search ✅
 3. **Phase 3** (Weeks 9-12): Voice & Persona — STT/TTS, PersonaPlex, avatar ✅
 4. **Phase 4** (Weeks 13-16): Computer Control — Screen vision, mouse/keyboard, code sandbox (**4-Pre ✅, 4A ✅, 4B ✅, 4C ✅, 4D ✅, 4E design ✅**)
-5. **Phase 5** (Weeks 17-20): Channels & Integrations — 20+ messaging platforms (**5-Foundation ✅, 5A ✅**)
+5. **Phase 5** (Weeks 17-20): Channels & Integrations — 20+ messaging platforms (**5-Foundation ✅, 5A ✅, WhatsApp ✅**)
 6. **Phase 6** (Weeks 21-24): Automation & Multi-Agent — NL Scheduler ✅, **Multi-Agent design ✅**, workflows, MCP
 7. **Phase 7** (Weeks 25-32): Full Feature Set — Media, finance, health, social, smart home
 
@@ -164,7 +166,8 @@ The Levantine model (`ggml-levantine-large-v3.bin`) should be moved to `backend/
 |-----------|--------|-------|
 | 5-Foundation | ✅ Complete | Event bus (pub/sub, wildcards, priority, backpressure), channel abstraction (base adapter, manager, user linking, bridge), skill runtime (universal adapter, security scanner, tool bridge), tool event wiring, settings models (106 tests) |
 | 5A: Telegram + Discord | ✅ Complete | Telegram adapter (polling + webhook, MarkdownV2, media, commands, group mention-only, inline buttons — 95 tests), Discord adapter (WebSocket gateway, ui.Button views, media, commands, guild mention-only, interactions — 78 tests) |
-| 5-Channels | In Progress | 15 remaining platform adapters (WhatsApp, Slack, Signal, Teams, etc.) |
+| 5-Channels: WhatsApp | ✅ Complete | WhatsApp Business Cloud API adapter — webhook-only, HMAC-SHA256 verification, Graph API media, interactive messages (buttons + lists), keyword commands, status tracking, reaction events, WhatsAppSettings, gateway wiring (94 tests) |
+| 5-Channels | In Progress | 14 remaining platform adapters (Slack, Signal, Teams, etc.) |
 | 5B.1-Learning | ✅ Complete | FeedbackCollector (thumbs+stars+tool chain), PatternDetector (fingerprint+threshold), SkillGenerator (macro→skill→publishable), ABTestManager (epsilon-greedy), ProactiveEngine (snooze/dismiss/auto-expire), LearningService, REST API (22 routes), LLM Router A/B hook, Flutter Agent Intelligence screen (106 backend + 24 Flutter tests) |
 | 5B.2-Marketplace | ✅ Complete | MarketplaceRegistry (publish pipeline, SemVer versioning, tiered trust, verification), SkillPackager (.nobla archive + manifest-pointer), SkillDiscovery (keyword search, filters, recommendations), UsageTracker (event-driven stats), MarketplaceService, REST API (15 routes), gateway wiring, Flutter marketplace UI (search, detail, widgets) (97 backend + 32 Flutter tests) |
 
