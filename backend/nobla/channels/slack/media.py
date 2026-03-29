@@ -86,8 +86,8 @@ async def upload_file_v2(
         upload_url = result1["upload_url"]
         file_id = result1["file_id"]
 
-        # Step 2: Upload file content to the URL
-        resp2 = await client.post(
+        # Step 2: Upload file content to the URL (Slack requires PUT)
+        resp2 = await client.put(
             upload_url,
             content=data,
             headers={"Content-Type": "application/octet-stream"},

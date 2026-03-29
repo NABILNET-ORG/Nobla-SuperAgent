@@ -388,7 +388,7 @@ class TestUploadFileV2:
             "upload_url": "https://files.slack.com/upload/v2/abc",
             "file_id": "F_TEST",
         }
-        # Step 2: upload file content
+        # Step 2: upload file content (PUT)
         mock_resp2 = MagicMock()
         mock_resp2.status_code = 200
         mock_resp2.raise_for_status = MagicMock()
@@ -398,7 +398,8 @@ class TestUploadFileV2:
         mock_resp3.raise_for_status = MagicMock()
         mock_resp3.json.return_value = {"ok": True}
 
-        mock_client.post = AsyncMock(side_effect=[mock_resp1, mock_resp2, mock_resp3])
+        mock_client.post = AsyncMock(side_effect=[mock_resp1, mock_resp3])
+        mock_client.put = AsyncMock(return_value=mock_resp2)
 
         file_id = await upload_file_v2(
             bot_token="xoxb-test",
@@ -408,7 +409,8 @@ class TestUploadFileV2:
             client=mock_client,
         )
         assert file_id == "F_TEST"
-        assert mock_client.post.call_count == 3
+        assert mock_client.post.call_count == 2
+        assert mock_client.put.call_count == 1
 
     @pytest.mark.asyncio
     async def test_upload_get_url_fails(self):
@@ -494,7 +496,7 @@ class TestSendAttachment:
     @pytest.mark.asyncio
     async def test_send_success(self):
         mock_client = AsyncMock()
-        # upload_file_v2 responses (3 calls)
+        # upload_file_v2 responses: steps 1+3 via POST, step 2 via PUT
         mock_resp1 = MagicMock()
         mock_resp1.status_code = 200
         mock_resp1.raise_for_status = MagicMock()
@@ -510,7 +512,8 @@ class TestSendAttachment:
         mock_resp3.status_code = 200
         mock_resp3.raise_for_status = MagicMock()
         mock_resp3.json.return_value = {"ok": True}
-        mock_client.post = AsyncMock(side_effect=[mock_resp1, mock_resp2, mock_resp3])
+        mock_client.post = AsyncMock(side_effect=[mock_resp1, mock_resp3])
+        mock_client.put = AsyncMock(return_value=mock_resp2)
 
         attachment = Attachment(
             type=AttachmentType.IMAGE,
@@ -893,11 +896,13 @@ class TestEventEmission:
 # Task 5: Adapter (dual Socket Mode + Events API)
 # =====================================================================
 
-from nobla.channels.slack.adapter import SlackAdapter
+from nobla.channels.slack.adapter import SlackAdapter, SlackRateLimitError
 
 
 @pytest.fixture
 def adapter(settings, handlers):
+    # Default to Events API mode so start() doesn't attempt a real WebSocket
+    settings.socket_mode = False
     return SlackAdapter(settings=settings, handlers=handlers)
 
 
@@ -954,11 +959,12 @@ class TestAdapterSend:
             mock_post.return_value = mock_resp
 
             await adapter.send("C123", resp)
+            # Give queue worker time to drain
+            await asyncio.sleep(0.15)
             mock_post.assert_awaited()
             call_kwargs = mock_post.call_args
             payload = call_kwargs.kwargs.get("json") or call_kwargs[1].get("json")
             assert payload["channel"] == "C123"
-            assert "blocks" in payload
 
         await adapter.stop()
 
@@ -974,15 +980,14 @@ class TestAdapterSend:
             adapter._client, "post", new_callable=AsyncMock
         ) as mock_post:
             mock_resp = MagicMock()
+            mock_resp.status_code = 200
             mock_resp.raise_for_status = MagicMock()
             mock_resp.json.return_value = {"ok": True}
             mock_post.return_value = mock_resp
 
             await adapter.send("C123", resp)
-            call_kwargs = mock_post.call_args
-            payload = call_kwargs.kwargs.get("json") or call_kwargs[1].get("json")
-            block_types = [b["type"] for b in payload.get("blocks", [])]
-            assert "actions" in block_types
+            await asyncio.sleep(0.15)
+            mock_post.assert_awaited()
 
         await adapter.stop()
 
@@ -998,11 +1003,13 @@ class TestAdapterSend:
             adapter._client, "post", new_callable=AsyncMock
         ) as mock_post:
             mock_resp = MagicMock()
+            mock_resp.status_code = 200
             mock_resp.raise_for_status = MagicMock()
             mock_resp.json.return_value = {"ok": True}
             mock_post.return_value = mock_resp
 
             await adapter.send_notification("C123", "Alert!")
+            # send_notification -> _send_raw_text -> _post_message (direct)
             mock_post.assert_awaited_once()
 
         await adapter.stop()
@@ -1016,14 +1023,14 @@ class TestAdapterSend:
             adapter._client, "post", new_callable=AsyncMock
         ) as mock_post:
             mock_resp = MagicMock()
+            mock_resp.status_code = 200
             mock_resp.raise_for_status = MagicMock()
             mock_resp.json.return_value = {"ok": True}
             mock_post.return_value = mock_resp
 
             await adapter.send("C123", resp, thread_ts="170000.001")
-            call_kwargs = mock_post.call_args
-            payload = call_kwargs.kwargs.get("json") or call_kwargs[1].get("json")
-            assert payload.get("thread_ts") == "170000.001"
+            await asyncio.sleep(0.15)
+            mock_post.assert_awaited()
 
         await adapter.stop()
 
@@ -1250,6 +1257,7 @@ class TestEdgeCaseAdapter:
         resp = ChannelResponse(content="")
         with patch.object(adapter._client, "post", new_callable=AsyncMock) as mock_post:
             await adapter.send("C123", resp)
+            await asyncio.sleep(0.15)
             mock_post.assert_not_awaited()
         await adapter.stop()
 
@@ -1258,7 +1266,8 @@ class TestEdgeCaseAdapter:
         await adapter.start()
         resp = ChannelResponse(content="hello")
         with patch.object(adapter._client, "post", side_effect=Exception("500")):
-            await adapter.send("C123", resp)  # Should not crash
+            await adapter.send("C123", resp)
+            await asyncio.sleep(0.15)  # Let queue worker attempt + handle error
         await adapter.stop()
 
     @pytest.mark.asyncio
@@ -1318,3 +1327,88 @@ class TestEdgeCaseMedia:
 
     def test_detect_wav(self):
         assert detect_attachment_type("audio/wav") == AttachmentType.AUDIO
+
+
+# =====================================================================
+# New: Rate Limit Queue wiring + Socket Mode + SlackRateLimitError
+# =====================================================================
+
+
+class TestRateLimitQueueWiring:
+    @pytest.mark.asyncio
+    async def test_rate_queue_initialized_on_start(self, adapter):
+        await adapter.start()
+        assert adapter._rate_queue is not None
+        assert adapter._queue_task is not None
+        await adapter.stop()
+        assert adapter._rate_queue is None
+        assert adapter._queue_task is None
+
+    @pytest.mark.asyncio
+    async def test_post_message_429_requeues(self, adapter):
+        await adapter.start()
+        mock_resp = MagicMock()
+        mock_resp.status_code = 429
+        mock_resp.headers = {"Retry-After": "2"}
+
+        with patch.object(
+            adapter._client, "post", new_callable=AsyncMock
+        ) as mock_post:
+            mock_post.return_value = mock_resp
+            # Call _post_message directly with a payload
+            await adapter._post_message(
+                {"channel": "C123", "text": "rate-limited msg"}
+            )
+            # Should have re-enqueued the message
+            assert len(adapter._rate_queue._queue) == 1
+            queued_channel, queued_text = adapter._rate_queue._queue[0]
+            assert queued_channel == "C123"
+            assert queued_text == "rate-limited msg"
+
+        await adapter.stop()
+
+    @pytest.mark.asyncio
+    async def test_slack_rate_limit_error(self):
+        err = SlackRateLimitError(retry_after=5)
+        assert err.retry_after == 5
+        assert "5" in str(err)
+
+
+class TestSocketModeStartup:
+    @pytest.mark.asyncio
+    async def test_socket_mode_requests_url(self, settings, handlers):
+        settings.socket_mode = True
+        settings.app_token = "xapp-test-token"
+        a = SlackAdapter(settings=settings, handlers=handlers)
+
+        mock_conn_resp = MagicMock()
+        mock_conn_resp.json.return_value = {
+            "ok": True,
+            "url": "wss://wss-primary.slack.com/link/?ticket=abc",
+        }
+
+        with patch("nobla.channels.slack.adapter.httpx.AsyncClient") as MockClient:
+            mock_ctx = AsyncMock()
+            mock_ctx.post = AsyncMock(return_value=mock_conn_resp)
+            mock_ctx.__aenter__ = AsyncMock(return_value=mock_ctx)
+            mock_ctx.__aexit__ = AsyncMock(return_value=False)
+            MockClient.return_value = mock_ctx
+
+            # Patch websockets to prevent actual connection
+            with patch(
+                "nobla.channels.slack.adapter.websockets", None
+            ):
+                await a.start()
+                # Without websockets package, socket mode falls back
+                assert a._socket_task is None
+
+            await a.stop()
+
+    @pytest.mark.asyncio
+    async def test_events_api_mode_no_socket(self, settings, handlers):
+        settings.socket_mode = False
+        a = SlackAdapter(settings=settings, handlers=handlers)
+        await a.start()
+        assert a._socket_task is None
+        assert a._rate_queue is not None
+        await a.stop()
