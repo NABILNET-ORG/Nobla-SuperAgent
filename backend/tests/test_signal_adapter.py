@@ -87,3 +87,69 @@ class TestSignalModels:
         )
         assert ctx.expires_in_seconds == 0
         assert ctx.is_disappearing is False
+
+
+# ── Formatter ───────────────────────────────────────────────────────
+
+
+from nobla.channels.base import ChannelResponse, InlineAction
+from nobla.channels.signal.formatter import (
+    FormattedMessage,
+    format_response,
+    split_message,
+)
+
+
+class TestSignalFormatter:
+    def test_split_short(self):
+        chunks = split_message("Hello", 6000)
+        assert chunks == ["Hello"]
+
+    def test_split_at_newline(self):
+        text = "Line\n" * 4000
+        chunks = split_message(text, 6000)
+        assert all(len(c) <= 6000 for c in chunks)
+
+    def test_split_long_word(self):
+        text = "X" * 12000
+        chunks = split_message(text, 6000)
+        assert len(chunks) == 2
+
+    def test_split_exactly_at_limit(self):
+        text = "A" * 6000
+        chunks = split_message(text, 6000)
+        assert len(chunks) == 1
+
+    def test_format_response_simple(self):
+        resp = ChannelResponse(content="Hello Signal")
+        msgs = format_response(resp)
+        assert len(msgs) == 1
+        assert msgs[0].text == "Hello Signal"
+
+    def test_format_response_empty(self):
+        resp = ChannelResponse(content="")
+        msgs = format_response(resp)
+        assert msgs == []
+
+    def test_format_response_long_splits(self):
+        resp = ChannelResponse(content="Y" * 12000)
+        msgs = format_response(resp)
+        assert len(msgs) >= 2
+
+    def test_format_response_actions_as_text(self):
+        # Signal has no buttons -- actions should be rendered as text labels
+        resp = ChannelResponse(
+            content="Choose:",
+            actions=[
+                InlineAction(action_id="a:1:yes", label="Yes"),
+                InlineAction(action_id="a:1:no", label="No"),
+            ],
+        )
+        msgs = format_response(resp)
+        combined = " ".join(m.text for m in msgs)
+        assert "Yes" in combined
+        assert "No" in combined
+
+    def test_formatted_message_dataclass(self):
+        fm = FormattedMessage(text="hello")
+        assert fm.text == "hello"
