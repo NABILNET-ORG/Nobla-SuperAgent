@@ -413,6 +413,15 @@ class MCPServerSettings(BaseModel):
     exposed_agents: list[str] = Field(default_factory=list)
 
 
+class MarketplaceSettings(BaseModel):
+    """Skills Marketplace configuration (Phase 5B.2)."""
+
+    enabled: bool = True
+    max_skills_per_author: int = 50
+    max_archive_size_mb: int = 10
+    storage_dir: str = "data/marketplace"
+
+
 class SkillRuntimeSettings(BaseModel):
     """Skill runtime configuration (Phase 5-Foundation)."""
 
@@ -453,6 +462,7 @@ class Settings(BaseSettings):
     mcp_client: MCPClientSettings = Field(default_factory=MCPClientSettings)
     mcp_server: MCPServerSettings = Field(default_factory=MCPServerSettings)
     learning: LearningSettings = Field(default_factory=LearningSettings)
+    marketplace: MarketplaceSettings = Field(default_factory=MarketplaceSettings)
     secret_key: str = ""  # REQUIRED: set via SECRET_KEY env var
 
     model_config = {"env_prefix": "", "env_nested_delimiter": "__"}
