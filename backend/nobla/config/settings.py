@@ -387,6 +387,14 @@ class AgentSettings(BaseModel):
     default_isolation: str = "full_isolated"
 
 
+class LearningSettings(BaseModel):
+    enabled: bool = True
+    feedback_enabled: bool = True
+    pattern_detection_enabled: bool = True
+    ab_testing_enabled: bool = True
+    proactive_level: str = "conservative"
+
+
 class MCPClientSettings(BaseModel):
     enabled: bool = False
     max_connections: int = 20
@@ -444,6 +452,7 @@ class Settings(BaseSettings):
     agents: AgentSettings = Field(default_factory=AgentSettings)
     mcp_client: MCPClientSettings = Field(default_factory=MCPClientSettings)
     mcp_server: MCPServerSettings = Field(default_factory=MCPServerSettings)
+    learning: LearningSettings = Field(default_factory=LearningSettings)
     secret_key: str = ""  # REQUIRED: set via SECRET_KEY env var
 
     model_config = {"env_prefix": "", "env_nested_delimiter": "__"}
