@@ -542,3 +542,348 @@ class TestSendAttachment:
             attachment=attachment,
         )
         assert result is False
+
+
+# =====================================================================
+# Task 4: Handlers (SlackHandlers + RateLimitQueue)
+# =====================================================================
+
+from nobla.channels.slack.handlers import SlackHandlers, RateLimitQueue
+
+
+@pytest.fixture
+def handlers(linking, event_bus):
+    h = SlackHandlers(
+        linking=linking,
+        event_bus=event_bus,
+        bot_token="xoxb-test-token",
+        bot_user_id="U_BOT",
+        max_file_size_mb=100,
+    )
+    h.set_send_fn(AsyncMock())
+    return h
+
+
+def _make_slack_event(
+    text: str = "hello",
+    user: str = "U123",
+    channel: str = "C789",
+    ts: str = "1700000000.000100",
+    event_type: str = "message",
+    thread_ts: str | None = None,
+    channel_type: str = "channel",
+) -> dict:
+    """Build a minimal Slack Events API payload."""
+    event: dict[str, Any] = {
+        "type": event_type,
+        "user": user,
+        "text": text,
+        "channel": channel,
+        "ts": ts,
+        "channel_type": channel_type,
+    }
+    if thread_ts:
+        event["thread_ts"] = thread_ts
+    return {
+        "type": "event_callback",
+        "team_id": "T456",
+        "event": event,
+    }
+
+
+class TestRateLimitQueue:
+    @pytest.mark.asyncio
+    async def test_enqueue_and_process(self):
+        results = []
+        async def fake_sender(channel: str, text: str):
+            results.append((channel, text))
+
+        q = RateLimitQueue(sender=fake_sender)
+        await q.enqueue("C123", "hello")
+        await q.process()
+        assert len(results) == 1
+        assert results[0] == ("C123", "hello")
+
+    @pytest.mark.asyncio
+    async def test_rate_limit_delay(self):
+        results = []
+        async def fake_sender(channel: str, text: str):
+            results.append(text)
+
+        q = RateLimitQueue(sender=fake_sender)
+        q.set_retry_after(0.01)  # 10ms delay
+        await q.enqueue("C123", "msg1")
+        await q.process()
+        assert len(results) == 1
+
+    @pytest.mark.asyncio
+    async def test_queue_ordering(self):
+        results = []
+        async def fake_sender(channel: str, text: str):
+            results.append(text)
+
+        q = RateLimitQueue(sender=fake_sender)
+        await q.enqueue("C1", "first")
+        await q.enqueue("C1", "second")
+        await q.enqueue("C1", "third")
+        await q.process()
+        await q.process()
+        await q.process()
+        assert results == ["first", "second", "third"]
+
+    @pytest.mark.asyncio
+    async def test_empty_queue(self):
+        async def fake_sender(channel: str, text: str):
+            pass
+        q = RateLimitQueue(sender=fake_sender)
+        await q.process()  # Should not crash
+
+
+class TestSlackHandlersInit:
+    def test_init(self, handlers):
+        assert handlers._bot_token == "xoxb-test-token"
+        assert handlers._bot_user_id == "U_BOT"
+
+    def test_set_send_fn(self, handlers):
+        new_fn = AsyncMock()
+        handlers.set_send_fn(new_fn)
+        assert handlers._send_text_fn is new_fn
+
+
+class TestHandleEvent:
+    @pytest.mark.asyncio
+    async def test_text_message(self, handlers, linking):
+        payload = _make_slack_event(
+            text="hello", channel="D789", channel_type="im",
+        )
+        await handlers.handle_event(payload)
+        linking.resolve.assert_awaited()
+
+    @pytest.mark.asyncio
+    async def test_unlinked_user_gets_pairing_code(self, handlers, linking):
+        linking.resolve.return_value = None
+        payload = _make_slack_event(
+            text="hello", channel="D789", channel_type="im",
+        )
+        await handlers.handle_event(payload)
+        linking.create_pairing_code.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_ignores_bot_messages(self, handlers, linking):
+        payload = _make_slack_event(text="hello", user="U_BOT")
+        await handlers.handle_event(payload)
+        linking.resolve.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_ignores_subtype_messages(self, handlers, linking):
+        payload = _make_slack_event(text="hello")
+        payload["event"]["subtype"] = "bot_message"
+        await handlers.handle_event(payload)
+        linking.resolve.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_empty_event(self, handlers, linking):
+        await handlers.handle_event({})
+        linking.resolve.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_dm_always_responds(self, handlers, linking):
+        payload = _make_slack_event(
+            text="hello", channel="D789", channel_type="im",
+        )
+        await handlers.handle_event(payload)
+        linking.resolve.assert_awaited()
+
+    @pytest.mark.asyncio
+    async def test_channel_ignores_without_mention(self, handlers, linking):
+        payload = _make_slack_event(text="hello everyone")
+        await handlers.handle_event(payload)
+        # In channel without mention, should not process
+        linking.resolve.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_channel_responds_to_mention(self, handlers, linking):
+        payload = _make_slack_event(text="<@U_BOT> hello")
+        await handlers.handle_event(payload)
+        linking.resolve.assert_awaited()
+
+    @pytest.mark.asyncio
+    async def test_app_mention_event(self, handlers, linking):
+        payload = _make_slack_event(
+            text="<@U_BOT> help", event_type="app_mention",
+        )
+        await handlers.handle_event(payload)
+        linking.resolve.assert_awaited()
+
+    @pytest.mark.asyncio
+    async def test_thread_reply(self, handlers, linking):
+        payload = _make_slack_event(
+            text="<@U_BOT> reply",
+            thread_ts="1700000000.000050",
+            channel_type="im",
+        )
+        await handlers.handle_event(payload)
+        linking.resolve.assert_awaited()
+
+
+class TestSlashCommands:
+    @pytest.mark.asyncio
+    async def test_slash_start(self, handlers, linking):
+        linking.resolve.return_value = None
+        result = await handlers.handle_slash_command(
+            command="/nobla", text="start",
+            user_id="U123", channel_id="C789",
+        )
+        assert "Welcome" in result or "Nobla" in result
+        linking.create_pairing_code.assert_awaited()
+
+    @pytest.mark.asyncio
+    async def test_slash_link_no_args(self, handlers, linking):
+        result = await handlers.handle_slash_command(
+            command="/nobla", text="link",
+            user_id="U123", channel_id="C789",
+        )
+        assert "code" in result.lower() or "pair" in result.lower()
+
+    @pytest.mark.asyncio
+    async def test_slash_link_with_user_id(self, handlers, linking):
+        result = await handlers.handle_slash_command(
+            command="/nobla", text="link user-999",
+            user_id="U123", channel_id="C789",
+        )
+        linking.link.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_slash_unlink(self, handlers, linking):
+        result = await handlers.handle_slash_command(
+            command="/nobla", text="unlink",
+            user_id="U123", channel_id="C789",
+        )
+        linking.unlink.assert_awaited_once()
+        assert "unlinked" in result.lower()
+
+    @pytest.mark.asyncio
+    async def test_slash_unlink_not_linked(self, handlers, linking):
+        linking.resolve.return_value = None
+        result = await handlers.handle_slash_command(
+            command="/nobla", text="unlink",
+            user_id="U123", channel_id="C789",
+        )
+        assert "not" in result.lower()
+
+    @pytest.mark.asyncio
+    async def test_slash_status_linked(self, handlers, linking):
+        result = await handlers.handle_slash_command(
+            command="/nobla", text="status",
+            user_id="U123", channel_id="C789",
+        )
+        assert "linked" in result.lower() or "Linked" in result
+
+    @pytest.mark.asyncio
+    async def test_slash_status_unlinked(self, handlers, linking):
+        linking.resolve.return_value = None
+        result = await handlers.handle_slash_command(
+            command="/nobla", text="status",
+            user_id="U123", channel_id="C789",
+        )
+        assert "not" in result.lower()
+
+    @pytest.mark.asyncio
+    async def test_slash_unknown_subcommand(self, handlers):
+        result = await handlers.handle_slash_command(
+            command="/nobla", text="unknown_cmd",
+            user_id="U123", channel_id="C789",
+        )
+        assert "start" in result.lower() or "usage" in result.lower()
+
+
+class TestKeywordCommands:
+    @pytest.mark.asyncio
+    async def test_bang_start(self, handlers, linking):
+        linking.resolve.return_value = None
+        payload = _make_slack_event(
+            text="!start", channel="D789", channel_type="im",
+        )
+        await handlers.handle_event(payload)
+        linking.create_pairing_code.assert_awaited()
+        handlers._send_text_fn.assert_awaited()
+
+    @pytest.mark.asyncio
+    async def test_bang_link_with_id(self, handlers, linking):
+        payload = _make_slack_event(
+            text="!link user-999", channel="D789", channel_type="im",
+        )
+        await handlers.handle_event(payload)
+        linking.link.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_bang_unlink(self, handlers, linking):
+        payload = _make_slack_event(
+            text="!unlink", channel="D789", channel_type="im",
+        )
+        await handlers.handle_event(payload)
+        linking.unlink.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_bang_status(self, handlers, linking):
+        payload = _make_slack_event(
+            text="!status", channel="D789", channel_type="im",
+        )
+        await handlers.handle_event(payload)
+        handlers._send_text_fn.assert_awaited()
+        call_text = handlers._send_text_fn.call_args[0][1]
+        assert "Linked" in call_text or "linked" in call_text
+
+
+class TestInteractionCallbacks:
+    @pytest.mark.asyncio
+    async def test_button_callback(self, handlers, event_bus):
+        interaction = {
+            "type": "block_actions",
+            "user": {"id": "U123"},
+            "channel": {"id": "C789"},
+            "actions": [
+                {"action_id": "approve:req-1:yes", "type": "button"},
+            ],
+        }
+        await handlers.handle_interaction(interaction)
+        event_bus.publish.assert_awaited()
+
+    @pytest.mark.asyncio
+    async def test_interaction_unlinked(self, handlers, linking, event_bus):
+        linking.resolve.return_value = None
+        interaction = {
+            "type": "block_actions",
+            "user": {"id": "U123"},
+            "channel": {"id": "C789"},
+            "actions": [
+                {"action_id": "approve:req-1:yes", "type": "button"},
+            ],
+        }
+        await handlers.handle_interaction(interaction)
+        event_bus.publish.assert_not_awaited()
+
+
+class TestEventEmission:
+    @pytest.mark.asyncio
+    async def test_inbound_message_emits_event(self, handlers, event_bus):
+        payload = _make_slack_event(
+            text="hello", channel="D789", channel_type="im",
+        )
+        await handlers.handle_event(payload)
+        event_bus.publish.assert_awaited()
+        event = event_bus.publish.call_args[0][0]
+        assert event.event_type == "channel.message.in"
+        assert event.source == CHANNEL_NAME
+
+    @pytest.mark.asyncio
+    async def test_no_event_bus(self, linking):
+        h = SlackHandlers(
+            linking=linking, event_bus=None,
+            bot_token="t", bot_user_id="U_BOT",
+        )
+        h.set_send_fn(AsyncMock())
+        payload = _make_slack_event(
+            text="hello", channel="D789", channel_type="im",
+        )
+        await h.handle_event(payload)  # Should not crash
