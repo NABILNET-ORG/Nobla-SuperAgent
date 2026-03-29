@@ -370,3 +370,265 @@ class TestSendAttachment:
             "https://smba.trafficmanager.net/teams/", "conv-1", att, "token", AsyncMock()
         )
         assert result is False
+
+
+# ── Handlers ────────────────────────────────────────────────
+
+
+def _make_linking_mock(linked_user=None):
+    mock = AsyncMock()
+    mock.resolve = AsyncMock(return_value=linked_user)
+    mock.create_pairing_code = AsyncMock(return_value="ABC123")
+    mock.link = AsyncMock()
+    mock.unlink = AsyncMock()
+    return mock
+
+
+def _make_event_bus_mock():
+    mock = AsyncMock()
+    mock.publish = AsyncMock()
+    return mock
+
+
+def _make_linked_user(nobla_user_id="nobla-user-1"):
+    user = MagicMock()
+    user.nobla_user_id = nobla_user_id
+    user.conversation_id = "conv-1"
+    return user
+
+
+def _make_message_activity(text="hello", user_id="user-123", user_name="Test User",
+                            conversation_id="conv-456",
+                            service_url="https://smba.trafficmanager.net/teams/",
+                            channel_id=None, entities=None, tenant_id="tenant-abc"):
+    activity = {
+        "type": "message", "id": "msg-789", "text": text,
+        "from": {"id": user_id, "name": user_name},
+        "conversation": {"id": conversation_id,
+                          "conversationType": "personal" if not channel_id else "channel"},
+        "channelId": "msteams", "serviceUrl": service_url,
+        "channelData": {"tenant": {"id": tenant_id}},
+    }
+    if channel_id:
+        activity["channelData"]["channel"] = {"id": channel_id}
+    if entities:
+        activity["entities"] = entities
+    return activity
+
+
+@pytest.mark.asyncio
+class TestTeamsHandlers:
+    async def test_set_send_fn(self):
+        from nobla.channels.teams.handlers import TeamsHandlers
+        h = TeamsHandlers(_make_linking_mock(), _make_event_bus_mock(), "app-id")
+        fn = AsyncMock()
+        h.set_send_fn(fn)
+        assert h._send_fn is fn
+
+    async def test_handle_message_dm_always_responds(self):
+        from nobla.channels.teams.handlers import TeamsHandlers
+        linked = _make_linked_user()
+        h = TeamsHandlers(_make_linking_mock(linked), _make_event_bus_mock(), "app-id")
+        h.set_send_fn(AsyncMock())
+        await h.handle_activity(_make_message_activity(text="hi there"))
+        assert h._event_bus.publish.called
+
+    async def test_handle_message_channel_no_mention_ignored(self):
+        from nobla.channels.teams.handlers import TeamsHandlers
+        h = TeamsHandlers(_make_linking_mock(), _make_event_bus_mock(), "app-id")
+        h.set_send_fn(AsyncMock())
+        await h.handle_activity(_make_message_activity(text="hello", channel_id="ch-1"))
+        assert not h._event_bus.publish.called
+
+    async def test_handle_message_channel_with_mention(self):
+        from nobla.channels.teams.handlers import TeamsHandlers
+        linked = _make_linked_user()
+        h = TeamsHandlers(_make_linking_mock(linked), _make_event_bus_mock(), "app-id")
+        h.set_send_fn(AsyncMock())
+        entities = [{"type": "mention", "mentioned": {"id": "app-id", "name": "Nobla"}}]
+        await h.handle_activity(_make_message_activity(
+            text="<at>Nobla</at> what time is it", channel_id="ch-1", entities=entities))
+        assert h._event_bus.publish.called
+
+    async def test_mention_stripped_from_text(self):
+        from nobla.channels.teams.handlers import TeamsHandlers
+        linked = _make_linked_user()
+        bus = _make_event_bus_mock()
+        h = TeamsHandlers(_make_linking_mock(linked), bus, "app-id")
+        h.set_send_fn(AsyncMock())
+        entities = [{"type": "mention", "mentioned": {"id": "app-id", "name": "Nobla"}}]
+        await h.handle_activity(_make_message_activity(text="<at>Nobla</at> do something", entities=entities))
+        event = bus.publish.call_args[0][0]
+        assert "<at>" not in event.payload.get("content", "")
+
+    async def test_unlinked_user_gets_pairing_code(self):
+        from nobla.channels.teams.handlers import TeamsHandlers
+        linking = _make_linking_mock(linked_user=None)
+        h = TeamsHandlers(linking, _make_event_bus_mock(), "app-id")
+        send_fn = AsyncMock()
+        h.set_send_fn(send_fn)
+        await h.handle_activity(_make_message_activity(text="hello"))
+        linking.create_pairing_code.assert_called_once()
+        assert send_fn.called
+
+    async def test_conversation_ref_captured(self):
+        from nobla.channels.teams.handlers import TeamsHandlers
+        linked = _make_linked_user()
+        h = TeamsHandlers(_make_linking_mock(linked), _make_event_bus_mock(), "app-id")
+        h.set_send_fn(AsyncMock())
+        await h.handle_activity(_make_message_activity(
+            user_id="user-123", service_url="https://smba.trafficmanager.net/teams/",
+            conversation_id="conv-456"))
+        ref = h.get_conversation_ref("user-123")
+        assert ref is not None
+        assert ref["service_url"] == "https://smba.trafficmanager.net/teams/"
+        assert ref["conversation_id"] == "conv-456"
+
+
+@pytest.mark.asyncio
+class TestTeamsKeywordCommands:
+    async def test_cmd_start_unlinked(self):
+        from nobla.channels.teams.handlers import TeamsHandlers
+        h = TeamsHandlers(_make_linking_mock(), _make_event_bus_mock(), "app-id")
+        send_fn = AsyncMock()
+        h.set_send_fn(send_fn)
+        await h.handle_activity(_make_message_activity(text="!start"))
+        msg = send_fn.call_args[0][1]
+        assert "ABC123" in msg
+
+    async def test_cmd_start_already_linked(self):
+        from nobla.channels.teams.handlers import TeamsHandlers
+        linked = _make_linked_user()
+        h = TeamsHandlers(_make_linking_mock(linked), _make_event_bus_mock(), "app-id")
+        send_fn = AsyncMock()
+        h.set_send_fn(send_fn)
+        await h.handle_activity(_make_message_activity(text="!start"))
+        msg = send_fn.call_args[0][1]
+        assert "Welcome back" in msg
+
+    async def test_cmd_link_no_args_gives_pairing_code(self):
+        from nobla.channels.teams.handlers import TeamsHandlers
+        h = TeamsHandlers(_make_linking_mock(), _make_event_bus_mock(), "app-id")
+        send_fn = AsyncMock()
+        h.set_send_fn(send_fn)
+        await h.handle_activity(_make_message_activity(text="!link"))
+        msg = send_fn.call_args[0][1]
+        assert "ABC123" in msg
+
+    async def test_cmd_link_with_user_id(self):
+        from nobla.channels.teams.handlers import TeamsHandlers
+        linking = _make_linking_mock()
+        bus = _make_event_bus_mock()
+        h = TeamsHandlers(linking, bus, "app-id")
+        send_fn = AsyncMock()
+        h.set_send_fn(send_fn)
+        await h.handle_activity(_make_message_activity(text="!link my-nobla-id"))
+        linking.link.assert_called_once_with("teams", "user-123", "my-nobla-id")
+        assert bus.publish.called
+
+    async def test_cmd_unlink_when_linked(self):
+        from nobla.channels.teams.handlers import TeamsHandlers
+        linked = _make_linked_user()
+        linking = _make_linking_mock(linked)
+        bus = _make_event_bus_mock()
+        h = TeamsHandlers(linking, bus, "app-id")
+        send_fn = AsyncMock()
+        h.set_send_fn(send_fn)
+        await h.handle_activity(_make_message_activity(text="!unlink"))
+        linking.unlink.assert_called_once()
+        msg = send_fn.call_args[0][1]
+        assert "unlinked" in msg.lower()
+
+    async def test_cmd_unlink_when_not_linked(self):
+        from nobla.channels.teams.handlers import TeamsHandlers
+        h = TeamsHandlers(_make_linking_mock(), _make_event_bus_mock(), "app-id")
+        send_fn = AsyncMock()
+        h.set_send_fn(send_fn)
+        await h.handle_activity(_make_message_activity(text="!unlink"))
+        msg = send_fn.call_args[0][1]
+        assert "not" in msg.lower()
+
+    async def test_cmd_status_linked(self):
+        from nobla.channels.teams.handlers import TeamsHandlers
+        linked = _make_linked_user()
+        h = TeamsHandlers(_make_linking_mock(linked), _make_event_bus_mock(), "app-id")
+        send_fn = AsyncMock()
+        h.set_send_fn(send_fn)
+        await h.handle_activity(_make_message_activity(text="!status"))
+        msg = send_fn.call_args[0][1]
+        assert "Linked" in msg
+
+    async def test_cmd_status_not_linked(self):
+        from nobla.channels.teams.handlers import TeamsHandlers
+        h = TeamsHandlers(_make_linking_mock(), _make_event_bus_mock(), "app-id")
+        send_fn = AsyncMock()
+        h.set_send_fn(send_fn)
+        await h.handle_activity(_make_message_activity(text="!status"))
+        msg = send_fn.call_args[0][1]
+        assert "Not linked" in msg
+
+
+@pytest.mark.asyncio
+class TestTeamsActivityDispatch:
+    async def test_invoke_activity_emits_callback(self):
+        from nobla.channels.teams.handlers import TeamsHandlers
+        linked = _make_linked_user()
+        bus = _make_event_bus_mock()
+        h = TeamsHandlers(_make_linking_mock(linked), bus, "app-id")
+        h.set_send_fn(AsyncMock())
+        activity = {
+            "type": "invoke", "name": "adaptiveCard/action",
+            "from": {"id": "user-123", "name": "Test"},
+            "conversation": {"id": "conv-1", "conversationType": "personal"},
+            "serviceUrl": "https://smba.trafficmanager.net/teams/",
+            "channelData": {"tenant": {"id": "t1"}},
+            "value": {"action": {"data": {"action_id": "approval:req-1:approve"}}},
+        }
+        await h.handle_activity(activity)
+        assert bus.publish.called
+
+    async def test_conversation_update_bot_added(self):
+        from nobla.channels.teams.handlers import TeamsHandlers
+        h = TeamsHandlers(_make_linking_mock(), _make_event_bus_mock(), "app-id")
+        send_fn = AsyncMock()
+        h.set_send_fn(send_fn)
+        activity = {
+            "type": "conversationUpdate",
+            "membersAdded": [{"id": "app-id", "name": "Nobla"}],
+            "from": {"id": "user-1", "name": "U"},
+            "conversation": {"id": "conv-1", "conversationType": "personal"},
+            "serviceUrl": "https://smba.trafficmanager.net/teams/",
+            "channelData": {"tenant": {"id": "t1"}},
+        }
+        await h.handle_activity(activity)
+        assert send_fn.called
+        msg = send_fn.call_args[0][1]
+        assert "Nobla" in msg
+
+    async def test_ignored_activity_type(self):
+        from nobla.channels.teams.handlers import TeamsHandlers
+        bus = _make_event_bus_mock()
+        h = TeamsHandlers(_make_linking_mock(), bus, "app-id")
+        await h.handle_activity({
+            "type": "typing", "from": {"id": "u1", "name": "U"},
+            "conversation": {"id": "c1"}, "serviceUrl": "http://x",
+            "channelData": {"tenant": {"id": "t1"}},
+        })
+        assert not bus.publish.called
+
+    async def test_event_bus_emission_content(self):
+        from nobla.channels.teams.handlers import TeamsHandlers
+        linked = _make_linked_user()
+        bus = _make_event_bus_mock()
+        h = TeamsHandlers(_make_linking_mock(linked), bus, "app-id")
+        h.set_send_fn(AsyncMock())
+        await h.handle_activity(_make_message_activity(text="test message"))
+        event = bus.publish.call_args[0][0]
+        assert event.event_type == "channel.message.in"
+        assert event.source == "teams"
+        assert event.payload["content"] == "test message"
+
+    async def test_send_fn_not_set_logs_warning(self):
+        from nobla.channels.teams.handlers import TeamsHandlers
+        h = TeamsHandlers(_make_linking_mock(), _make_event_bus_mock(), "app-id")
+        await h.handle_activity(_make_message_activity(text="!start"))
