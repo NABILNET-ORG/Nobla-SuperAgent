@@ -98,10 +98,13 @@ class ResponseFeedback:
 @dataclass
 class PatternOccurrence:
     conversation_id: str
-    message_ids: list[str]
-    tool_sequence: list[str]
-    params_snapshot: dict[str, Any]
-    occurred_at: datetime
+    message_ids: list[str] = field(default_factory=list)
+    tool_sequence: list[str] = field(default_factory=list)
+    params_snapshot: dict[str, Any] = field(default_factory=dict)
+    occurred_at: datetime | None = None
+    # Convenience aliases used by SkillGenerator tests
+    timestamp: datetime | None = None
+    params: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
