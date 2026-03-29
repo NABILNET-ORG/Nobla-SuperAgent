@@ -414,8 +414,8 @@ TIER 4: ADMIN
 - [x] Telegram bot — TelegramAdapter (polling + webhook modes), MarkdownV2 formatter, media handler, /start /link /unlink /status commands, group mention-only activation, inline keyboard for tool approvals, event bus integration (95 tests)
 - [x] Discord bot — DiscordAdapter (persistent WebSocket gateway), discord.ui.Button views, media handler, !start !link !unlink !status commands, guild mention-only activation, interaction handling, event bus integration (78 tests)
 - [x] WhatsApp — WhatsAppAdapter (Business Cloud API, webhook-only), HMAC-SHA256 signature verification, Graph API media upload/download, interactive messages (reply buttons + lists), keyword commands (!start/!link/!unlink/!status), message status tracking (sent/delivered/read), reaction events, WhatsAppSettings + gateway wiring (94 tests)
-- [ ] Slack bot
-- [ ] Signal (via signal-cli)
+- [x] Slack — SlackAdapter (dual Socket Mode WebSocket + Events API HTTP), Block Kit formatter (markdown_to_blocks: headers, code fences, dividers, buttons), v2 file upload pipeline, slash commands (/nobla start|link|unlink|status) + keyword fallback (!start etc.), RateLimitQueue with Retry-After backoff, thread-aware replies (thread_ts propagation), channel mention-only policy (<@BOT_USER_ID>), HMAC-SHA256 signature verification with 5-min replay protection, exponential backoff WebSocket reconnect, SlackSettings + gateway wiring (142 tests)
+- [x] Signal — SignalAdapter (JSON-RPC daemon via signal-cli, asyncio.open_connection), plain text formatter, file-path based media with UUID-prefixed path traversal protection, /start /link /unlink /status commands (case-insensitive), group mention detection (bot UUID/number in mentions array), disappearing message TTL honoring (metadata.disappearing flag), read receipt sending via sendReceipt RPC, Future-based response routing dispatcher (prevents StreamReader race), exponential backoff reconnection (min(2^attempt, 30)s), SignalSettings + gateway wiring (72 tests)
 - [ ] iMessage (via BlueBubbles on macOS)
 - [ ] Microsoft Teams
 - [ ] Google Chat
@@ -694,7 +694,7 @@ nobla-agent/
 │   │   │   └── ...
 │   │   ├── voice/             # STT + TTS + PersonaPlex
 │   │   ├── security/          # Auth, sandbox, audit, encryption
-│   │   ├── channels/          # Telegram, Discord, WhatsApp, etc.
+│   │   ├── channels/          # Telegram, Discord, WhatsApp, Slack, Signal, etc.
 │   │   ├── automation/        # Cron, webhooks, workflows
 │   │   ├── agents/            # Multi-agent system
 │   │   ├── skills/            # Skill platform + marketplace

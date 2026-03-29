@@ -6,6 +6,47 @@ Built by [NABILNET.AI](https://nabilnet.ai)
 
 ---
 
+## [0.6.0] — 2026-03-29 — Phase 5-Channels: Slack + Signal Adapters
+
+### Added
+- **Slack adapter** (142 tests) — dual transport mode: Socket Mode (WebSocket, default for privacy-first self-hosted) + Events API (HTTP webhook for hosted deployments)
+  - Block Kit formatter — full markdown-to-blocks conversion (headers, code fences, dividers, mrkdwn sections, action buttons with style mapping)
+  - v2 file upload pipeline (getUploadURLExternal → PUT → completeUploadExternal)
+  - Slash commands: `/nobla start|link|unlink|status` (space-separated sub-commands)
+  - Keyword commands: `!start`, `!link`, `!unlink`, `!status` (fallback, consistent with all other adapters)
+  - RateLimitQueue — async worker with `Retry-After` header parsing and full-payload re-queue (preserves Block Kit blocks)
+  - Thread-aware replies — `thread_ts` propagation, never mirrors to main channel
+  - Channel mention-only policy — responds only on `<@BOT_USER_ID>` mention in channels, always in DMs (im/mpim)
+  - Socket Mode envelope acknowledgment within 3 seconds before processing
+  - HMAC-SHA256 signature verification (`v0=HMAC-SHA256(signing_secret, v0:timestamp:body)`) with 5-minute timestamp staleness check (replay attack protection)
+  - Exponential backoff WebSocket reconnect (1s, 2s, 4s... max 30s)
+  - `SlackSettings` with mode/token validation + gateway wiring in `_init_channels()`
+
+- **Signal adapter** (72 tests) — JSON-RPC daemon transport via signal-cli (`asyncio.open_connection`)
+  - Plain text formatter (Signal has no rich formatting support)
+  - File-path based media with UUID-prefixed path traversal protection (`os.path.basename` + `uuid4().hex` prefix)
+  - `/start`, `/link`, `/unlink`, `/status` commands (case-insensitive text prefix)
+  - Group mention detection — checks bot UUID and phone number in `mentions` array
+  - Disappearing messages — honors `expiresInSeconds` TTL, sets `metadata.disappearing` + `metadata.expires_in_seconds`
+  - Read receipts sent via `sendReceipt` RPC when bot processes a message
+  - Future-based response routing dispatcher — prevents StreamReader race between receive loop and outbound RPC calls
+  - Exponential backoff reconnection (`min(2^attempt, 30)` seconds)
+  - `SignalSettings` with phone validation + gateway wiring in `_init_channels()`
+
+- **Settings** — `SlackSettings` (dual mode validation: socket requires app_token, events requires signing_secret) and `SignalSettings` (phone_number required) added to config with `Settings.slack` and `Settings.signal` fields
+- **Gateway wiring** — both adapters initialized in `_init_channels()` with graceful failure handling (adapter start failure doesn't block other adapters)
+
+### Security Fixes
+- Slack: 5-minute timestamp staleness check prevents replay attacks on Events API webhook
+- Signal: UUID-prefixed filenames prevent attachment filename collisions; `os.path.basename` prevents path traversal in media handler
+- Signal: `asyncio.wait_for` timeout on RPC reads prevents deadlock under unresponsive daemon
+
+### Tests
+- 142 Slack tests + 72 Signal tests + 4 settings validation = 218 new tests
+- Total project: 1,633 tests (1,360 backend + 273 Flutter)
+
+---
+
 ## [0.5.2] — 2026-03-29 — Phase 5B.2: Universal Skills Marketplace
 
 ### Added

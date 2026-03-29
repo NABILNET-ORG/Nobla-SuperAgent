@@ -44,6 +44,8 @@ FastAPI Gateway (Python 3.12+)
     |     +-- Telegram adapter (polling + webhook, MarkdownV2)
     |     +-- Discord adapter (WebSocket gateway, ui.Button views)
     |     +-- WhatsApp adapter (Business Cloud API, interactive messages)
+    |     +-- Slack adapter (Socket Mode + Events API, Block Kit)
+    |     +-- Signal adapter (JSON-RPC daemon, signal-cli)
     +-- Automation: NL Scheduled Tasks + Webhooks + DAG Workflows + Templates
     +-- Agents: Multi-agent orchestrator (parallel tiers, A2A protocol, capability discovery, MCP stdio/SSE)
     +-- Skills: Runtime skill marketplace (install, security scan, universal adapter)
@@ -60,7 +62,7 @@ FastAPI Gateway (Python 3.12+)
 
 ## Current Status
 
-Nobla Agent is in **active development**. Phases 1-6 + Phase 5B.1-5B.2 + WhatsApp adapter complete. **1,415 tests passing** (273 Flutter + 1,142 backend).
+Nobla Agent is in **active development**. Phases 1-6 + Phase 5B.1-5B.2 + WhatsApp/Slack/Signal adapters complete. **1,633 tests passing** (273 Flutter + 1,360 backend).
 
 | Phase | Status | Scope |
 |-------|--------|-------|
@@ -71,12 +73,14 @@ Nobla Agent is in **active development**. Phases 1-6 + Phase 5B.1-5B.2 + WhatsAp
 | **Phase 5-Foundation**: Events + Skills | Complete | Event bus (pub/sub, wildcards, priority), channel abstraction, skill runtime, tool event wiring (106 tests) |
 | **Phase 5A**: Telegram + Discord | Complete | Telegram (polling + webhook), Discord (WebSocket gateway), media, commands (173 tests) |
 | **Phase 5-Channels**: WhatsApp | Complete | WhatsApp Business Cloud API, HMAC-SHA256 webhook verification, Graph API media, interactive messages, keyword commands, status tracking (94 tests) |
+| **Phase 5-Channels**: Slack | Complete | Dual Socket Mode/Events API, Block Kit formatter, v2 file upload, slash + keyword commands, RateLimitQueue, thread-aware replies, HMAC-SHA256 verification (142 tests) |
+| **Phase 5-Channels**: Signal | Complete | JSON-RPC daemon (signal-cli), plain text, file-path media, disappearing messages, read receipts, exponential backoff reconnect (72 tests) |
 | **Phase 5B.1**: Self-Improving Agent | Complete | FeedbackCollector, PatternDetector, SkillGenerator (macro→skill→publishable), ABTestManager (epsilon-greedy), ProactiveEngine (snooze/dismiss/auto-expire), 22 REST routes, Flutter Agent Intelligence screen (130 tests) |
 | **Phase 5B.2**: Skills Marketplace | Complete | MarketplaceRegistry (tiered publishing), SkillPackager (.nobla + manifest-pointer), SkillDiscovery (keyword search + recommendations), UsageTracker, 15 REST routes, Flutter marketplace UI (129 tests) |
 | **Phase 6**: NL Scheduler | Complete | NLP time parser, LLM interpreter, APScheduler, confirmation flow (76 tests) |
 | **Phase 6**: Multi-Agent System | Complete | Parallel orchestrator, A2A protocol, MCP client/server, task decomposer, researcher + coder agents (148 tests) |
 | **Phase 6**: Webhooks & Workflows | Complete | Pluggable verification, inbound/outbound webhooks, DAG workflow engine, NL interpreter, templates + import/export, Flutter automation UI (486 tests) |
-| **Phase 5**: Remaining Channels | In Progress | 14 platform adapters (Slack, Signal, Teams, etc.) |
+| **Phase 5**: Remaining Channels | In Progress | 12 platform adapters (Teams, Messenger, LINE, etc.) |
 | **Phase 7**: Full Feature Set | Planned | Media, finance, health, social, smart home tools |
 
 ## Quick Start
@@ -139,7 +143,7 @@ nobla-agent/
 │   │   ├── remote/     # Remote control — SSH/SFTP (Phase 4D)
 │   │   └── search/     # AI search engine
 │   ├── events/         # Event bus — async pub/sub, wildcards, priority dispatch (Phase 5)
-│   ├── channels/       # Channel abstraction + Telegram + Discord + WhatsApp adapters (Phase 5)
+│   ├── channels/       # Channel abstraction + Telegram + Discord + WhatsApp + Slack + Signal adapters (Phase 5)
 │   ├── automation/     # NL Scheduler + Webhooks + DAG Workflows + Templates (Phase 6)
 │   ├── agents/         # Multi-agent orchestrator, A2A protocol, MCP client/server (Phase 6)
 │   ├── skills/         # Skill runtime — universal adapter, security scanner, tool bridge (Phase 5)

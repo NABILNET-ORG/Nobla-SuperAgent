@@ -12,14 +12,14 @@ Python 3.12+ / FastAPI backend for [Nobla Agent](https://github.com/NABILNET-ORG
 | `nobla/voice/` | STT (Whisper + Levantine Arabic), TTS (Fish Speech, CosyVoice, PersonaPlex), VAD, language detection |
 | `nobla/tools/` | Tool platform — BaseTool ABC, registry, executor, approval manager. Includes vision, control, code, remote, and search tools |
 | `nobla/events/` | Async event bus — pub/sub with fnmatch wildcards, priority dispatch, backpressure (10K queue, urgent bypass) |
-| `nobla/channels/` | Channel abstraction — BaseChannelAdapter ABC, ChannelManager, UserLinkingService. Includes Telegram adapter (polling + webhook, MarkdownV2), Discord adapter (WebSocket gateway, ui.Button views), and WhatsApp adapter (Business Cloud API, HMAC-SHA256 webhook verification, Graph API media, interactive messages) |
+| `nobla/channels/` | Channel abstraction — BaseChannelAdapter ABC, ChannelManager, UserLinkingService. Includes Telegram adapter (polling + webhook, MarkdownV2), Discord adapter (WebSocket gateway, ui.Button views), WhatsApp adapter (Business Cloud API, HMAC-SHA256 webhook verification, Graph API media, interactive messages), Slack adapter (Socket Mode + Events API, Block Kit formatter, v2 file upload, RateLimitQueue), and Signal adapter (JSON-RPC daemon via signal-cli, disappearing messages, read receipts) |
 | `nobla/automation/` | NL Scheduled Tasks — NLP time parser (dateparser + recurrent), LLM task interpreter, APScheduler wrapper, user confirmation flow, scheduler service orchestrator |
 | `nobla/agents/` | Multi-agent system v2 (Phase 6) — BaseAgent ABC, AgentRegistry, AgentExecutor, parallel AgentOrchestrator (dependency tiers, asyncio.gather, cascade failure), A2A protocol + capability discovery (Future-based), depth-limited delegation, AgentWorkspace (scoped tool/memory isolation), TaskDecomposer (dependency-aware LLM + heuristic), AgentToolBridge, MCPClientManager (stdio + SSE transports, JSON-RPC 2.0), MCPServer (FastAPI SSE endpoints), built-in agents (researcher, coder), gateway wiring with kill switch + MCP router |
 | `nobla/skills/` | Skill runtime — UniversalSkillAdapter (format detection), SkillSecurityScanner (blocklist, tier escalation, source patterns), SkillToolBridge (registry integration) |
 | `nobla/marketplace/` | Skills Marketplace (Phase 5B.2) — MarketplaceRegistry (tiered publishing, SemVer versioning, ratings, verification), SkillPackager (.nobla archive + manifest-pointer validation, SHA-256), SkillDiscovery (keyword search, filters, pattern-based + similar-to-installed recommendations), UsageTracker (event-driven stats), MarketplaceService orchestrator |
 | `nobla/security/` | Auth (JWT + OAuth + API Key), sandbox (Docker/gVisor), audit (OpenTelemetry), permissions (4-tier), kill switch |
 | `nobla/persona/` | Emotion detection, persona engine, prompt builder, PersonaPlex integration |
-| `nobla/config/` | Centralized Pydantic settings (server, LLM, database, memory, auth, sandbox, voice, persona, tools, vision, computer control, remote control, event bus, channels, telegram, discord, whatsapp, scheduler, skills, agents, MCP client/server, marketplace) |
+| `nobla/config/` | Centralized Pydantic settings (server, LLM, database, memory, auth, sandbox, voice, persona, tools, vision, computer control, remote control, event bus, channels, telegram, discord, whatsapp, slack, signal, scheduler, skills, agents, MCP client/server, marketplace) |
 | `nobla/db/` | SQLAlchemy models, repository pattern |
 
 ## Setup
@@ -53,6 +53,8 @@ pytest tests/ -v --cov=nobla
 - Telegram: settings, MarkdownV2 formatter, media handler, commands, group activation, callbacks (95 tests)
 - Discord: settings, formatter, media handler, commands, guild activation, interactions (78 tests)
 - WhatsApp: settings, webhook verification (HMAC-SHA256), handlers (keyword commands, interactive replies, reactions, status updates), formatter, media (Graph API upload/download), adapter lifecycle, health check (94 tests)
+- Slack: settings validation, Block Kit formatter (markdown-to-blocks, escape, split), media (v2 upload pipeline), handlers (slash/keyword commands, rate limit queue, interactive callbacks, thread-aware replies, channel mention-only), adapter (Socket Mode + Events API, HMAC-SHA256 verification, health check) (142 tests)
+- Signal: settings validation, plain text formatter, media (disk save/load, path traversal protection), handlers (data messages, receipts, read receipts, commands, group mentions, disappearing messages), adapter (JSON-RPC connection, send, receive loop, reconnect, health check) (72 tests)
 - Scheduler: NL parser, interpreter, APScheduler wrapper, confirmation flow, service orchestration (76 tests)
 - Skills: manifest models, adapter detection, runtime install/uninstall/upgrade, security scanner (39 tests)
 - Marketplace: models/enums, packager (archive/manifest validation, SHA-256), registry (publish pipeline, versioning, ratings, verification), discovery (keyword search, filters, recommendations), usage tracker (event-driven stats), service orchestrator, REST handlers (97 tests)
@@ -110,6 +112,19 @@ WHATSAPP__ACCESS_TOKEN=your-access-token
 WHATSAPP__PHONE_NUMBER_ID=123456789
 WHATSAPP__APP_SECRET=your-app-secret
 WHATSAPP__VERIFY_TOKEN=your-verify-token
+
+# Slack (Phase 5-Channels)
+SLACK__ENABLED=true
+SLACK__BOT_TOKEN=xoxb-your-bot-token
+SLACK__APP_TOKEN=xapp-your-app-token    # Socket Mode (default)
+SLACK__SIGNING_SECRET=your-signing-secret  # Events API mode
+SLACK__MODE=socket  # "socket" or "events"
+
+# Signal (Phase 5-Channels)
+SIGNAL__ENABLED=true
+SIGNAL__PHONE_NUMBER=+15551234567
+SIGNAL__RPC_HOST=localhost
+SIGNAL__RPC_PORT=7583
 
 # Scheduler (Phase 6)
 SCHEDULER__ENABLED=true
