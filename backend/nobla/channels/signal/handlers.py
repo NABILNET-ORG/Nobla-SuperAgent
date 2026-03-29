@@ -14,6 +14,7 @@ Text commands (since Signal has no slash-command or bot API):
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any
 
 from nobla.channels.base import (
@@ -393,12 +394,14 @@ class SignalHandlers:
                         "Attachment file not found: %s", path
                     )
             elif filename:
+                # Sanitize filename to prevent path traversal
+                safe_filename = os.path.basename(filename)
                 try:
-                    att = load_attachment_from_path(filename, content_type)
+                    att = load_attachment_from_path(safe_filename, content_type)
                     attachments.append(att)
                 except FileNotFoundError:
                     logger.warning(
-                        "Attachment file not found: %s", filename
+                        "Attachment file not found: %s", safe_filename
                     )
 
         return attachments

@@ -13,6 +13,7 @@ from __future__ import annotations
 import logging
 import mimetypes
 import os
+import uuid
 
 from nobla.channels.base import Attachment, AttachmentType
 
@@ -66,8 +67,8 @@ def save_attachment_to_disk(attachment: Attachment, data_dir: str) -> str:
     if not attachment.data:
         raise ValueError("Attachment has no data to save")
 
-    # Sanitize filename to prevent path traversal
-    safe_name = os.path.basename(attachment.filename) or "attachment"
+    # Sanitize filename and prefix with UUID to prevent collisions
+    safe_name = f"{uuid.uuid4().hex}_{os.path.basename(attachment.filename) or 'attachment'}"
 
     # Create attachments subdirectory
     attach_dir = os.path.join(data_dir, "attachments")

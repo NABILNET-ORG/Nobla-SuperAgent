@@ -52,6 +52,7 @@ class SignalAdapter(BaseChannelAdapter):
         self._running = False
         self._rpc_id = 0
         self._rpc_lock = asyncio.Lock()
+        self._pending_responses: dict[int, asyncio.Future[dict[str, Any]]] = {}
 
     @property
     def name(self) -> str:
@@ -187,6 +188,10 @@ class SignalAdapter(BaseChannelAdapter):
     ) -> dict[str, Any]:
         """Make a JSON-RPC 2.0 call to signal-cli and return the result.
 
+        Uses a Future-based response routing mechanism so that the
+        receive loop (which owns the StreamReader) resolves RPC
+        responses without a read race.
+
         Args:
             method: RPC method name (will be looked up in RPC_METHODS).
             **params: Method parameters.
@@ -197,13 +202,20 @@ class SignalAdapter(BaseChannelAdapter):
         Raises:
             SignalRPCError: If the response contains an error.
             ConnectionError: If not connected.
+            asyncio.TimeoutError: If no response within 10 seconds.
         """
-        if not self._writer or not self._reader:
+        if not self._writer:
             raise ConnectionError("Not connected to signal-cli daemon")
+
+        loop = asyncio.get_running_loop()
+        future: asyncio.Future[dict[str, Any]] = loop.create_future()
 
         async with self._rpc_lock:
             self._rpc_id += 1
             request_id = self._rpc_id
+
+            # Register the pending response before writing
+            self._pending_responses[request_id] = future
 
             # Look up the canonical method name
             rpc_method = RPC_METHODS.get(method, method)
@@ -220,23 +232,23 @@ class SignalAdapter(BaseChannelAdapter):
             self._writer.write(data.encode())
             await self._writer.drain()
 
-            # Read response line
-            line = await self._reader.readline()
-            if not line:
-                raise ConnectionError(
-                    "Connection closed by signal-cli daemon"
-                )
+        # Wait for the receive loop to resolve our future
+        try:
+            response = await asyncio.wait_for(future, timeout=10.0)
+        except asyncio.TimeoutError:
+            self._pending_responses.pop(request_id, None)
+            raise asyncio.TimeoutError(
+                f"signal-cli RPC call '{method}' timed out after 10s"
+            )
 
-            response = json.loads(line.decode().strip())
+        if "error" in response:
+            err = response["error"]
+            raise SignalRPCError(
+                code=err.get("code", -1),
+                message=err.get("message", "Unknown RPC error"),
+            )
 
-            if "error" in response:
-                err = response["error"]
-                raise SignalRPCError(
-                    code=err.get("code", -1),
-                    message=err.get("message", "Unknown RPC error"),
-                )
-
-            return response.get("result", {})
+        return response.get("result", {})
 
     # ── Receive loop ──────────────────────────────────────
 
@@ -245,7 +257,11 @@ class SignalAdapter(BaseChannelAdapter):
         self._receive_task = asyncio.create_task(self._receive_loop())
 
     async def _receive_loop(self) -> None:
-        """Continuously read JSON-RPC notifications from signal-cli.
+        """Continuously read JSON-RPC messages from signal-cli.
+
+        Routes RPC responses (messages with an ``id`` field) to the
+        corresponding pending Future.  Notifications (no ``id``) are
+        dispatched to handlers.
 
         Reconnects with exponential backoff on connection failures.
         """
@@ -258,7 +274,10 @@ class SignalAdapter(BaseChannelAdapter):
 
                 line = await self._reader.readline()
                 if not line:
-                    # Connection closed
+                    # Connection closed -- fail all pending RPCs
+                    self._fail_pending(
+                        ConnectionError("Connection closed by signal-cli")
+                    )
                     if self._running:
                         await self._reconnect(attempt)
                         attempt += 1
@@ -267,8 +286,16 @@ class SignalAdapter(BaseChannelAdapter):
                 attempt = 0  # Reset on successful read
                 data = json.loads(line.decode().strip())
 
-                # JSON-RPC notifications have no 'id' field
-                if "method" in data and "id" not in data:
+                # RPC response -- has an 'id' field
+                resp_id = data.get("id")
+                if resp_id is not None:
+                    future = self._pending_responses.pop(resp_id, None)
+                    if future and not future.done():
+                        future.set_result(data)
+                    continue
+
+                # JSON-RPC notification -- no 'id' field
+                if "method" in data:
                     params = data.get("params", {})
                     if "envelope" in params:
                         await self._handlers.handle_message(
@@ -276,10 +303,14 @@ class SignalAdapter(BaseChannelAdapter):
                         )
 
             except asyncio.CancelledError:
+                self._fail_pending(
+                    asyncio.CancelledError("Receive loop cancelled")
+                )
                 break
             except json.JSONDecodeError:
                 logger.warning("Invalid JSON from signal-cli")
             except ConnectionError:
+                self._fail_pending(ConnectionError("Connection lost"))
                 if self._running:
                     await self._reconnect(attempt)
                     attempt += 1
@@ -318,6 +349,13 @@ class SignalAdapter(BaseChannelAdapter):
         return min(2**attempt, MAX_RECONNECT_DELAY) if attempt > 0 else 1
 
     # ── Private helpers ───────────────────────────────────
+
+    def _fail_pending(self, exc: BaseException) -> None:
+        """Resolve all pending RPC futures with an exception."""
+        for rid, future in list(self._pending_responses.items()):
+            if not future.done():
+                future.set_exception(exc)
+        self._pending_responses.clear()
 
     async def _send_raw_text(
         self, recipient: str, text: str

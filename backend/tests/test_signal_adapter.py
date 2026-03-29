@@ -4,6 +4,7 @@ Covers: models, formatter, media, handlers, adapter, and edge cases.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import tempfile
@@ -166,7 +167,7 @@ class TestSignalMedia:
                          mime_type="image/png", size_bytes=4, data=b"\x89PNG")
         with tempfile.TemporaryDirectory() as tmpdir:
             path = save_attachment_to_disk(att, tmpdir)
-            assert os.path.exists(path) and path.endswith("test.png")
+            assert os.path.exists(path) and path.endswith("_test.png")
             with open(path, "rb") as f:
                 assert f.read() == b"\x89PNG"
 
@@ -176,6 +177,16 @@ class TestSignalMedia:
         with tempfile.TemporaryDirectory() as tmpdir:
             path = save_attachment_to_disk(att, tmpdir)
             assert path.startswith(tmpdir)
+
+    def test_save_attachment_unique_names(self):
+        """Two saves of the same filename produce different paths (UUID prefix)."""
+        att = Attachment(type=AttachmentType.IMAGE, filename="photo.png",
+                         mime_type="image/png", size_bytes=4, data=b"\x89PNG")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path1 = save_attachment_to_disk(att, tmpdir)
+            path2 = save_attachment_to_disk(att, tmpdir)
+            assert path1 != path2
+            assert os.path.exists(path1) and os.path.exists(path2)
 
     def test_save_attachment_no_data(self):
         att = Attachment(type=AttachmentType.IMAGE, filename="empty.png",
@@ -407,29 +418,41 @@ class TestSignalAdapter:
     @pytest.mark.asyncio
     async def test_rpc_call_formats_request(self):
         adapter = _make_adapter()
-        mock_reader = AsyncMock()
         mock_writer = MagicMock()
         mock_writer.write = MagicMock()
         mock_writer.drain = AsyncMock()
-        mock_reader.readline = AsyncMock(
-            return_value=json.dumps(
-                {"jsonrpc": "2.0", "id": 1, "result": {"ok": True}}
-            ).encode() + b"\n")
-        adapter._reader, adapter._writer, adapter._rpc_id = mock_reader, mock_writer, 0
+        adapter._writer = mock_writer
+        adapter._rpc_id = 0
+
+        # Simulate the receive loop resolving the response via Future
+        async def _resolve_future():
+            await asyncio.sleep(0.01)
+            future = adapter._pending_responses.get(1)
+            if future and not future.done():
+                future.set_result({"jsonrpc": "2.0", "id": 1, "result": {"ok": True}})
+
+        asyncio.create_task(_resolve_future())
         assert await adapter._rpc_call("version") == {"ok": True}
 
     @pytest.mark.asyncio
     async def test_rpc_call_error_response(self):
         adapter = _make_adapter()
-        mock_reader = AsyncMock()
         mock_writer = MagicMock()
         mock_writer.write = MagicMock()
         mock_writer.drain = AsyncMock()
-        mock_reader.readline = AsyncMock(
-            return_value=json.dumps(
-                {"jsonrpc": "2.0", "id": 1, "error": {"code": -1, "message": "fail"}}
-            ).encode() + b"\n")
-        adapter._reader, adapter._writer, adapter._rpc_id = mock_reader, mock_writer, 0
+        adapter._writer = mock_writer
+        adapter._rpc_id = 0
+
+        # Simulate the receive loop resolving with an error response
+        async def _resolve_future():
+            await asyncio.sleep(0.01)
+            future = adapter._pending_responses.get(1)
+            if future and not future.done():
+                future.set_result(
+                    {"jsonrpc": "2.0", "id": 1, "error": {"code": -1, "message": "fail"}}
+                )
+
+        asyncio.create_task(_resolve_future())
         with pytest.raises(Exception, match="fail"):
             await adapter._rpc_call("bad_method")
 

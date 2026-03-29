@@ -14,6 +14,7 @@ import hashlib
 import hmac
 import json
 import logging
+import time
 from typing import Any
 
 import httpx
@@ -90,7 +91,7 @@ class SlackAdapter(BaseChannelAdapter):
         self._handlers.set_send_fn(self._send_raw_text)
 
         # Initialize rate-limit queue with _post_message as sender
-        self._rate_queue = RateLimitQueue(sender=self._post_message_raw)
+        self._rate_queue = RateLimitQueue(sender=self._post_message)
         self._queue_task = asyncio.create_task(self._queue_worker())
 
         self._running = True
@@ -163,6 +164,15 @@ class SlackAdapter(BaseChannelAdapter):
         if not self._settings.signing_secret:
             logger.warning("No signing_secret configured - skipping check")
             return True
+
+        # Reject requests older than 5 minutes to prevent replay attacks
+        try:
+            if abs(time.time() - float(timestamp)) > 300:
+                logger.warning("Request timestamp too old: %s", timestamp)
+                return False
+        except (ValueError, TypeError):
+            logger.warning("Invalid timestamp value: %s", timestamp)
+            return False
 
         sig_basestring = f"v0:{timestamp}:{body.decode()}"
         expected = "v0=" + hmac.new(
@@ -245,17 +255,16 @@ class SlackAdapter(BaseChannelAdapter):
         # Format and send text + blocks via rate-limit queue
         if response.content:
             formatted = format_response(response)
-            text = formatted["text"]
+            payload: dict[str, Any] = {
+                "channel": channel_user_id,
+                "text": formatted["text"],
+                "blocks": formatted["blocks"],
+            }
+            if thread_ts:
+                payload["thread_ts"] = thread_ts
             if self._rate_queue:
-                await self._rate_queue.enqueue(channel_user_id, text)
+                await self._rate_queue.enqueue(payload)
             else:
-                payload: dict[str, Any] = {
-                    "channel": channel_user_id,
-                    "text": text,
-                    "blocks": formatted["blocks"],
-                }
-                if thread_ts:
-                    payload["thread_ts"] = thread_ts
                 await self._post_message(payload)
 
     async def send_notification(
@@ -320,9 +329,7 @@ class SlackAdapter(BaseChannelAdapter):
                 retry_after = int(resp.headers.get("Retry-After", "1"))
                 if self._rate_queue:
                     self._rate_queue.set_retry_after(retry_after)
-                    channel = payload.get("channel", "")
-                    text = payload.get("text", "")
-                    await self._rate_queue.enqueue(channel, text)
+                    await self._rate_queue.enqueue(payload)
                 raise SlackRateLimitError(retry_after)
 
             resp.raise_for_status()
@@ -341,9 +348,9 @@ class SlackAdapter(BaseChannelAdapter):
                 "Failed to post message to %s", payload.get("channel")
             )
 
-    async def _post_message_raw(self, channel: str, text: str) -> None:
-        """Send a plain message payload -- used as RateLimitQueue sender."""
-        await self._post_message({"channel": channel, "text": text})
+    async def _post_message_raw(self, payload: dict[str, Any]) -> None:
+        """Send a message payload -- used as RateLimitQueue sender."""
+        await self._post_message(payload)
 
     async def _queue_worker(self) -> None:
         """Background loop that drains the rate-limit queue."""

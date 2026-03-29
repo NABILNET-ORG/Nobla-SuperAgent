@@ -598,37 +598,37 @@ class TestRateLimitQueue:
     @pytest.mark.asyncio
     async def test_enqueue_and_process(self):
         results = []
-        async def fake_sender(channel: str, text: str):
-            results.append((channel, text))
+        async def fake_sender(payload: dict):
+            results.append(payload)
 
         q = RateLimitQueue(sender=fake_sender)
-        await q.enqueue("C123", "hello")
+        await q.enqueue({"channel": "C123", "text": "hello"})
         await q.process()
         assert len(results) == 1
-        assert results[0] == ("C123", "hello")
+        assert results[0] == {"channel": "C123", "text": "hello"}
 
     @pytest.mark.asyncio
     async def test_rate_limit_delay(self):
         results = []
-        async def fake_sender(channel: str, text: str):
-            results.append(text)
+        async def fake_sender(payload: dict):
+            results.append(payload["text"])
 
         q = RateLimitQueue(sender=fake_sender)
         q.set_retry_after(0.01)  # 10ms delay
-        await q.enqueue("C123", "msg1")
+        await q.enqueue({"channel": "C123", "text": "msg1"})
         await q.process()
         assert len(results) == 1
 
     @pytest.mark.asyncio
     async def test_queue_ordering(self):
         results = []
-        async def fake_sender(channel: str, text: str):
-            results.append(text)
+        async def fake_sender(payload: dict):
+            results.append(payload["text"])
 
         q = RateLimitQueue(sender=fake_sender)
-        await q.enqueue("C1", "first")
-        await q.enqueue("C1", "second")
-        await q.enqueue("C1", "third")
+        await q.enqueue({"channel": "C1", "text": "first"})
+        await q.enqueue({"channel": "C1", "text": "second"})
+        await q.enqueue({"channel": "C1", "text": "third"})
         await q.process()
         await q.process()
         await q.process()
@@ -636,10 +636,30 @@ class TestRateLimitQueue:
 
     @pytest.mark.asyncio
     async def test_empty_queue(self):
-        async def fake_sender(channel: str, text: str):
+        async def fake_sender(payload: dict):
             pass
         q = RateLimitQueue(sender=fake_sender)
         await q.process()  # Should not crash
+
+    @pytest.mark.asyncio
+    async def test_preserves_blocks(self):
+        """Block Kit blocks survive the rate-limit queue."""
+        results = []
+        async def fake_sender(payload: dict):
+            results.append(payload)
+
+        q = RateLimitQueue(sender=fake_sender)
+        payload = {
+            "channel": "C1",
+            "text": "fallback",
+            "blocks": [{"type": "section", "text": {"type": "mrkdwn", "text": "rich"}}],
+            "thread_ts": "170000.001",
+        }
+        await q.enqueue(payload)
+        await q.process()
+        assert len(results) == 1
+        assert results[0]["blocks"][0]["type"] == "section"
+        assert results[0]["thread_ts"] == "170000.001"
 
 
 class TestSlackHandlersInit:
@@ -1103,17 +1123,43 @@ class TestRequestSigning:
         expected = "v0=" + _hmac.new(
             b"test-signing-secret", sig_basestring.encode(), hashlib.sha256
         ).hexdigest()
-        assert adapter.verify_request_signature(body, ts, expected) is True
+        # Patch time.time so timestamp is within 5-minute window
+        with patch("nobla.channels.slack.adapter.time") as mock_time:
+            mock_time.time.return_value = 1700000000.0
+            assert adapter.verify_request_signature(body, ts, expected) is True
 
     def test_verify_invalid_signature(self, adapter):
-        assert adapter.verify_request_signature(
-            b"data", "1700000000", "v0=wrong"
-        ) is False
+        with patch("nobla.channels.slack.adapter.time") as mock_time:
+            mock_time.time.return_value = 1700000000.0
+            assert adapter.verify_request_signature(
+                b"data", "1700000000", "v0=wrong"
+            ) is False
 
     def test_verify_no_signing_secret(self, settings, handlers):
         settings.signing_secret = ""
         a = SlackAdapter(settings=settings, handlers=handlers)
         assert a.verify_request_signature(b"data", "ts", "v0=any") is True
+
+    def test_verify_stale_timestamp_rejected(self, adapter):
+        """Requests older than 5 minutes are rejected."""
+        body = b'{"test": "payload"}'
+        ts = "1700000000"
+        sig_basestring = f"v0:{ts}:{body.decode()}"
+        import hashlib
+        import hmac as _hmac
+        sig = "v0=" + _hmac.new(
+            b"test-signing-secret", sig_basestring.encode(), hashlib.sha256
+        ).hexdigest()
+        # Timestamp is 600 seconds stale
+        with patch("nobla.channels.slack.adapter.time") as mock_time:
+            mock_time.time.return_value = 1700000600.0
+            assert adapter.verify_request_signature(body, ts, sig) is False
+
+    def test_verify_invalid_timestamp_rejected(self, adapter):
+        """Non-numeric timestamps are rejected."""
+        assert adapter.verify_request_signature(
+            b"data", "not-a-number", "v0=any"
+        ) is False
 
 
 class TestEventsAPIHandling:
@@ -1359,11 +1405,11 @@ class TestRateLimitQueueWiring:
             await adapter._post_message(
                 {"channel": "C123", "text": "rate-limited msg"}
             )
-            # Should have re-enqueued the message
+            # Should have re-enqueued the full payload dict
             assert len(adapter._rate_queue._queue) == 1
-            queued_channel, queued_text = adapter._rate_queue._queue[0]
-            assert queued_channel == "C123"
-            assert queued_text == "rate-limited msg"
+            queued_payload = adapter._rate_queue._queue[0]
+            assert queued_payload["channel"] == "C123"
+            assert queued_payload["text"] == "rate-limited msg"
 
         await adapter.stop()
 

@@ -50,20 +50,23 @@ class RateLimitQueue:
 
     When Slack returns 429, call ``set_retry_after(seconds)`` to pause
     all sends until the delay elapses.
+
+    Stores full payload dicts so that Block Kit blocks, thread_ts, and
+    other fields are preserved through the queue.
     """
 
     def __init__(self, sender: Any) -> None:
         self._sender = sender
-        self._queue: deque[tuple[str, str]] = deque()
+        self._queue: deque[dict[str, Any]] = deque()
         self._retry_after: float = 0.0
 
     def set_retry_after(self, seconds: float) -> None:
         """Set delay before next send (from Retry-After header)."""
         self._retry_after = time.monotonic() + seconds
 
-    async def enqueue(self, channel: str, text: str) -> None:
-        """Add a message to the queue."""
-        self._queue.append((channel, text))
+    async def enqueue(self, payload: dict[str, Any]) -> None:
+        """Add a message payload to the queue."""
+        self._queue.append(payload)
 
     async def process(self) -> None:
         """Process one message from the queue, respecting rate limits."""
@@ -75,11 +78,14 @@ class RateLimitQueue:
             delay = self._retry_after - now
             await asyncio.sleep(delay)
 
-        channel, text = self._queue.popleft()
+        payload = self._queue.popleft()
         try:
-            await self._sender(channel, text)
+            await self._sender(payload)
         except Exception:
-            logger.exception("Failed to send queued message to %s", channel)
+            logger.exception(
+                "Failed to send queued message to %s",
+                payload.get("channel", "?"),
+            )
 
 
 # -- Slack handlers --------------------------------------------------
