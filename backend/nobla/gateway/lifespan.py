@@ -562,6 +562,54 @@ async def lifespan(app: FastAPI):
     app.include_router(create_template_router())
     logger.info("template_registry_started count=%d", template_registry.count)
 
+    # --- Self-Improving Agent (Phase 5B.1) ---
+    learning_service = None
+    if settings.learning.enabled:
+        from nobla.learning.feedback import FeedbackCollector
+        from nobla.learning.patterns import PatternDetector
+        from nobla.learning.generator import SkillGenerator
+        from nobla.learning.ab_testing import ABTestManager
+        from nobla.learning.proactive import ProactiveEngine
+        from nobla.learning.service import LearningService
+        from nobla.learning.models import PatternConfig, ProactiveConfig
+        from nobla.gateway.learning_handlers import learning_router
+
+        feedback_collector = FeedbackCollector(event_bus=event_bus)
+        pattern_detector = PatternDetector(event_bus=event_bus, config=PatternConfig())
+        skill_generator = SkillGenerator(
+            event_bus=event_bus,
+            workflow_service=workflow_service,
+            skill_runtime=skill_runtime,
+            security_scanner=skill_scanner,
+            llm_router=router,
+        )
+        ab_test_manager = ABTestManager(event_bus=event_bus)
+        proactive_engine = ProactiveEngine(
+            event_bus=event_bus,
+            config=ProactiveConfig(),
+        )
+        learning_service = LearningService(
+            event_bus=event_bus,
+            settings=settings.learning,
+            feedback=feedback_collector,
+            patterns=pattern_detector,
+            generator=skill_generator,
+            ab_testing=ab_test_manager,
+            proactive=proactive_engine,
+        )
+        app.state.learning_service = learning_service
+        app.include_router(learning_router)
+
+        if ks and not ks.is_active:
+            await learning_service.start()
+
+        if ks:
+            ks.on_soft_kill(learning_service.stop)
+
+        logger.info("learning_service_started")
+    else:
+        logger.info("learning_service_disabled")
+
     # --- Multi-Agent System (Phase 6) ---
     if settings.agents.enabled:
         from nobla.agents.registry import AgentRegistry
@@ -639,6 +687,8 @@ async def lifespan(app: FastAPI):
     # Cleanup
     if agent_orchestrator:
         await agent_orchestrator.stop()
+    if learning_service:
+        await learning_service.stop()
     if workflow_service:
         await workflow_service.stop()
     if outbound_handler:
