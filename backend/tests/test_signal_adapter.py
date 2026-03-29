@@ -153,3 +153,89 @@ class TestSignalFormatter:
     def test_formatted_message_dataclass(self):
         fm = FormattedMessage(text="hello")
         assert fm.text == "hello"
+
+
+# ── Media ───────────────────────────────────────────────────────────
+
+
+from nobla.channels.base import Attachment, AttachmentType
+from nobla.channels.signal.media import (
+    load_attachment_from_path,
+    save_attachment_to_disk,
+    validate_file_size,
+    guess_mime_type,
+)
+
+
+class TestSignalMedia:
+    def test_save_attachment_to_disk(self):
+        attachment = Attachment(
+            type=AttachmentType.IMAGE,
+            filename="test.png",
+            mime_type="image/png",
+            size_bytes=4,
+            data=b"\x89PNG",
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = save_attachment_to_disk(attachment, tmpdir)
+            assert os.path.exists(path)
+            assert path.endswith("test.png")
+            with open(path, "rb") as f:
+                assert f.read() == b"\x89PNG"
+
+    def test_save_attachment_sanitizes_filename(self):
+        attachment = Attachment(
+            type=AttachmentType.DOCUMENT,
+            filename="../../../etc/passwd",
+            mime_type="text/plain",
+            size_bytes=5,
+            data=b"hello",
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = save_attachment_to_disk(attachment, tmpdir)
+            # Should not escape the data_dir
+            assert path.startswith(tmpdir)
+
+    def test_save_attachment_no_data(self):
+        attachment = Attachment(
+            type=AttachmentType.IMAGE,
+            filename="empty.png",
+            mime_type="image/png",
+            size_bytes=0,
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with pytest.raises(ValueError, match="no data"):
+                save_attachment_to_disk(attachment, tmpdir)
+
+    def test_load_attachment_from_path(self):
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
+            f.write(b"\x89PNG_DATA")
+            f.flush()
+            path = f.name
+        try:
+            att = load_attachment_from_path(path, "image/png")
+            assert att.type == AttachmentType.IMAGE
+            assert att.data == b"\x89PNG_DATA"
+            assert att.filename == os.path.basename(path)
+        finally:
+            os.unlink(path)
+
+    def test_load_attachment_missing_file(self):
+        with pytest.raises(FileNotFoundError):
+            load_attachment_from_path("/nonexistent/file.png", "image/png")
+
+    def test_validate_file_size_ok(self):
+        assert validate_file_size(1024, max_mb=100) is True
+
+    def test_validate_file_size_too_large(self):
+        assert validate_file_size(200 * 1024 * 1024, max_mb=100) is False
+
+    def test_guess_mime_type_png(self):
+        assert guess_mime_type("photo.png") == "image/png"
+
+    def test_guess_mime_type_unknown(self):
+        result = guess_mime_type("file.xyz")
+        assert result == "application/octet-stream"
+
+    def test_guess_mime_type_pdf(self):
+        assert guess_mime_type("doc.pdf") == "application/pdf"
