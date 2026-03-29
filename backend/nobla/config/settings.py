@@ -405,6 +405,27 @@ class SignalSettings(BaseModel):
         return self
 
 
+class TeamsSettings(BaseModel):
+    """Microsoft Teams adapter configuration (Phase 5-Channels)."""
+
+    enabled: bool = False
+    app_id: str = ""
+    app_password: str = ""
+    tenant_id: str = ""  # Empty = multi-tenant
+    webhook_path: str = "/webhook/teams"
+    group_activation: str = "mention"
+    max_file_size_mb: int = 100
+    token_refresh_margin_seconds: int = 300
+
+    @model_validator(mode="after")
+    def validate_credentials(self):
+        if self.enabled and not self.app_id:
+            raise ValueError("app_id is required when Teams is enabled")
+        if self.enabled and not self.app_password:
+            raise ValueError("app_password is required when Teams is enabled")
+        return self
+
+
 class SchedulerSettings(BaseModel):
     """NL Scheduled Tasks configuration (Phase 6)."""
 
@@ -526,6 +547,7 @@ class Settings(BaseSettings):
     whatsapp: WhatsAppSettings = Field(default_factory=WhatsAppSettings)
     slack: SlackSettings = Field(default_factory=SlackSettings)
     signal: SignalSettings = Field(default_factory=SignalSettings)
+    teams: TeamsSettings = Field(default_factory=TeamsSettings)
     scheduler: SchedulerSettings = Field(default_factory=SchedulerSettings)
     webhooks: WebhookSettings = Field(default_factory=WebhookSettings)
     workflows: WorkflowSettings = Field(default_factory=WorkflowSettings)

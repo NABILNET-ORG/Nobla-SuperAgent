@@ -254,6 +254,29 @@ async def _init_channels(settings, linking_service, channel_manager, event_bus):
     else:
         logger.info("signal_adapter_disabled")
 
+    # --- Teams Adapter (Phase 5-Channels) ---
+    if settings.teams.enabled and settings.teams.app_id:
+        try:
+            from nobla.channels.teams.handlers import TeamsHandlers
+            from nobla.channels.teams.adapter import TeamsAdapter
+
+            teams_handlers = TeamsHandlers(
+                linking_service=linking_service,
+                event_bus=event_bus,
+                app_id=settings.teams.app_id,
+            )
+            teams_adapter = TeamsAdapter(
+                settings=settings.teams,
+                handlers=teams_handlers,
+            )
+            channel_manager.register(teams_adapter)
+            await teams_adapter.start()
+            logger.info("teams_adapter_started app_id=%s", settings.teams.app_id)
+        except Exception:
+            logger.exception("teams_adapter_start_failed")
+    else:
+        logger.info("teams_adapter_disabled")
+
 
 def _init_voice(settings, router):
     """Initialize voice pipeline (STT/TTS). Returns (voice_pipeline, whisper_stt, tts_engines)."""
