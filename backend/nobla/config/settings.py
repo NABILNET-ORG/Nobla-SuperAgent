@@ -361,6 +361,50 @@ class WhatsAppSettings(BaseModel):
         return self
 
 
+class SlackSettings(BaseModel):
+    """Slack adapter configuration (Phase 5-Channels)."""
+
+    enabled: bool = False
+    bot_token: str = ""  # xoxb-*
+    app_token: str = ""  # xapp-* (Socket Mode)
+    signing_secret: str = ""  # Events API HMAC key
+    mode: str = "socket"  # "socket" or "events"
+    command_name: str = "/nobla"
+    webhook_path: str = "/webhook/slack"
+    group_activation: str = "mention"
+    max_file_size_mb: int = 100
+
+    @model_validator(mode="after")
+    def validate_tokens(self):
+        if self.enabled and not self.bot_token:
+            raise ValueError("bot_token is required when Slack is enabled")
+        if self.enabled and self.mode == "socket" and not self.app_token:
+            raise ValueError("app_token is required for Socket Mode")
+        if self.enabled and self.mode == "events" and not self.signing_secret:
+            raise ValueError("signing_secret is required for Events API mode")
+        return self
+
+
+class SignalSettings(BaseModel):
+    """Signal adapter configuration (Phase 5-Channels)."""
+
+    enabled: bool = False
+    phone_number: str = ""
+    signal_cli_path: str = "signal-cli"
+    mode: str = "json-rpc"
+    rpc_host: str = "localhost"
+    rpc_port: int = 7583
+    data_dir: str = ""
+    group_activation: str = "mention"
+    max_file_size_mb: int = 100
+
+    @model_validator(mode="after")
+    def validate_phone(self):
+        if self.enabled and not self.phone_number:
+            raise ValueError("phone_number is required when Signal is enabled")
+        return self
+
+
 class SchedulerSettings(BaseModel):
     """NL Scheduled Tasks configuration (Phase 6)."""
 
@@ -480,6 +524,8 @@ class Settings(BaseSettings):
     telegram: TelegramSettings = Field(default_factory=TelegramSettings)
     discord: DiscordSettings = Field(default_factory=DiscordSettings)
     whatsapp: WhatsAppSettings = Field(default_factory=WhatsAppSettings)
+    slack: SlackSettings = Field(default_factory=SlackSettings)
+    signal: SignalSettings = Field(default_factory=SignalSettings)
     scheduler: SchedulerSettings = Field(default_factory=SchedulerSettings)
     webhooks: WebhookSettings = Field(default_factory=WebhookSettings)
     workflows: WorkflowSettings = Field(default_factory=WorkflowSettings)

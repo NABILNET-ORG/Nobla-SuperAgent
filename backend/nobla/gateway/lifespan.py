@@ -207,6 +207,53 @@ async def _init_channels(settings, linking_service, channel_manager, event_bus):
     else:
         logger.info("whatsapp_adapter_disabled")
 
+    # --- Slack Adapter (Phase 5-Channels) ---
+    if settings.slack.enabled and settings.slack.bot_token:
+        try:
+            from nobla.channels.slack.handlers import SlackHandlers
+            from nobla.channels.slack.adapter import SlackAdapter
+
+            slack_handlers = SlackHandlers(
+                linking_service=linking_service,
+                event_bus=event_bus,
+                bot_user_id="",  # Resolved during start() via auth.test
+                bot_token=settings.slack.bot_token,
+            )
+            slack_adapter = SlackAdapter(
+                settings=settings.slack,
+                handlers=slack_handlers,
+            )
+            channel_manager.register(slack_adapter)
+            await slack_adapter.start()
+            logger.info("slack_adapter_started mode=%s", settings.slack.mode)
+        except Exception:
+            logger.exception("slack_adapter_start_failed")
+    else:
+        logger.info("slack_adapter_disabled")
+
+    # --- Signal Adapter (Phase 5-Channels) ---
+    if settings.signal.enabled and settings.signal.phone_number:
+        try:
+            from nobla.channels.signal.handlers import SignalHandlers
+            from nobla.channels.signal.adapter import SignalAdapter
+
+            signal_handlers = SignalHandlers(
+                linking_service=linking_service,
+                event_bus=event_bus,
+                bot_phone_number=settings.signal.phone_number,
+            )
+            signal_adapter = SignalAdapter(
+                settings=settings.signal,
+                handlers=signal_handlers,
+            )
+            channel_manager.register(signal_adapter)
+            await signal_adapter.start()
+            logger.info("signal_adapter_started mode=%s", settings.signal.mode)
+        except Exception:
+            logger.exception("signal_adapter_start_failed")
+    else:
+        logger.info("signal_adapter_disabled")
+
 
 def _init_voice(settings, router):
     """Initialize voice pipeline (STT/TTS). Returns (voice_pipeline, whisper_stt, tts_engines)."""

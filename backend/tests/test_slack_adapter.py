@@ -1458,3 +1458,42 @@ class TestSocketModeStartup:
         assert a._socket_task is None
         assert a._rate_queue is not None
         await a.stop()
+
+
+# ── Settings Validation ─────────────────────────────────────────────
+
+class TestSlackSettings:
+    def test_default_disabled(self):
+        from nobla.config.settings import SlackSettings
+        s = SlackSettings()
+        assert s.enabled is False
+
+    def test_enabled_requires_bot_token(self):
+        from nobla.config.settings import SlackSettings
+        with pytest.raises(Exception):
+            SlackSettings(enabled=True)
+
+    def test_socket_mode_requires_app_token(self):
+        from nobla.config.settings import SlackSettings
+        with pytest.raises(Exception):
+            SlackSettings(enabled=True, bot_token="xoxb-x", mode="socket")
+
+    def test_events_mode_requires_signing_secret(self):
+        from nobla.config.settings import SlackSettings
+        with pytest.raises(Exception):
+            SlackSettings(enabled=True, bot_token="xoxb-x", mode="events")
+
+    def test_valid_socket_mode(self):
+        from nobla.config.settings import SlackSettings
+        s = SlackSettings(enabled=True, bot_token="xoxb-x", app_token="xapp-x", mode="socket")
+        assert s.mode == "socket"
+
+    def test_valid_events_mode(self):
+        from nobla.config.settings import SlackSettings
+        s = SlackSettings(enabled=True, bot_token="xoxb-x", signing_secret="sec", mode="events")
+        assert s.mode == "events"
+
+    def test_default_command_name(self):
+        from nobla.config.settings import SlackSettings
+        s = SlackSettings()
+        assert s.command_name == "/nobla"

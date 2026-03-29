@@ -551,3 +551,27 @@ class TestSignalEdgeCases:
 
     def test_reconnect_delay_first_attempt(self):
         assert _make_adapter()._reconnect_delay(0) == 1
+
+
+# ── Settings Validation ─────────────────────────────────────────────
+
+class TestSignalSettings:
+    def test_default_disabled(self):
+        from nobla.config.settings import SignalSettings
+        s = SignalSettings()
+        assert s.enabled is False
+
+    def test_enabled_requires_phone(self):
+        from nobla.config.settings import SignalSettings
+        with pytest.raises(Exception):
+            SignalSettings(enabled=True)
+
+    def test_valid_config(self):
+        from nobla.config.settings import SignalSettings
+        s = SignalSettings(enabled=True, phone_number="+15551234567")
+        assert s.mode == "json-rpc"
+
+    def test_default_rpc_port(self):
+        from nobla.config.settings import SignalSettings
+        s = SignalSettings()
+        assert s.rpc_port == 7583
