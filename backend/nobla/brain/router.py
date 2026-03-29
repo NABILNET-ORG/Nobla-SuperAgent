@@ -60,10 +60,12 @@ class LLMRouter:
         providers: dict[str, BaseLLMProvider],
         fallback_chain: list[str],
         circuit_breakers: dict[str, CircuitBreaker] | None = None,
+        ab_manager=None,
     ) -> None:
         self.providers = providers
         self.fallback_chain = fallback_chain
         self.circuit_breakers = circuit_breakers or {}
+        self.ab_manager = ab_manager
 
     def classify_complexity(self, message: str) -> TaskComplexity:
         if _HARD_PATTERNS.search(message):
@@ -203,3 +205,17 @@ class LLMRouter:
                 continue
 
         raise RuntimeError("All LLM providers failed health checks")
+
+    def update_preference(self, task_category: str, model: str) -> None:
+        """Promote a model to first position for a task category (from A/B winner)."""
+        complexity = TaskComplexity(task_category)
+        current = _PREFERENCE.get(complexity, [])
+        if model in current:
+            current.remove(model)
+        current.insert(0, model)
+        _PREFERENCE[complexity] = current
+
+    def get_preference(self, task_category: str) -> list[str]:
+        """Return the current preference list for a task category."""
+        complexity = TaskComplexity(task_category)
+        return list(_PREFERENCE.get(complexity, self.fallback_chain))

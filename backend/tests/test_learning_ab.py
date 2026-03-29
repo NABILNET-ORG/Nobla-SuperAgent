@@ -202,3 +202,28 @@ class TestPauseExperiment:
         await manager.pause_experiment(exp.id)
         result = await manager.get_variant("hard", "user-1")
         assert result is None
+
+
+class TestRouterIntegration:
+    def test_update_preference_moves_model_to_front(self):
+        from nobla.brain.router import LLMRouter, _PREFERENCE, TaskComplexity
+        router = LLMRouter(providers={}, fallback_chain=["a", "b", "c"])
+        original = list(_PREFERENCE[TaskComplexity.HARD])
+        router.update_preference("hard", "gemini")
+        prefs = router.get_preference("hard")
+        assert prefs[0] == "gemini"
+        # Restore original
+        _PREFERENCE[TaskComplexity.HARD] = original
+
+    def test_get_preference_returns_copy(self):
+        from nobla.brain.router import LLMRouter
+        router = LLMRouter(providers={}, fallback_chain=["a", "b"])
+        prefs = router.get_preference("easy")
+        assert isinstance(prefs, list)
+
+    def test_ab_manager_stored(self):
+        from nobla.brain.router import LLMRouter
+        from unittest.mock import MagicMock
+        ab = MagicMock()
+        router = LLMRouter(providers={}, fallback_chain=[], ab_manager=ab)
+        assert router.ab_manager is ab
