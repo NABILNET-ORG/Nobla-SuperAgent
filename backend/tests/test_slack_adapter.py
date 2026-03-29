@@ -887,3 +887,255 @@ class TestEventEmission:
             text="hello", channel="D789", channel_type="im",
         )
         await h.handle_event(payload)  # Should not crash
+
+
+# =====================================================================
+# Task 5: Adapter (dual Socket Mode + Events API)
+# =====================================================================
+
+from nobla.channels.slack.adapter import SlackAdapter
+
+
+@pytest.fixture
+def adapter(settings, handlers):
+    return SlackAdapter(settings=settings, handlers=handlers)
+
+
+class TestAdapterProperties:
+    def test_name(self, adapter):
+        assert adapter.name == "slack"
+
+
+class TestAdapterLifecycle:
+    @pytest.mark.asyncio
+    async def test_start(self, adapter):
+        await adapter.start()
+        assert adapter._running is True
+        assert adapter._client is not None
+
+    @pytest.mark.asyncio
+    async def test_start_already_running(self, adapter):
+        await adapter.start()
+        await adapter.start()  # Should warn, not crash
+        assert adapter._running is True
+
+    @pytest.mark.asyncio
+    async def test_start_no_bot_token(self, settings, handlers):
+        settings.bot_token = ""
+        a = SlackAdapter(settings=settings, handlers=handlers)
+        with pytest.raises(ValueError, match="bot_token"):
+            await a.start()
+
+    @pytest.mark.asyncio
+    async def test_stop(self, adapter):
+        await adapter.start()
+        await adapter.stop()
+        assert adapter._running is False
+        assert adapter._client is None
+
+    @pytest.mark.asyncio
+    async def test_stop_not_running(self, adapter):
+        await adapter.stop()  # Should not crash
+
+
+class TestAdapterSend:
+    @pytest.mark.asyncio
+    async def test_send_text(self, adapter):
+        await adapter.start()
+        resp = ChannelResponse(content="Hello!")
+
+        with patch.object(
+            adapter._client, "post", new_callable=AsyncMock
+        ) as mock_post:
+            mock_resp = MagicMock()
+            mock_resp.status_code = 200
+            mock_resp.raise_for_status = MagicMock()
+            mock_resp.json.return_value = {"ok": True}
+            mock_post.return_value = mock_resp
+
+            await adapter.send("C123", resp)
+            mock_post.assert_awaited()
+            call_kwargs = mock_post.call_args
+            payload = call_kwargs.kwargs.get("json") or call_kwargs[1].get("json")
+            assert payload["channel"] == "C123"
+            assert "blocks" in payload
+
+        await adapter.stop()
+
+    @pytest.mark.asyncio
+    async def test_send_with_actions(self, adapter):
+        await adapter.start()
+        resp = ChannelResponse(
+            content="Approve?",
+            actions=[InlineAction(action_id="yes", label="Yes")],
+        )
+
+        with patch.object(
+            adapter._client, "post", new_callable=AsyncMock
+        ) as mock_post:
+            mock_resp = MagicMock()
+            mock_resp.raise_for_status = MagicMock()
+            mock_resp.json.return_value = {"ok": True}
+            mock_post.return_value = mock_resp
+
+            await adapter.send("C123", resp)
+            call_kwargs = mock_post.call_args
+            payload = call_kwargs.kwargs.get("json") or call_kwargs[1].get("json")
+            block_types = [b["type"] for b in payload.get("blocks", [])]
+            assert "actions" in block_types
+
+        await adapter.stop()
+
+    @pytest.mark.asyncio
+    async def test_send_not_initialized(self, adapter):
+        resp = ChannelResponse(content="Hello!")
+        await adapter.send("C123", resp)  # Should not crash
+
+    @pytest.mark.asyncio
+    async def test_send_notification(self, adapter):
+        await adapter.start()
+        with patch.object(
+            adapter._client, "post", new_callable=AsyncMock
+        ) as mock_post:
+            mock_resp = MagicMock()
+            mock_resp.raise_for_status = MagicMock()
+            mock_resp.json.return_value = {"ok": True}
+            mock_post.return_value = mock_resp
+
+            await adapter.send_notification("C123", "Alert!")
+            mock_post.assert_awaited_once()
+
+        await adapter.stop()
+
+    @pytest.mark.asyncio
+    async def test_send_with_thread_ts(self, adapter):
+        await adapter.start()
+        resp = ChannelResponse(content="Reply in thread")
+
+        with patch.object(
+            adapter._client, "post", new_callable=AsyncMock
+        ) as mock_post:
+            mock_resp = MagicMock()
+            mock_resp.raise_for_status = MagicMock()
+            mock_resp.json.return_value = {"ok": True}
+            mock_post.return_value = mock_resp
+
+            await adapter.send("C123", resp, thread_ts="170000.001")
+            call_kwargs = mock_post.call_args
+            payload = call_kwargs.kwargs.get("json") or call_kwargs[1].get("json")
+            assert payload.get("thread_ts") == "170000.001"
+
+        await adapter.stop()
+
+
+class TestAdapterParseCallback:
+    def test_dict_callback(self, adapter):
+        action_id, meta = adapter.parse_callback(
+            {"action_id": "approve:123", "type": "button"}
+        )
+        assert action_id == "approve:123"
+
+    def test_string_callback(self, adapter):
+        action_id, meta = adapter.parse_callback("raw_data")
+        assert action_id == "raw_data"
+        assert meta == {}
+
+
+class TestAdapterHealthCheck:
+    @pytest.mark.asyncio
+    async def test_health_check_healthy(self, adapter):
+        await adapter.start()
+        with patch.object(
+            adapter._client, "post", new_callable=AsyncMock
+        ) as mock_post:
+            mock_resp = MagicMock()
+            mock_resp.status_code = 200
+            mock_resp.json.return_value = {"ok": True}
+            mock_post.return_value = mock_resp
+
+            assert await adapter.health_check() is True
+
+        await adapter.stop()
+
+    @pytest.mark.asyncio
+    async def test_health_check_unhealthy(self, adapter):
+        await adapter.start()
+        with patch.object(
+            adapter._client, "post", new_callable=AsyncMock
+        ) as mock_post:
+            mock_resp = MagicMock()
+            mock_resp.status_code = 200
+            mock_resp.json.return_value = {"ok": False}
+            mock_post.return_value = mock_resp
+
+            assert await adapter.health_check() is False
+
+        await adapter.stop()
+
+    @pytest.mark.asyncio
+    async def test_health_check_not_initialized(self, adapter):
+        assert await adapter.health_check() is False
+
+    @pytest.mark.asyncio
+    async def test_health_check_exception(self, adapter):
+        await adapter.start()
+        with patch.object(
+            adapter._client, "post", side_effect=Exception("timeout")
+        ):
+            assert await adapter.health_check() is False
+        await adapter.stop()
+
+
+class TestRequestSigning:
+    def test_verify_valid_signature(self, adapter):
+        body = b'{"test": "payload"}'
+        ts = "1700000000"
+        sig_basestring = f"v0:{ts}:{body.decode()}"
+        import hashlib
+        import hmac as _hmac
+        expected = "v0=" + _hmac.new(
+            b"test-signing-secret", sig_basestring.encode(), hashlib.sha256
+        ).hexdigest()
+        assert adapter.verify_request_signature(body, ts, expected) is True
+
+    def test_verify_invalid_signature(self, adapter):
+        assert adapter.verify_request_signature(
+            b"data", "1700000000", "v0=wrong"
+        ) is False
+
+    def test_verify_no_signing_secret(self, settings, handlers):
+        settings.signing_secret = ""
+        a = SlackAdapter(settings=settings, handlers=handlers)
+        assert a.verify_request_signature(b"data", "ts", "v0=any") is True
+
+
+class TestEventsAPIHandling:
+    @pytest.mark.asyncio
+    async def test_url_verification(self, adapter):
+        payload = {
+            "type": "url_verification",
+            "challenge": "test-challenge-xyz",
+        }
+        result = adapter.handle_url_verification(payload)
+        assert result == "test-challenge-xyz"
+
+    @pytest.mark.asyncio
+    async def test_event_callback(self, adapter, handlers):
+        await adapter.start()
+        payload = _make_slack_event(
+            text="hello", channel="D789", channel_type="im",
+        )
+        await adapter.handle_events_api(payload)
+        await adapter.stop()
+
+    @pytest.mark.asyncio
+    async def test_socket_mode_envelope_ack(self, adapter):
+        envelope = {
+            "envelope_id": "env-123",
+            "type": "events_api",
+            "payload": _make_slack_event(
+                text="hi", channel="D789", channel_type="im",
+            ),
+        }
+        ack = adapter.build_socket_ack(envelope)
+        assert ack == {"envelope_id": "env-123"}
