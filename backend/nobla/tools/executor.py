@@ -163,6 +163,7 @@ class ToolExecutor:
                 "success": result.success,
                 "execution_time_ms": result.execution_time_ms,
                 "error": result.error,
+                "skill_id": getattr(tool, "skill_id", None),
             },
             user_id=params.connection_state.user_id,
             correlation_id=correlation_id,

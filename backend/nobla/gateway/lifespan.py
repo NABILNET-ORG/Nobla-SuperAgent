@@ -610,6 +610,54 @@ async def lifespan(app: FastAPI):
     else:
         logger.info("learning_service_disabled")
 
+    # --- Skills Marketplace (Phase 5B.2) ---
+    marketplace_service = None
+    if settings.marketplace.enabled:
+        from nobla.marketplace.packager import SkillPackager
+        from nobla.marketplace.registry import MarketplaceRegistry
+        from nobla.marketplace.discovery import SkillDiscovery
+        from nobla.marketplace.stats import UsageTracker
+        from nobla.marketplace.service import MarketplaceService
+        from nobla.gateway.marketplace_handlers import marketplace_router
+
+        mp_packager = SkillPackager(
+            max_archive_size_mb=settings.marketplace.max_archive_size_mb,
+        )
+        mp_registry = MarketplaceRegistry(
+            event_bus=event_bus,
+            packager=mp_packager,
+            security_scanner=skill_scanner,
+            max_skills_per_author=settings.marketplace.max_skills_per_author,
+        )
+        mp_discovery = SkillDiscovery(
+            registry=mp_registry,
+            pattern_detector=pattern_detector if learning_service else None,
+            skill_runtime=skill_runtime,
+        )
+        mp_usage_tracker = UsageTracker(event_bus=event_bus, registry=mp_registry)
+        marketplace_service = MarketplaceService(
+            event_bus=event_bus,
+            registry=mp_registry,
+            discovery=mp_discovery,
+            usage_tracker=mp_usage_tracker,
+            skill_runtime=skill_runtime,
+            settings=settings.marketplace,
+        )
+        app.state.marketplace_service = marketplace_service
+        app.include_router(marketplace_router)
+
+        if ks and not ks.is_active:
+            await marketplace_service.start()
+        elif not ks:
+            await marketplace_service.start()
+
+        if ks:
+            ks.on_soft_kill(marketplace_service.stop)
+
+        logger.info("marketplace_service_started")
+    else:
+        logger.info("marketplace_service_disabled")
+
     # --- Multi-Agent System (Phase 6) ---
     if settings.agents.enabled:
         from nobla.agents.registry import AgentRegistry
@@ -687,6 +735,8 @@ async def lifespan(app: FastAPI):
     # Cleanup
     if agent_orchestrator:
         await agent_orchestrator.stop()
+    if marketplace_service:
+        await marketplace_service.stop()
     if learning_service:
         await learning_service.stop()
     if workflow_service:
