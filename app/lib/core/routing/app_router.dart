@@ -14,6 +14,8 @@ import 'package:nobla_agent/features/persona/screens/persona_edit_screen.dart';
 import 'package:nobla_agent/features/tools/screens/tools_screen.dart';
 import 'package:nobla_agent/features/automation/screens/automation_screen.dart';
 import 'package:nobla_agent/features/learning/screens/agent_intelligence_screen.dart';
+import 'package:nobla_agent/features/marketplace/screens/marketplace_screen.dart';
+import 'package:nobla_agent/features/marketplace/screens/skill_detail_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -79,6 +81,16 @@ GoRouter createRouter(AuthState authState) {
           GoRoute(
             path: '/home/tools',
             builder: (context, state) => const ToolsScreen(),
+          ),
+          GoRoute(
+            path: '/home/tools/marketplace',
+            builder: (context, state) => const MarketplaceScreen(),
+          ),
+          GoRoute(
+            path: '/home/tools/marketplace/:id',
+            builder: (context, state) => SkillDetailScreen(
+              skillId: state.pathParameters['id']!,
+            ),
           ),
           GoRoute(
             path: '/home/automation',
