@@ -525,3 +525,189 @@ class TestSignalHandlers:
         call = signal_handlers._event_bus.publish.call_args[0][0]
         assert call.event_type == "channel.message.in"
         assert call.payload["channel"] == "signal"
+
+
+# ── Adapter ─────────────────────────────────────────────────────────
+
+
+from nobla.channels.signal.adapter import SignalAdapter
+
+
+class _FakeSignalSettings:
+    enabled = True
+    phone_number = "+15551234567"
+    signal_cli_path = "signal-cli"
+    mode = "json-rpc"
+    rpc_host = "localhost"
+    rpc_port = 7583
+    data_dir = "/tmp/signal-data"
+    group_activation = "mention"
+    max_file_size_mb = 100
+
+
+class TestSignalAdapter:
+    def _make_adapter(self):
+        settings = _FakeSignalSettings()
+        handlers = MagicMock()
+        handlers.handle_message = AsyncMock()
+        return SignalAdapter(settings=settings, handlers=handlers)
+
+    # ── Properties ──
+    def test_name(self):
+        adapter = self._make_adapter()
+        assert adapter.name == "signal"
+
+    # ── Send ──
+    @pytest.mark.asyncio
+    async def test_send_dm(self):
+        adapter = self._make_adapter()
+        adapter._rpc_call = AsyncMock(return_value={"timestamp": 1000})
+        resp = ChannelResponse(content="Hello")
+        await adapter.send("+1234567890", resp)
+        adapter._rpc_call.assert_called()
+        call_args = adapter._rpc_call.call_args
+        assert call_args[0][0] == "send"
+
+    @pytest.mark.asyncio
+    async def test_send_group(self):
+        adapter = self._make_adapter()
+        adapter._rpc_call = AsyncMock(return_value={"timestamp": 1000})
+        resp = ChannelResponse(content="Group hello")
+        await adapter.send("group-abc", resp, is_group=True)
+        call_args = adapter._rpc_call.call_args
+        params = call_args[1]
+        assert "groupId" in params
+
+    @pytest.mark.asyncio
+    async def test_send_notification(self):
+        adapter = self._make_adapter()
+        adapter._rpc_call = AsyncMock(return_value={"timestamp": 1000})
+        await adapter.send_notification("+1234567890", "Alert!")
+        adapter._rpc_call.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_send_long_message_splits(self):
+        adapter = self._make_adapter()
+        adapter._rpc_call = AsyncMock(return_value={"timestamp": 1000})
+        resp = ChannelResponse(content="Z" * 12000)
+        await adapter.send("+1234567890", resp)
+        assert adapter._rpc_call.call_count >= 2
+
+    # ── Parse callback ──
+    def test_parse_callback_noop(self):
+        adapter = self._make_adapter()
+        action_id, meta = adapter.parse_callback({"anything": "data"})
+        assert action_id == ""
+        assert meta == {}
+
+    # ── Read receipt ──
+    @pytest.mark.asyncio
+    async def test_send_read_receipt(self):
+        adapter = self._make_adapter()
+        adapter._rpc_call = AsyncMock()
+        await adapter.send_read_receipt("+1234567890", 1234567890000)
+        adapter._rpc_call.assert_called_with(
+            "sendReceipt",
+            recipient="+1234567890",
+            timestamp=1234567890000,
+            type="read",
+        )
+
+    # ── Health check ──
+    @pytest.mark.asyncio
+    async def test_health_check_ok(self):
+        adapter = self._make_adapter()
+        adapter._rpc_call = AsyncMock(
+            return_value={"version": "0.13.0"}
+        )
+        result = await adapter.health_check()
+        assert result is True
+
+    @pytest.mark.asyncio
+    async def test_health_check_failure(self):
+        adapter = self._make_adapter()
+        adapter._rpc_call = AsyncMock(
+            side_effect=ConnectionError("refused")
+        )
+        result = await adapter.health_check()
+        assert result is False
+
+    # ── JSON-RPC ──
+    @pytest.mark.asyncio
+    async def test_rpc_call_formats_request(self):
+        adapter = self._make_adapter()
+        mock_reader = AsyncMock()
+        mock_writer = MagicMock()
+        mock_writer.write = MagicMock()
+        mock_writer.drain = AsyncMock()
+        mock_reader.readline = AsyncMock(
+            return_value=json.dumps(
+                {"jsonrpc": "2.0", "id": 1, "result": {"ok": True}}
+            ).encode()
+            + b"\n"
+        )
+        adapter._reader = mock_reader
+        adapter._writer = mock_writer
+        adapter._rpc_id = 0
+        result = await adapter._rpc_call("version")
+        assert result == {"ok": True}
+
+    @pytest.mark.asyncio
+    async def test_rpc_call_error_response(self):
+        adapter = self._make_adapter()
+        mock_reader = AsyncMock()
+        mock_writer = MagicMock()
+        mock_writer.write = MagicMock()
+        mock_writer.drain = AsyncMock()
+        mock_reader.readline = AsyncMock(
+            return_value=json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "error": {"code": -1, "message": "fail"},
+                }
+            ).encode()
+            + b"\n"
+        )
+        adapter._reader = mock_reader
+        adapter._writer = mock_writer
+        adapter._rpc_id = 0
+        with pytest.raises(Exception, match="fail"):
+            await adapter._rpc_call("bad_method")
+
+    # ── Lifecycle ──
+    @pytest.mark.asyncio
+    async def test_start_connects(self):
+        adapter = self._make_adapter()
+        with patch(
+            "asyncio.open_connection", new_callable=AsyncMock
+        ) as mock_conn:
+            mock_reader = AsyncMock()
+            mock_writer = MagicMock()
+            mock_writer.close = MagicMock()
+            mock_conn.return_value = (mock_reader, mock_writer)
+            with patch.object(
+                adapter, "_start_receive_loop", new_callable=AsyncMock
+            ):
+                await adapter.start()
+                mock_conn.assert_called_with("localhost", 7583)
+
+    @pytest.mark.asyncio
+    async def test_stop_closes_connection(self):
+        adapter = self._make_adapter()
+        mock_writer = MagicMock()
+        mock_writer.close = MagicMock()
+        mock_writer.wait_closed = AsyncMock()
+        adapter._writer = mock_writer
+        adapter._reader = AsyncMock()
+        adapter._receive_task = None
+        await adapter.stop()
+        mock_writer.close.assert_called()
+
+    # ── Reconnection ──
+    def test_reconnect_backoff(self):
+        adapter = self._make_adapter()
+        assert adapter._reconnect_delay(0) == 1
+        assert adapter._reconnect_delay(1) == 2
+        assert adapter._reconnect_delay(2) == 4
+        assert adapter._reconnect_delay(10) == 30  # capped at 30
