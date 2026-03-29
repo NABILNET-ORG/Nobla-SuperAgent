@@ -19,7 +19,10 @@ Nobla Agent is an AI super agent that combines the best capabilities of 35+ exis
 - **Execute code** in sandboxed Docker containers with package management
 - **Search** the web with AI-powered result synthesis
 - **Integrate** with 20+ messaging platforms via a unified channel abstraction layer
-- **Extend** with a skill marketplace — install, sandbox-scan, and manage community skills at runtime
+- **Learn** from your feedback and usage patterns — auto-generates reusable skills from repeated workflows
+- **Improve itself** with A/B model testing, proactive suggestions (snooze/dismiss), and configurable intelligence levels
+- **Automate** with NL scheduled tasks, webhooks, DAG-based workflows, and workflow templates
+- **Extend** with a universal skill marketplace — publish, discover, install, rate, and version community skills
 
 All processing stays on your machine by default. No cloud required unless you explicitly enable it.
 
@@ -40,40 +43,38 @@ FastAPI Gateway (Python 3.12+)
     +-- Channels: Unified channel abstraction (adapter → manager → user linking)
     |     +-- Telegram adapter (polling + webhook, MarkdownV2)
     |     +-- Discord adapter (WebSocket gateway, ui.Button views)
-    +-- Automation: NL Scheduled Tasks (dateparser + recurrent + APScheduler + LLM interpreter)
+    +-- Automation: NL Scheduled Tasks + Webhooks + DAG Workflows + Templates
     +-- Agents: Multi-agent orchestrator (parallel tiers, A2A protocol, capability discovery, MCP stdio/SSE)
     +-- Skills: Runtime skill marketplace (install, security scan, universal adapter)
+    +-- Learning: Self-improving agent (feedback, pattern detection, auto-skills, A/B testing, proactive engine)
     +-- Security: 4-tier permissions, sandbox, audit trail, kill switch
     +-- Persona: Emotion-aware response styling with customizable personalities
 ```
 
-**Backend:** Python 3.12+ / FastAPI — 135+ source files, 100+ test files
+**Backend:** Python 3.12+ / FastAPI — 160+ source files, 120+ test files
 
-**Frontend:** Flutter 3.x / Dart — 57 source files with Riverpod state management
+**Frontend:** Flutter 3.x / Dart — 70+ source files with Riverpod state management
 
 **Database:** PostgreSQL + Redis + ChromaDB (vector embeddings)
 
 ## Current Status
 
-Nobla Agent is in **active development**. Phases 1-4E + Phase 5A + Phase 6 (NL Scheduler + Multi-Agent System v2) complete. 586 tests passing (85 Flutter + 501 backend).
+Nobla Agent is in **active development**. Phases 1-6 + Phase 5B.1 complete. **1,192 tests passing** (241 Flutter + 951 backend).
 
 | Phase | Status | Scope |
 |-------|--------|-------|
 | **Phase 1**: Secure Foundation | Complete | Gateway, Auth (JWT + OAuth + API Key), Sandbox (Docker/gVisor), Kill Switch, Flutter chat UI |
 | **Phase 2**: Intelligence Core | Complete | LLM Router (6 providers), 5-layer Memory Engine, AI Search with synthesis |
 | **Phase 3**: Voice & Persona | Complete | Whisper STT + Levantine Arabic, Fish Speech/CosyVoice TTS, PersonaPlex, Emotion detection, Persona management UI |
-| **Phase 4-Pre**: Tool Platform | Complete | BaseTool ABC, Registry, Executor pipeline, Approval Manager, Gateway handlers |
-| **Phase 4A**: Screen Vision | Complete | Screenshot capture, OCR (Tesseract + EasyOCR), UI detection, NL element targeting (158 tests) |
-| **Phase 4C**: Code Execution | Complete | Sandboxed code.run, package install, LLM codegen, debug assistant, git operations (110 tests) |
-| **Phase 4B**: Computer Control | Complete | mouse.control, keyboard.control, file.manage, app.control, clipboard.manage, Flutter approval UI (191 tests) |
-| **Phase 4D**: Remote Control | Complete | ssh.connect, ssh.exec, sftp.manage — SSH connection pooling, remote exec, SFTP transfers (116 tests) |
-| **Phase 4E**: Flutter Tool UI | Complete | ToolsScreen with 3-tab TabBar (Mirror/Activity/Browse), shared activity provider, filtered feed, mirror provider, tool catalog browser, backend mirror RPC handlers (94 tests) |
-| **Phase 5-Foundation** | Complete | Event bus (pub/sub, wildcards, priority, backpressure), channel abstraction, skill runtime, tool event wiring (106 tests) |
-| **Phase 5A**: Telegram + Discord | Complete | Telegram adapter (polling + webhook), Discord adapter (WebSocket gateway), MarkdownV2/Markdown formatting, media handlers, pairing/linking, group mention-only, inline buttons (173 tests) |
-| **Phase 5**: Channels | In Progress | 15 remaining platform adapters (WhatsApp, Slack, Signal, Teams, etc.) |
-| **Phase 6**: NL Scheduler | Complete | NLP time parser (dateparser + recurrent), LLM task interpreter, APScheduler wrapper, user confirmation flow (76 tests) |
-| **Phase 6**: Multi-Agent System v2 | Complete | Parallel orchestrator (dependency tiers, asyncio.gather), A2A protocol + capability discovery, depth-limited delegation, MCP client (stdio + SSE), MCP server (FastAPI SSE endpoints), dependency-aware task decomposer, workspace isolation, bridge/cloning, researcher + coder agents (148 tests) |
-| **Phase 6**: Automation | In Progress | Webhooks, workflows, community marketplace |
+| **Phase 4A-E**: Computer Control | Complete | Screen vision, mouse/keyboard, code execution (sandboxed), SSH/SFTP remote control, Flutter Tool UI (669 tests) |
+| **Phase 5-Foundation**: Events + Skills | Complete | Event bus (pub/sub, wildcards, priority), channel abstraction, skill runtime, tool event wiring (106 tests) |
+| **Phase 5A**: Telegram + Discord | Complete | Telegram (polling + webhook), Discord (WebSocket gateway), media, commands (173 tests) |
+| **Phase 5B.1**: Self-Improving Agent | Complete | FeedbackCollector, PatternDetector, SkillGenerator (macro→skill→publishable), ABTestManager (epsilon-greedy), ProactiveEngine (snooze/dismiss/auto-expire), 22 REST routes, Flutter Agent Intelligence screen (130 tests) |
+| **Phase 5B.2**: Skills Marketplace | Planned | Publishing pipeline, discovery (keyword + semantic), versioning, ratings, Flutter marketplace UI |
+| **Phase 6**: NL Scheduler | Complete | NLP time parser, LLM interpreter, APScheduler, confirmation flow (76 tests) |
+| **Phase 6**: Multi-Agent System | Complete | Parallel orchestrator, A2A protocol, MCP client/server, task decomposer, researcher + coder agents (148 tests) |
+| **Phase 6**: Webhooks & Workflows | Complete | Pluggable verification, inbound/outbound webhooks, DAG workflow engine, NL interpreter, templates + import/export, Flutter automation UI (486 tests) |
+| **Phase 5**: Remaining Channels | In Progress | 15 platform adapters (WhatsApp, Slack, Signal, Teams, etc.) |
 | **Phase 7**: Full Feature Set | Planned | Media, finance, health, social, smart home tools |
 
 ## Quick Start
@@ -137,16 +138,17 @@ nobla-agent/
 │   │   └── search/     # AI search engine
 │   ├── events/         # Event bus — async pub/sub, wildcards, priority dispatch (Phase 5)
 │   ├── channels/       # Channel abstraction + Telegram + Discord adapters (Phase 5A)
-│   ├── automation/     # NL Scheduled Tasks — parser, interpreter, scheduler, confirmation (Phase 6)
+│   ├── automation/     # NL Scheduler + Webhooks + DAG Workflows + Templates (Phase 6)
 │   ├── agents/         # Multi-agent orchestrator, A2A protocol, MCP client/server (Phase 6)
 │   ├── skills/         # Skill runtime — universal adapter, security scanner, tool bridge (Phase 5)
+│   ├── learning/       # Self-improving agent — feedback, patterns, auto-skills, A/B testing (Phase 5B.1)
 │   ├── security/       # Auth, sandbox, audit, encryption
 │   ├── persona/        # Emotion detection + persona engine
 │   ├── config/         # Centralized settings
 │   └── db/             # Database models + repos
 ├── app/lib/
 │   ├── core/           # Theme, routing, DI (Riverpod)
-│   ├── features/       # auth, chat, dashboard, voice, persona, memory, security, tools, settings
+│   ├── features/       # auth, chat, dashboard, voice, persona, memory, security, tools, automation, learning, settings
 │   └── shared/         # Shared widgets, utils
 ├── backend/tests/      # 95 test files
 ├── docs/superpowers/   # Design specs + implementation plans

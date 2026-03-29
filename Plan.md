@@ -450,13 +450,39 @@ TIER 4: ADMIN
 
 ---
 
+### Phase 5B: Self-Improving Agent & Skills Marketplace
+
+**Phase 5B.1: Self-Improving Agent (Complete — 130 tests: 106 backend + 24 Flutter):**
+- [x] Learning models + enums (PatternStatus, MacroTier, ExperimentStatus, SuggestionType, SuggestionStatus, ProactiveLevel) + LearningSettings
+- [x] FeedbackCollector — thumbs up/down + expandable star ratings + tool chain tracking via correlation_id
+- [x] PatternDetector — SHA-256 sequence fingerprinting, configurable threshold (3x default), max patterns per user cap, variable param extraction
+- [x] SkillGenerator — macro creation from patterns → promote to NoblaSkill → mark publishable for marketplace, security scanning gate
+- [x] ABTestManager — epsilon-greedy variant assignment (per-category epsilon: hard=0.1, medium=0.15, easy=0.2), auto-conclusion on win rate gap
+- [x] LLM Router A/B hook — update_preference() + get_preference() on LLMRouter
+- [x] ProactiveEngine — configurable aggressiveness (OFF/CONSERVATIVE/MODERATE/AGGRESSIVE), snooze vs dismiss semantics, auto-expire at 5x snooze, confidence penalties
+- [x] LearningService orchestrator + 22 REST routes + gateway wiring with kill switch integration
+- [x] Flutter: Agent Intelligence screen (4 tabs: Overview/Patterns/Auto-Skills/Settings), FeedbackWidget, PatternCard, SuggestionCard with snooze dropdown
+
+**Phase 5B.2: Universal Skills Marketplace (Planned):**
+- [ ] Marketplace models (MarketplaceSkill, SkillVersion, SkillRating, TrustTier, PackageType) + MarketplaceSettings
+- [ ] SkillPackager — .nobla archive pack/unpack + manifest-pointer validation + SHA-256 integrity + SemVer enforcement
+- [ ] MarketplaceRegistry — tiered publishing (auto-approve community after scan, manual review for verified badge), versioning, ratings (upsert + avg), unpublish
+- [ ] SkillDiscovery — keyword search (name/desc/tags) + semantic search (ChromaDB) + pattern-based recommendations + similar-to-installed recommendations
+- [ ] UsageTracker — event-driven install counts, active users, success rates via skill_id correlation
+- [ ] MarketplaceService orchestrator + 15 REST routes + gateway wiring
+- [ ] Flutter: MarketplaceScreen (search + grid + recommendations), SkillDetailScreen (versions + ratings), SkillCard, RatingWidget, VersionListWidget
+- [ ] Router wiring under Tools tab (/home/tools/marketplace)
+
+---
+
 ### Phase 6: Automation, Multi-Agent & Community Marketplace (Weeks 21-24)
 **Goal:** Workflows, cron jobs, multi-agent collaboration, and community skill/plugin marketplace.
 
 **Automation Engine:**
 - [x] NL Scheduled Tasks: hybrid NLP time parser (dateparser + recurrent) + LLM task interpreter + APScheduler execution + user confirmation flow (76 tests)
-- [ ] Webhooks: receive and process external events
-- [ ] Workflow builder: create multi-step workflows in natural language
+- [x] Webhooks: pluggable signature verification (HMAC-SHA256/SHA1 + custom), inbound/outbound, exponential retry, dead letter queue, health monitoring, REST API (110 tests)
+- [x] Workflow engine: DAG execution (topological sort + asyncio.gather tiers), 6 step types, named condition branches, NL interpreter with heuristic fallback, versioning, REST API (258 tests)
+- [x] Workflow Templates + Import/Export: TemplateRegistry with 5 bundled templates, search/filter, export/import with UUID mapping, template instantiation, REST API + Flutter UI (136 tests)
 - [ ] IFTTT-style triggers: "When X happens, do Y"
 - [ ] Batch processing: process multiple files/tasks in parallel
 - [ ] Morning/Evening briefings: automated daily reports
@@ -486,29 +512,23 @@ TIER 4: ADMIN
 - [x] MCP Server endpoints: FastAPI router with /mcp/sse + /mcp/message
 - [ ] MCP marketplace: discover and install MCP servers
 
-**Community Marketplace (Skills + Plugins):**
-- [ ] Skill runtime: load and execute user-created skills (SKILL.md + skill.json)
+**Community Marketplace (Skills + Plugins) — moved to Phase 5B:**
+- [x] Skill runtime: load and execute user-created skills (Phase 5-Foundation — SkillRuntime + UniversalSkillAdapter)
+- [x] Security audit pipeline: SkillSecurityScanner (Phase 5-Foundation)
+- [x] Self-improving agent: feedback → pattern detection → auto-skill generation (Phase 5B.1 — 130 tests)
+- [ ] Marketplace registry, discovery, publishing, versioning, ratings (Phase 5B.2 — planned)
 - [ ] Plugin runtime: load plugins with skills/agents/hooks/commands
-- [ ] Community backend: user accounts, publishing, versioning, moderation
-- [ ] Marketplace API: browse, search, install, rate, review
-- [ ] Security audit pipeline: scan published plugins for dangerous patterns
-- [ ] Custom skill creator: guided UI for non-developers to create skills
-- [ ] Custom plugin creator: developer-focused plugin scaffolding tool
-- [ ] Plugin revenue sharing: optional paid plugins with author payments
-- [ ] One-tap install: install from marketplace directly in Flutter app
-- [ ] Auto-update: version pinning with update notifications
-- [ ] Categories: productivity, development, media, automation, finance, health, etc.
-- [ ] Author profiles: linked to community accounts with reputation scoring
+- [ ] Custom skill creator: guided UI for non-developers
+- [ ] Author profiles + reputation scoring
 
 **Flutter App Updates:**
-- [ ] Workflow builder UI: visual workflow creation
+- [x] Automation tab (7th nav): workflow list with filter chips, webhook management, interactive DAG visualization, NL workflow creator, workflow detail screen (82 tests)
+- [x] Template gallery: search/categories/instantiate, import with JSON preview, export sheet (50 tests)
+- [x] Agent Intelligence screen: 4-tab settings sub-route, feedback/pattern/suggestion widgets (24 tests)
 - [ ] Cron manager: schedule, edit, delete cron jobs
 - [ ] Multi-agent dashboard: see all running agents/sub-agents
-- [ ] Automation templates: pre-built common workflows
-- [ ] Community tab: browse marketplace, install skills/plugins, rate/review
-- [ ] Skill creator screen: guided skill creation for non-developers
+- [ ] Community tab: browse marketplace, install skills/plugins, rate/review (Phase 5B.2)
 - [ ] Plugin manager: installed plugins, updates, settings per plugin
-- [ ] My Publications: manage user's published skills/plugins
 
 ---
 
@@ -589,16 +609,16 @@ TIER 4: ADMIN
 
 ---
 
-## Self-Improvement System
+## Self-Improvement System (Phase 5B.1 — Complete, 130 tests)
 
 Nobla Agent improves itself over time:
 
-1. **Feedback loops** — User ratings on responses improve future quality
-2. **Procedural memory** — Successful workflows are saved and reused
-3. **Skill auto-creation** — If a task is repeated 3x, agent creates a reusable skill
-4. **Model fine-tuning data** — (Optional) collect interaction data for future model improvements
-5. **A/B routing** — Test different models/approaches, keep the better one
-6. **Community marketplace** — Open marketplace where users create, share, and install custom skills + plugins (security-audited, rated, versioned). Schema defined in Phase 2A, runtime + UI in Phase 6
+1. **Feedback loops** — ✅ FeedbackCollector captures thumbs up/down + expandable 1-5 star ratings + comments on every response, tracks tool chains by correlation_id
+2. **Procedural memory** — ✅ PatternDetector identifies repeated tool sequences via SHA-256 fingerprinting (3x threshold, configurable), extracts variable parameters
+3. **Skill auto-creation** — ✅ SkillGenerator creates workflow macros from confirmed patterns → promotes to NoblaSkill code → marks publishable for marketplace (3-tier lifecycle with security scanning gate)
+4. **A/B routing** — ✅ ABTestManager runs epsilon-greedy experiments (per-category: hard=0.1, medium=0.15, easy=0.2), auto-concludes on statistical significance, winner updates LLMRouter preferences
+5. **Proactive suggestions** — ✅ ProactiveEngine with configurable aggressiveness (OFF/CONSERVATIVE/MODERATE/AGGRESSIVE), snooze (1/3/7 days) vs dismiss semantics, auto-expire at 5x snooze, confidence penalties (-0.2 dismiss, -0.05 soft)
+6. **Community marketplace** — Phase 5B.2 (planned): publish, discover, install, rate, version skills with dual format (.nobla archive + manifest-pointer)
 
 ---
 
