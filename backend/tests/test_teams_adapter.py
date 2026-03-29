@@ -234,7 +234,7 @@ class TestFormatResponse:
 
 # ── Media ───────────────────────────────────────────────────
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 
 class TestDetectAttachmentType:
@@ -632,3 +632,319 @@ class TestTeamsActivityDispatch:
         from nobla.channels.teams.handlers import TeamsHandlers
         h = TeamsHandlers(_make_linking_mock(), _make_event_bus_mock(), "app-id")
         await h.handle_activity(_make_message_activity(text="!start"))
+
+
+# ── Token Manager ───────────────────────────────────────────
+
+import time
+import json
+
+
+@pytest.mark.asyncio
+class TestTokenManager:
+    async def test_initial_token_fetch(self):
+        from nobla.channels.teams.adapter import TokenManager
+        mock_client = AsyncMock()
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"access_token": "tok-1", "expires_in": 3600}
+        mock_resp.raise_for_status = MagicMock()
+        mock_client.post = AsyncMock(return_value=mock_resp)
+        tm = TokenManager("app-id", "app-pass", mock_client)
+        token = await tm.get_token()
+        assert token == "tok-1"
+
+    async def test_cache_hit_no_refetch(self):
+        from nobla.channels.teams.adapter import TokenManager
+        mock_client = AsyncMock()
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"access_token": "tok-1", "expires_in": 3600}
+        mock_resp.raise_for_status = MagicMock()
+        mock_client.post = AsyncMock(return_value=mock_resp)
+        tm = TokenManager("app-id", "app-pass", mock_client)
+        await tm.get_token()
+        await tm.get_token()
+        assert mock_client.post.call_count == 1
+
+    async def test_refresh_near_expiry(self):
+        from nobla.channels.teams.adapter import TokenManager
+        mock_client = AsyncMock()
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"access_token": "tok-new", "expires_in": 3600}
+        mock_resp.raise_for_status = MagicMock()
+        mock_client.post = AsyncMock(return_value=mock_resp)
+        tm = TokenManager("app-id", "app-pass", mock_client, refresh_margin=300)
+        tm._token = "tok-old"
+        tm._expires_at = time.time() + 100
+        token = await tm.get_token()
+        assert token == "tok-new"
+
+    async def test_refresh_on_expired(self):
+        from nobla.channels.teams.adapter import TokenManager
+        mock_client = AsyncMock()
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"access_token": "tok-new", "expires_in": 3600}
+        mock_resp.raise_for_status = MagicMock()
+        mock_client.post = AsyncMock(return_value=mock_resp)
+        tm = TokenManager("app-id", "app-pass", mock_client)
+        tm._token = "tok-old"
+        tm._expires_at = time.time() - 100
+        token = await tm.get_token()
+        assert token == "tok-new"
+
+    async def test_token_endpoint_error(self):
+        from nobla.channels.teams.adapter import TokenManager
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(side_effect=Exception("network error"))
+        tm = TokenManager("app-id", "app-pass", mock_client)
+        with pytest.raises(Exception, match="network error"):
+            await tm.get_token()
+
+    async def test_concurrent_refresh_single_request(self):
+        import asyncio as _asyncio
+        from nobla.channels.teams.adapter import TokenManager
+        call_count = 0
+        async def slow_post(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            await _asyncio.sleep(0.05)
+            resp = MagicMock()
+            resp.status_code = 200
+            resp.json.return_value = {"access_token": "tok-1", "expires_in": 3600}
+            resp.raise_for_status = MagicMock()
+            return resp
+        mock_client = AsyncMock()
+        mock_client.post = slow_post
+        tm = TokenManager("app-id", "app-pass", mock_client)
+        results = await _asyncio.gather(tm.get_token(), tm.get_token(), tm.get_token())
+        assert all(t == "tok-1" for t in results)
+        assert call_count == 1
+
+
+# ── JWT Validation ──────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+class TestJWTValidation:
+    async def test_missing_auth_header_rejected(self):
+        from nobla.channels.teams.adapter import JWTValidator
+        v = JWTValidator("app-id")
+        assert v.validate_token("") is None
+
+    async def test_malformed_token_rejected(self):
+        from nobla.channels.teams.adapter import JWTValidator
+        v = JWTValidator("app-id")
+        assert v.validate_token("Bearer not.a.jwt") is None
+
+    async def test_no_bearer_prefix_rejected(self):
+        from nobla.channels.teams.adapter import JWTValidator
+        v = JWTValidator("app-id")
+        assert v.validate_token("Basic abc123") is None
+
+    async def test_jwks_unavailable_rejects_all(self):
+        from nobla.channels.teams.adapter import JWTValidator
+        v = JWTValidator("app-id")
+        v._jwks_available = False
+        assert v.validate_token("Bearer eyJ.eyJ.sig") is None
+
+    async def test_valid_token_accepted(self):
+        from nobla.channels.teams.adapter import JWTValidator
+        v = JWTValidator("app-id")
+        v._jwks_available = True
+        claims = {"iss": "https://api.botframework.com", "aud": "app-id",
+                   "exp": time.time() + 3600, "tid": "tenant-1"}
+        with patch.object(v, "_decode_and_verify", return_value=claims):
+            result = v.validate_token("Bearer eyJ.eyJ.sig")
+        assert result is not None
+        assert result["aud"] == "app-id"
+
+    async def test_expired_token_rejected(self):
+        from nobla.channels.teams.adapter import JWTValidator
+        v = JWTValidator("app-id")
+        v._jwks_available = True
+        claims = {"iss": "https://api.botframework.com", "aud": "app-id",
+                   "exp": time.time() - 100, "tid": "tenant-1"}
+        with patch.object(v, "_decode_and_verify", return_value=claims):
+            assert v.validate_token("Bearer eyJ.eyJ.sig") is None
+
+    async def test_wrong_audience_rejected(self):
+        from nobla.channels.teams.adapter import JWTValidator
+        v = JWTValidator("app-id")
+        v._jwks_available = True
+        claims = {"iss": "https://api.botframework.com", "aud": "wrong-app-id",
+                   "exp": time.time() + 3600}
+        with patch.object(v, "_decode_and_verify", return_value=claims):
+            assert v.validate_token("Bearer eyJ.eyJ.sig") is None
+
+    async def test_wrong_issuer_rejected(self):
+        from nobla.channels.teams.adapter import JWTValidator
+        v = JWTValidator("app-id")
+        v._jwks_available = True
+        claims = {"iss": "https://evil.example.com", "aud": "app-id",
+                   "exp": time.time() + 3600}
+        with patch.object(v, "_decode_and_verify", return_value=claims):
+            assert v.validate_token("Bearer eyJ.eyJ.sig") is None
+
+    async def test_jwks_fetch_success(self):
+        from nobla.channels.teams.adapter import JWTValidator
+        v = JWTValidator("app-id")
+        mock_client = AsyncMock()
+        openid_resp = MagicMock()
+        openid_resp.status_code = 200
+        openid_resp.json.return_value = {"jwks_uri": "https://login.botframework.com/v1/.well-known/keys"}
+        openid_resp.raise_for_status = MagicMock()
+        jwks_resp = MagicMock()
+        jwks_resp.status_code = 200
+        jwks_resp.json.return_value = {"keys": [{"kid": "key-1", "kty": "RSA", "n": "abc", "e": "AQAB"}]}
+        jwks_resp.raise_for_status = MagicMock()
+        mock_client.get = AsyncMock(side_effect=[openid_resp, jwks_resp])
+        await v.fetch_jwks(mock_client)
+        assert v._jwks_available is True
+
+    async def test_jwks_fetch_failure_marks_unavailable(self):
+        from nobla.channels.teams.adapter import JWTValidator
+        v = JWTValidator("app-id")
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(side_effect=Exception("network error"))
+        await v.fetch_jwks(mock_client)
+        assert v._jwks_available is False
+
+    async def test_tenant_id_mismatch_rejected(self):
+        from nobla.channels.teams.adapter import JWTValidator
+        v = JWTValidator("app-id", tenant_id="expected-tenant")
+        v._jwks_available = True
+        claims = {"iss": "https://api.botframework.com", "aud": "app-id",
+                   "exp": time.time() + 3600, "tid": "wrong-tenant"}
+        with patch.object(v, "_decode_and_verify", return_value=claims):
+            assert v.validate_token("Bearer eyJ.eyJ.sig") is None
+
+
+# ── Adapter Lifecycle ───────────────────────────────────────
+
+
+@pytest.mark.asyncio
+class TestTeamsAdapter:
+    def _make_settings(self, **overrides):
+        s = MagicMock()
+        s.app_id = overrides.get("app_id", "app-id")
+        s.app_password = overrides.get("app_password", "app-pass")
+        s.tenant_id = overrides.get("tenant_id", "")
+        s.webhook_path = overrides.get("webhook_path", "/webhook/teams")
+        s.group_activation = overrides.get("group_activation", "mention")
+        s.max_file_size_mb = overrides.get("max_file_size_mb", 100)
+        s.token_refresh_margin_seconds = overrides.get("token_refresh_margin_seconds", 300)
+        return s
+
+    def _make_handlers(self):
+        h = MagicMock()
+        h.set_send_fn = MagicMock()
+        h.handle_activity = AsyncMock()
+        h.get_conversation_ref = MagicMock(return_value={
+            "service_url": "https://smba.trafficmanager.net/teams/",
+            "conversation_id": "conv-1",
+        })
+        return h
+
+    async def test_name_property(self):
+        from nobla.channels.teams.adapter import TeamsAdapter
+        adapter = TeamsAdapter(self._make_settings(), self._make_handlers())
+        assert adapter.name == "teams"
+
+    async def test_start_initializes_client(self):
+        from nobla.channels.teams.adapter import TeamsAdapter
+        adapter = TeamsAdapter(self._make_settings(), self._make_handlers())
+        with patch.object(adapter, "_fetch_jwks_background"):
+            await adapter.start()
+        assert adapter._client is not None
+        assert adapter._running is True
+        await adapter.stop()
+
+    async def test_double_start_ignored(self):
+        from nobla.channels.teams.adapter import TeamsAdapter
+        adapter = TeamsAdapter(self._make_settings(), self._make_handlers())
+        with patch.object(adapter, "_fetch_jwks_background"):
+            await adapter.start()
+            await adapter.start()
+        await adapter.stop()
+
+    async def test_stop_cleanup(self):
+        from nobla.channels.teams.adapter import TeamsAdapter
+        adapter = TeamsAdapter(self._make_settings(), self._make_handlers())
+        with patch.object(adapter, "_fetch_jwks_background"):
+            await adapter.start()
+        await adapter.stop()
+        assert adapter._client is None
+        assert adapter._running is False
+
+    async def test_send_before_start(self):
+        from nobla.channels.teams.adapter import TeamsAdapter
+        from nobla.channels.base import ChannelResponse
+        adapter = TeamsAdapter(self._make_settings(), self._make_handlers())
+        await adapter.send("user-1", ChannelResponse(content="hello"))
+
+    async def test_parse_callback_dict(self):
+        from nobla.channels.teams.adapter import TeamsAdapter
+        adapter = TeamsAdapter(self._make_settings(), self._make_handlers())
+        action_id, meta = adapter.parse_callback({"action_id": "test:1:approve", "extra": "data"})
+        assert action_id == "test:1:approve"
+
+    async def test_parse_callback_string(self):
+        from nobla.channels.teams.adapter import TeamsAdapter
+        adapter = TeamsAdapter(self._make_settings(), self._make_handlers())
+        action_id, meta = adapter.parse_callback("raw-string")
+        assert action_id == "raw-string"
+
+    async def test_health_check_no_client(self):
+        from nobla.channels.teams.adapter import TeamsAdapter
+        adapter = TeamsAdapter(self._make_settings(), self._make_handlers())
+        assert await adapter.health_check() is False
+
+    async def test_health_check_with_token_and_jwks(self):
+        from nobla.channels.teams.adapter import TeamsAdapter
+        adapter = TeamsAdapter(self._make_settings(), self._make_handlers())
+        adapter._running = True
+        adapter._client = AsyncMock()
+        adapter._token_manager = MagicMock()
+        adapter._token_manager.has_valid_token = True
+        adapter._jwt_validator = MagicMock()
+        adapter._jwt_validator._jwks_available = True
+        assert await adapter.health_check() is True
+
+    async def test_send_notification_uses_conversation_ref(self):
+        from nobla.channels.teams.adapter import TeamsAdapter
+        handlers = self._make_handlers()
+        adapter = TeamsAdapter(self._make_settings(), handlers)
+        adapter._running = True
+        adapter._client = AsyncMock()
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.raise_for_status = MagicMock()
+        adapter._client.post = AsyncMock(return_value=mock_resp)
+        adapter._token_manager = MagicMock()
+        adapter._token_manager.get_token = AsyncMock(return_value="tok-1")
+        await adapter.send_notification("user-1", "Hello!")
+        handlers.get_conversation_ref.assert_called_with("user-1")
+
+    async def test_handle_webhook_end_to_end(self):
+        from nobla.channels.teams.adapter import TeamsAdapter
+        handlers = self._make_handlers()
+        adapter = TeamsAdapter(self._make_settings(), handlers)
+        adapter._running = True
+        adapter._jwt_validator = MagicMock()
+        adapter._jwt_validator.validate_token = MagicMock(return_value={"aud": "app-id"})
+        body = json.dumps({"type": "message", "text": "hi"}).encode()
+        result = await adapter.handle_webhook(body, "Bearer tok")
+        assert result is not None
+        handlers.handle_activity.assert_called_once()
+
+    async def test_handle_webhook_invalid_jwt_rejected(self):
+        from nobla.channels.teams.adapter import TeamsAdapter
+        adapter = TeamsAdapter(self._make_settings(), self._make_handlers())
+        adapter._running = True
+        adapter._jwt_validator = MagicMock()
+        adapter._jwt_validator.validate_token = MagicMock(return_value=None)
+        body = json.dumps({"type": "message"}).encode()
+        assert await adapter.handle_webhook(body, "Bearer bad") is None
