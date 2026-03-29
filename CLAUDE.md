@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Nobla Agent** is an open-source, privacy-first AI super agent that unifies 35+ AI agent projects while fixing their security vulnerabilities. Currently in **active development** — Phases 1-4E + Phase 5A + Phase 6 (NL Scheduler + Multi-Agent System v2 + Webhooks & Workflows + Templates & Import/Export) complete. 1062 tests passing (217 Flutter + 845 backend).
+**Nobla Agent** is an open-source, privacy-first AI super agent that unifies 35+ AI agent projects while fixing their security vulnerabilities. Currently in **active development** — Phases 1-4E + Phase 5A + Phase 5B.1 + Phase 6 (NL Scheduler + Multi-Agent System v2 + Webhooks & Workflows + Templates & Import/Export) complete. 1192 tests passing (241 Flutter + 951 backend).
 
 - **PRD.md** — Full product requirements, competitive analysis, feature specs
 - **Plan.md** — 7-phase development roadmap with detailed task breakdowns
@@ -27,6 +27,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Phase 6-Webhooks**: Webhook system — pluggable signature verification (HMAC-SHA256/SHA1 + custom), inbound/outbound webhooks, exponential retry, dead letter queue with user notifications, health monitoring, REST API (110 tests)
 - **Phase 6-Workflows**: Workflow engine — DAG execution (topological sort + asyncio.gather tiers), 6 step types (tool/agent/condition/webhook/delay/approval), named condition branches, trigger matching (fnmatch + payload conditions + dedup), NL interpreter with heuristic fallback, workflow versioning, WorkflowService + REST API, Flutter UI (automation tab, workflow list with filters, webhook management, interactive DAG visualization with tappable nodes + live execution, NL creator with source attribution chips, detail screen) (258 backend + 82 Flutter tests)
 - **Phase 6-Templates**: Workflow Templates + Import/Export — WorkflowTemplate model with TemplateCategory enum (8 categories), TemplateStep/TemplateTrigger portable format, WorkflowExportData envelope with `$nobla_version` schema versioning, TemplateRegistry with 5 bundled templates (GitHub CI Notifier, Scheduled Backup, Webhook Relay, Approval Chain, Data Pipeline), search/filter by category/tags/query, export (UUID→ref_id mapping, dedup), import (ref_id→UUID hydration, trigger condition parsing), template instantiation, REST API (6 routes), gateway wiring, Flutter UI (template gallery with search/categories/instantiate, import screen with JSON preview, export bottom sheet with copy) (86 backend + 50 Flutter tests)
+- **Phase 5B.1-Learning**: Self-Improving Agent — FeedbackCollector (thumbs + stars + tool chain tracking), PatternDetector (SHA-256 sequence fingerprinting + configurable threshold + max cap), SkillGenerator (macro → skill → publishable lifecycle with security scanning), ABTestManager (epsilon-greedy per-category experiments), ProactiveEngine (configurable aggressiveness + snooze/dismiss/auto-expire with confidence penalties), LearningService orchestrator, LLM Router A/B hook (update_preference/get_preference), REST API (22 routes), gateway wiring with kill switch, Flutter UI (Agent Intelligence screen with 4 tabs, feedback/pattern/suggestion widgets) (106 backend + 24 Flutter tests)
 
 ## Architecture (Two Codebases)
 
@@ -107,6 +108,7 @@ nobla-agent/
 │   │   ├── webhooks/   # Webhook system: models, verification, manager, outbound (Phase 6)
 │   │   └── workflows/  # Workflow engine: models, executor, trigger_matcher, interpreter, service, templates, template_registry (Phase 6)
 │   ├── skills/         # Skill runtime: universal adapter, security scanner, tool bridge (Phase 5)
+│   ├── learning/       # Self-improving agent: feedback, patterns, generator, A/B testing, proactive engine (Phase 5B.1)
 │   ├── agents/         # Multi-agent orchestrator, A2A protocol, MCP client/server (Phase 6)
 ├── app/lib/
 │   ├── core/           # Theme, routing, DI (Riverpod), network
@@ -161,6 +163,7 @@ The Levantine model (`ggml-levantine-large-v3.bin`) should be moved to `backend/
 | 5-Foundation | ✅ Complete | Event bus (pub/sub, wildcards, priority, backpressure), channel abstraction (base adapter, manager, user linking, bridge), skill runtime (universal adapter, security scanner, tool bridge), tool event wiring, settings models (106 tests) |
 | 5A: Telegram + Discord | ✅ Complete | Telegram adapter (polling + webhook, MarkdownV2, media, commands, group mention-only, inline buttons — 95 tests), Discord adapter (WebSocket gateway, ui.Button views, media, commands, guild mention-only, interactions — 78 tests) |
 | 5-Channels | In Progress | 15 remaining platform adapters (WhatsApp, Slack, Signal, Teams, etc.) |
+| 5B.1-Learning | ✅ Complete | FeedbackCollector (thumbs+stars+tool chain), PatternDetector (fingerprint+threshold), SkillGenerator (macro→skill→publishable), ABTestManager (epsilon-greedy), ProactiveEngine (snooze/dismiss/auto-expire), LearningService, REST API (22 routes), LLM Router A/B hook, Flutter Agent Intelligence screen (106 backend + 24 Flutter tests) |
 
 ### Phase 6 Sub-phases
 | Sub-phase | Status | Scope |
