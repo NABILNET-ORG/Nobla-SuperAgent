@@ -13,6 +13,7 @@ import 'package:nobla_agent/features/persona/screens/persona_detail_screen.dart'
 import 'package:nobla_agent/features/persona/screens/persona_edit_screen.dart';
 import 'package:nobla_agent/features/tools/screens/tools_screen.dart';
 import 'package:nobla_agent/features/automation/screens/automation_screen.dart';
+import 'package:nobla_agent/features/learning/screens/agent_intelligence_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -86,6 +87,10 @@ GoRouter createRouter(AuthState authState) {
           GoRoute(
             path: '/home/settings',
             builder: (context, state) => const SettingsScreen(),
+          ),
+          GoRoute(
+            path: '/home/settings/intelligence',
+            builder: (context, state) => const AgentIntelligenceScreen(),
           ),
         ],
       ),
