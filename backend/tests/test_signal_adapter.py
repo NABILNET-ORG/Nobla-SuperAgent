@@ -239,3 +239,289 @@ class TestSignalMedia:
 
     def test_guess_mime_type_pdf(self):
         assert guess_mime_type("doc.pdf") == "application/pdf"
+
+
+# ── Handlers ────────────────────────────────────────────────────────
+
+
+from nobla.channels.signal.handlers import SignalHandlers
+
+
+@dataclass
+class FakeLinkedUser:
+    nobla_user_id: str = "user-123"
+    conversation_id: str = "conv-456"
+
+
+@pytest.fixture
+def signal_handlers():
+    linking = AsyncMock()
+    event_bus = AsyncMock()
+    event_bus.publish = AsyncMock()
+    h = SignalHandlers(
+        linking_service=linking,
+        event_bus=event_bus,
+        bot_phone_number="+15551234567",
+    )
+    h.set_send_fn(AsyncMock())
+    return h
+
+
+class TestSignalHandlers:
+    # ── Data message routing ──
+    @pytest.mark.asyncio
+    async def test_handle_dm_message(self, signal_handlers):
+        signal_handlers._linking.resolve = AsyncMock(
+            return_value=FakeLinkedUser()
+        )
+        envelope = {
+            "source": "+1234567890",
+            "sourceUuid": "uuid-1",
+            "timestamp": 1234567890000,
+            "dataMessage": {
+                "message": "Hello bot",
+                "timestamp": 1234567890000,
+            },
+        }
+        await signal_handlers.handle_message(envelope)
+        signal_handlers._event_bus.publish.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_handle_group_message_with_mention(self, signal_handlers):
+        signal_handlers._linking.resolve = AsyncMock(
+            return_value=FakeLinkedUser()
+        )
+        envelope = {
+            "source": "+1234567890",
+            "sourceUuid": "uuid-1",
+            "timestamp": 1234567890000,
+            "dataMessage": {
+                "message": "Hey bot",
+                "timestamp": 1234567890000,
+                "groupInfo": {"groupId": "group-abc", "type": "DELIVER"},
+                "mentions": [{"uuid": "bot-uuid", "start": 0, "length": 3}],
+            },
+        }
+        signal_handlers._bot_uuid = "bot-uuid"
+        await signal_handlers.handle_message(envelope)
+        signal_handlers._event_bus.publish.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_handle_group_message_no_mention_ignored(self, signal_handlers):
+        envelope = {
+            "source": "+1234567890",
+            "sourceUuid": "uuid-1",
+            "timestamp": 1234567890000,
+            "dataMessage": {
+                "message": "Regular chat",
+                "timestamp": 1234567890000,
+                "groupInfo": {"groupId": "group-abc", "type": "DELIVER"},
+            },
+        }
+        await signal_handlers.handle_message(envelope)
+        signal_handlers._event_bus.publish.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_handle_own_message_ignored(self, signal_handlers):
+        envelope = {
+            "source": "+15551234567",  # Bot's own number
+            "sourceUuid": "bot-uuid",
+            "timestamp": 1234567890000,
+            "dataMessage": {"message": "echo", "timestamp": 1234567890000},
+        }
+        await signal_handlers.handle_message(envelope)
+        signal_handlers._event_bus.publish.assert_not_called()
+
+    # ── Commands ──
+    @pytest.mark.asyncio
+    async def test_command_start(self, signal_handlers):
+        signal_handlers._linking.create_pairing_code = AsyncMock(
+            return_value="CODE12"
+        )
+        envelope = {
+            "source": "+1111111111",
+            "sourceUuid": "uuid-2",
+            "timestamp": 1000,
+            "dataMessage": {"message": "/start", "timestamp": 1000},
+        }
+        await signal_handlers.handle_message(envelope)
+        signal_handlers._send_fn.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_command_link(self, signal_handlers):
+        signal_handlers._linking.link = AsyncMock(return_value=True)
+        envelope = {
+            "source": "+1111111111",
+            "sourceUuid": "uuid-2",
+            "timestamp": 1000,
+            "dataMessage": {"message": "/link user-001", "timestamp": 1000},
+        }
+        await signal_handlers.handle_message(envelope)
+        signal_handlers._linking.link.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_command_unlink(self, signal_handlers):
+        signal_handlers._linking.unlink = AsyncMock(return_value=True)
+        envelope = {
+            "source": "+1111111111",
+            "sourceUuid": "uuid-2",
+            "timestamp": 1000,
+            "dataMessage": {"message": "/unlink", "timestamp": 1000},
+        }
+        await signal_handlers.handle_message(envelope)
+        signal_handlers._linking.unlink.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_command_status_linked(self, signal_handlers):
+        signal_handlers._linking.resolve = AsyncMock(
+            return_value=FakeLinkedUser()
+        )
+        envelope = {
+            "source": "+1111111111",
+            "sourceUuid": "uuid-2",
+            "timestamp": 1000,
+            "dataMessage": {"message": "/status", "timestamp": 1000},
+        }
+        await signal_handlers.handle_message(envelope)
+        signal_handlers._send_fn.assert_called()
+
+    # ── Unlinked user pairing ──
+    @pytest.mark.asyncio
+    async def test_unlinked_user_gets_pairing_prompt(self, signal_handlers):
+        signal_handlers._linking.resolve = AsyncMock(return_value=None)
+        signal_handlers._linking.create_pairing_code = AsyncMock(
+            return_value="PAR456"
+        )
+        envelope = {
+            "source": "+9999999999",
+            "sourceUuid": "uuid-new",
+            "timestamp": 1000,
+            "dataMessage": {"message": "Hello", "timestamp": 1000},
+        }
+        await signal_handlers.handle_message(envelope)
+        signal_handlers._send_fn.assert_called()
+        signal_handlers._event_bus.publish.assert_not_called()
+
+    # ── Receipts ──
+    @pytest.mark.asyncio
+    async def test_handle_delivery_receipt(self, signal_handlers):
+        envelope = {
+            "source": "+1234567890",
+            "sourceUuid": "uuid-1",
+            "timestamp": 2000,
+            "receiptMessage": {
+                "type": "DELIVERY",
+                "timestamps": [1000],
+            },
+        }
+        await signal_handlers.handle_message(envelope)
+        signal_handlers._event_bus.publish.assert_called()
+        call = signal_handlers._event_bus.publish.call_args[0][0]
+        assert call.event_type == "channel.message.status"
+
+    @pytest.mark.asyncio
+    async def test_handle_read_receipt(self, signal_handlers):
+        envelope = {
+            "source": "+1234567890",
+            "sourceUuid": "uuid-1",
+            "timestamp": 2000,
+            "receiptMessage": {
+                "type": "READ",
+                "timestamps": [1000],
+            },
+        }
+        await signal_handlers.handle_message(envelope)
+        signal_handlers._event_bus.publish.assert_called()
+
+    # ── Read receipt sending ──
+    @pytest.mark.asyncio
+    async def test_sends_read_receipt_on_process(self, signal_handlers):
+        signal_handlers._linking.resolve = AsyncMock(
+            return_value=FakeLinkedUser()
+        )
+        signal_handlers._send_receipt_fn = AsyncMock()
+        envelope = {
+            "source": "+1234567890",
+            "sourceUuid": "uuid-1",
+            "timestamp": 1234567890000,
+            "dataMessage": {"message": "Test", "timestamp": 1234567890000},
+        }
+        await signal_handlers.handle_message(envelope)
+        signal_handlers._send_receipt_fn.assert_called_with(
+            "+1234567890", 1234567890000
+        )
+
+    # ── Disappearing messages ──
+    @pytest.mark.asyncio
+    async def test_disappearing_message_sets_metadata(self, signal_handlers):
+        signal_handlers._linking.resolve = AsyncMock(
+            return_value=FakeLinkedUser()
+        )
+        envelope = {
+            "source": "+1234567890",
+            "sourceUuid": "uuid-1",
+            "timestamp": 1000,
+            "dataMessage": {
+                "message": "Secret",
+                "timestamp": 1000,
+                "expiresInSeconds": 3600,
+            },
+        }
+        await signal_handlers.handle_message(envelope)
+        call = signal_handlers._event_bus.publish.call_args[0][0]
+        meta = call.payload.get("metadata", {})
+        assert meta.get("disappearing") is True
+        assert meta.get("expires_in_seconds") == 3600
+
+    # ── Attachments ──
+    @pytest.mark.asyncio
+    async def test_handle_message_with_attachment(self, signal_handlers):
+        signal_handlers._linking.resolve = AsyncMock(
+            return_value=FakeLinkedUser()
+        )
+        envelope = {
+            "source": "+1234567890",
+            "sourceUuid": "uuid-1",
+            "timestamp": 1000,
+            "dataMessage": {
+                "message": "See file",
+                "timestamp": 1000,
+                "attachments": [
+                    {
+                        "contentType": "image/png",
+                        "filename": "photo.png",
+                        "size": 2048,
+                        "id": "att-1",
+                    },
+                ],
+            },
+        }
+        with patch(
+            "nobla.channels.signal.handlers.load_attachment_from_path"
+        ) as mock_load:
+            mock_load.return_value = Attachment(
+                type=AttachmentType.IMAGE,
+                filename="photo.png",
+                mime_type="image/png",
+                size_bytes=2048,
+                data=b"png",
+            )
+            await signal_handlers.handle_message(envelope)
+            signal_handlers._event_bus.publish.assert_called()
+
+    # ── Event emission ──
+    @pytest.mark.asyncio
+    async def test_event_has_correct_channel(self, signal_handlers):
+        signal_handlers._linking.resolve = AsyncMock(
+            return_value=FakeLinkedUser()
+        )
+        envelope = {
+            "source": "+1234567890",
+            "sourceUuid": "uuid-1",
+            "timestamp": 1000,
+            "dataMessage": {"message": "Test", "timestamp": 1000},
+        }
+        await signal_handlers.handle_message(envelope)
+        call = signal_handlers._event_bus.publish.call_args[0][0]
+        assert call.event_type == "channel.message.in"
+        assert call.payload["channel"] == "signal"
