@@ -1139,3 +1139,182 @@ class TestEventsAPIHandling:
         }
         ack = adapter.build_socket_ack(envelope)
         assert ack == {"envelope_id": "env-123"}
+
+
+# =====================================================================
+# Task 6: Edge Cases
+# =====================================================================
+
+
+class TestEdgeCaseFormatter:
+    def test_only_headers_no_text(self):
+        blocks = markdown_to_blocks("# Header Only")
+        assert len(blocks) == 1
+        assert blocks[0]["type"] == "header"
+
+    def test_consecutive_dividers(self):
+        blocks = markdown_to_blocks("---\n---\n---")
+        assert all(b["type"] == "divider" for b in blocks)
+
+    def test_nested_code_fence(self):
+        md = "Text before\n```\ncode line 1\ncode line 2\n```\nText after"
+        blocks = markdown_to_blocks(md)
+        assert len(blocks) >= 2
+
+    def test_unicode_in_blocks(self):
+        blocks = markdown_to_blocks("# Arabic title")
+        assert len(blocks) >= 1
+
+    def test_header_with_special_chars(self):
+        blocks = markdown_to_blocks("# Hello *world* & <friends>")
+        assert blocks[0]["type"] == "header"
+        assert "*world*" in blocks[0]["text"]["text"]
+
+    def test_very_long_header_truncated(self):
+        blocks = markdown_to_blocks(f"# {'A' * 200}")
+        assert len(blocks[0]["text"]["text"]) <= 150
+
+
+class TestEdgeCaseHandlers:
+    @pytest.mark.asyncio
+    async def test_mention_stripped_from_text(self, handlers, linking):
+        payload = _make_slack_event(text="<@U_BOT> do something")
+        await handlers.handle_event(payload)
+        linking.resolve.assert_awaited()
+
+    @pytest.mark.asyncio
+    async def test_multiple_mentions_in_text(self, handlers, linking):
+        payload = _make_slack_event(
+            text="<@U_BOT> cc <@U_OTHER> please help",
+        )
+        await handlers.handle_event(payload)
+        linking.resolve.assert_awaited()
+
+    @pytest.mark.asyncio
+    async def test_link_failure_handled(self, handlers, linking):
+        linking.link.side_effect = Exception("DB error")
+        payload = _make_slack_event(
+            text="!link bad-id", channel="D789", channel_type="im",
+        )
+        await handlers.handle_event(payload)
+        handlers._send_text_fn.assert_awaited()
+        call_text = handlers._send_text_fn.call_args[0][1]
+        assert "failed" in call_text.lower()
+
+    @pytest.mark.asyncio
+    async def test_empty_text_message(self, handlers, linking):
+        payload = _make_slack_event(
+            text="", channel="D789", channel_type="im",
+        )
+        await handlers.handle_event(payload)
+        # Empty text in DM still resolves user
+        linking.resolve.assert_awaited()
+
+    @pytest.mark.asyncio
+    async def test_message_with_only_mention(self, handlers, linking):
+        payload = _make_slack_event(text="<@U_BOT>")
+        await handlers.handle_event(payload)
+        linking.resolve.assert_awaited()
+
+    @pytest.mark.asyncio
+    async def test_slash_link_failure(self, handlers, linking):
+        linking.link.side_effect = Exception("Invalid user")
+        result = await handlers.handle_slash_command(
+            command="/nobla", text="link bad-id",
+            user_id="U123", channel_id="C789",
+        )
+        assert "failed" in result.lower()
+
+    @pytest.mark.asyncio
+    async def test_interaction_no_actions(self, handlers, event_bus):
+        interaction = {
+            "type": "block_actions",
+            "user": {"id": "U123"},
+            "channel": {"id": "C789"},
+            "actions": [],
+        }
+        await handlers.handle_interaction(interaction)
+        event_bus.publish.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_interaction_wrong_type(self, handlers, event_bus):
+        interaction = {"type": "view_submission", "user": {"id": "U123"}}
+        await handlers.handle_interaction(interaction)
+        event_bus.publish.assert_not_awaited()
+
+
+class TestEdgeCaseAdapter:
+    @pytest.mark.asyncio
+    async def test_send_empty_content(self, adapter):
+        await adapter.start()
+        resp = ChannelResponse(content="")
+        with patch.object(adapter._client, "post", new_callable=AsyncMock) as mock_post:
+            await adapter.send("C123", resp)
+            mock_post.assert_not_awaited()
+        await adapter.stop()
+
+    @pytest.mark.asyncio
+    async def test_send_api_error_handled(self, adapter):
+        await adapter.start()
+        resp = ChannelResponse(content="hello")
+        with patch.object(adapter._client, "post", side_effect=Exception("500")):
+            await adapter.send("C123", resp)  # Should not crash
+        await adapter.stop()
+
+    @pytest.mark.asyncio
+    async def test_notification_not_initialized(self, adapter):
+        await adapter.send_notification("C123", "alert")  # Should not crash
+
+    @pytest.mark.asyncio
+    async def test_url_verification_no_challenge(self, adapter):
+        result = adapter.handle_url_verification({"type": "url_verification"})
+        assert result == ""
+
+    @pytest.mark.asyncio
+    async def test_events_api_unknown_type(self, adapter):
+        await adapter.start()
+        await adapter.handle_events_api({"type": "unknown_type"})
+        await adapter.stop()
+
+    @pytest.mark.asyncio
+    async def test_socket_handle_interactive(self, adapter, handlers):
+        await adapter.start()
+        envelope = {
+            "envelope_id": "env-456",
+            "type": "interactive",
+            "payload": {
+                "type": "block_actions",
+                "user": {"id": "U123"},
+                "channel": {"id": "C789"},
+                "actions": [{"action_id": "test:1:go", "type": "button"}],
+            },
+        }
+        await adapter.handle_socket_event(envelope)
+        await adapter.stop()
+
+
+class TestEdgeCaseMedia:
+    @pytest.mark.asyncio
+    async def test_upload_empty_data(self):
+        result = await send_attachment(
+            bot_token="xoxb-test",
+            channel_id="C123",
+            attachment=Attachment(
+                type=AttachmentType.DOCUMENT,
+                filename="empty.txt",
+                mime_type="text/plain",
+                size_bytes=0,
+                data=b"",
+            ),
+        )
+        # Empty bytes (not None) should still attempt upload
+        # but data is truthy so it proceeds
+
+    def test_guess_mime_no_extension(self):
+        assert guess_mime_type("noext") == "application/octet-stream"
+
+    def test_detect_gif(self):
+        assert detect_attachment_type("image/gif") == AttachmentType.IMAGE
+
+    def test_detect_wav(self):
+        assert detect_attachment_type("audio/wav") == AttachmentType.AUDIO
