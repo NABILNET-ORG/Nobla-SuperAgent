@@ -463,15 +463,15 @@ TIER 4: ADMIN
 - [x] LearningService orchestrator + 22 REST routes + gateway wiring with kill switch integration
 - [x] Flutter: Agent Intelligence screen (4 tabs: Overview/Patterns/Auto-Skills/Settings), FeedbackWidget, PatternCard, SuggestionCard with snooze dropdown
 
-**Phase 5B.2: Universal Skills Marketplace (Planned):**
-- [ ] Marketplace models (MarketplaceSkill, SkillVersion, SkillRating, TrustTier, PackageType) + MarketplaceSettings
-- [ ] SkillPackager — .nobla archive pack/unpack + manifest-pointer validation + SHA-256 integrity + SemVer enforcement
-- [ ] MarketplaceRegistry — tiered publishing (auto-approve community after scan, manual review for verified badge), versioning, ratings (upsert + avg), unpublish
-- [ ] SkillDiscovery — keyword search (name/desc/tags) + semantic search (ChromaDB) + pattern-based recommendations + similar-to-installed recommendations
-- [ ] UsageTracker — event-driven install counts, active users, success rates via skill_id correlation
-- [ ] MarketplaceService orchestrator + 15 REST routes + gateway wiring
-- [ ] Flutter: MarketplaceScreen (search + grid + recommendations), SkillDetailScreen (versions + ratings), SkillCard, RatingWidget, VersionListWidget
-- [ ] Router wiring under Tools tab (/home/tools/marketplace)
+**Phase 5B.2: Universal Skills Marketplace (Complete — 129 tests: 97 backend + 32 Flutter):**
+- [x] Marketplace models (MarketplaceSkill, SkillVersion, SkillRating, TrustTier, PackageType, VerificationStatus, PackageValidation) + MarketplaceSettings
+- [x] SkillPackager — .nobla archive pack/unpack + manifest-pointer validation + SHA-256 integrity + SemVer enforcement
+- [x] MarketplaceRegistry — tiered publishing (auto-approve community after scan, manual review for verified badge), versioning, ratings (upsert + avg), unpublish
+- [x] SkillDiscovery — keyword search (name/desc/tags, case-insensitive) + category/tags/tier/format filters + pagination + pattern-based recommendations + similar-to-installed recommendations
+- [x] UsageTracker — event-driven install counts, active users, success rates via skill_id correlation
+- [x] MarketplaceService orchestrator + 15 REST routes + gateway wiring + ToolExecutor skill_id payload
+- [x] Flutter: MarketplaceScreen (search bar + category filter chips + recommendations), SkillDetailScreen (stats row + versions + ratings), SkillCard, RatingWidget, VersionListWidget
+- [x] Router wiring under Tools tab (/home/tools/marketplace, /home/tools/marketplace/:id)
 
 ---
 
@@ -516,7 +516,7 @@ TIER 4: ADMIN
 - [x] Skill runtime: load and execute user-created skills (Phase 5-Foundation — SkillRuntime + UniversalSkillAdapter)
 - [x] Security audit pipeline: SkillSecurityScanner (Phase 5-Foundation)
 - [x] Self-improving agent: feedback → pattern detection → auto-skill generation (Phase 5B.1 — 130 tests)
-- [ ] Marketplace registry, discovery, publishing, versioning, ratings (Phase 5B.2 — planned)
+- [x] Marketplace registry, discovery, publishing, versioning, ratings (Phase 5B.2 — 129 tests)
 - [ ] Plugin runtime: load plugins with skills/agents/hooks/commands
 - [ ] Custom skill creator: guided UI for non-developers
 - [ ] Author profiles + reputation scoring
@@ -527,7 +527,7 @@ TIER 4: ADMIN
 - [x] Agent Intelligence screen: 4-tab settings sub-route, feedback/pattern/suggestion widgets (24 tests)
 - [ ] Cron manager: schedule, edit, delete cron jobs
 - [ ] Multi-agent dashboard: see all running agents/sub-agents
-- [ ] Community tab: browse marketplace, install skills/plugins, rate/review (Phase 5B.2)
+- [x] Community tab: browse marketplace, install skills/plugins, rate/review (Phase 5B.2 — 32 Flutter tests)
 - [ ] Plugin manager: installed plugins, updates, settings per plugin
 
 ---
@@ -618,7 +618,7 @@ Nobla Agent improves itself over time:
 3. **Skill auto-creation** — ✅ SkillGenerator creates workflow macros from confirmed patterns → promotes to NoblaSkill code → marks publishable for marketplace (3-tier lifecycle with security scanning gate)
 4. **A/B routing** — ✅ ABTestManager runs epsilon-greedy experiments (per-category: hard=0.1, medium=0.15, easy=0.2), auto-concludes on statistical significance, winner updates LLMRouter preferences
 5. **Proactive suggestions** — ✅ ProactiveEngine with configurable aggressiveness (OFF/CONSERVATIVE/MODERATE/AGGRESSIVE), snooze (1/3/7 days) vs dismiss semantics, auto-expire at 5x snooze, confidence penalties (-0.2 dismiss, -0.05 soft)
-6. **Community marketplace** — Phase 5B.2 (planned): publish, discover, install, rate, version skills with dual format (.nobla archive + manifest-pointer)
+6. **Community marketplace** — ✅ Phase 5B.2 complete: MarketplaceRegistry (tiered publishing + security scan), SkillPackager (.nobla + manifest-pointer), SkillDiscovery (keyword search + recommendations), UsageTracker (event-driven stats), 15 REST routes, Flutter marketplace UI (129 tests)
 
 ---
 

@@ -10,6 +10,7 @@ Mobile-first client for [Nobla Agent](https://github.com/NABILNET-ORG/Nobla-Supe
 - **Tools UI** — screen mirror (pinch-to-zoom), filterable activity feed, tool catalog browser
 - **Persona management** — browse, create, and switch AI personalities
 - **Memory viewer** — explore conversation history and knowledge graph
+- **Skills Marketplace** — browse, search, filter, install, rate, and version community skills with recommendation engine
 - **Settings** — server connection, theme, security tier management
 - **Auth** — JWT-based authentication with secure storage
 
@@ -26,6 +27,7 @@ app/lib/
 │   ├── memory/         # Memory viewer and knowledge graph
 │   ├── persona/        # Persona browser and management
 │   ├── tools/          # Tool mirror, activity feed, catalog browser (Phase 4E)
+│   ├── marketplace/    # Skills marketplace — search, detail, skill card, rating, version list (Phase 5B.2)
 │   └── settings/       # App and server configuration
 └── shared/         # Shared widgets, utils, providers (tool activity)
 ```

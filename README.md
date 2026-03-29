@@ -59,7 +59,7 @@ FastAPI Gateway (Python 3.12+)
 
 ## Current Status
 
-Nobla Agent is in **active development**. Phases 1-6 + Phase 5B.1 complete. **1,192 tests passing** (241 Flutter + 951 backend).
+Nobla Agent is in **active development**. Phases 1-6 + Phase 5B.1-5B.2 complete. **1,321 tests passing** (273 Flutter + 1,048 backend).
 
 | Phase | Status | Scope |
 |-------|--------|-------|
@@ -70,7 +70,7 @@ Nobla Agent is in **active development**. Phases 1-6 + Phase 5B.1 complete. **1,
 | **Phase 5-Foundation**: Events + Skills | Complete | Event bus (pub/sub, wildcards, priority), channel abstraction, skill runtime, tool event wiring (106 tests) |
 | **Phase 5A**: Telegram + Discord | Complete | Telegram (polling + webhook), Discord (WebSocket gateway), media, commands (173 tests) |
 | **Phase 5B.1**: Self-Improving Agent | Complete | FeedbackCollector, PatternDetector, SkillGenerator (macro→skill→publishable), ABTestManager (epsilon-greedy), ProactiveEngine (snooze/dismiss/auto-expire), 22 REST routes, Flutter Agent Intelligence screen (130 tests) |
-| **Phase 5B.2**: Skills Marketplace | Planned | Publishing pipeline, discovery (keyword + semantic), versioning, ratings, Flutter marketplace UI |
+| **Phase 5B.2**: Skills Marketplace | Complete | MarketplaceRegistry (tiered publishing), SkillPackager (.nobla + manifest-pointer), SkillDiscovery (keyword search + recommendations), UsageTracker, 15 REST routes, Flutter marketplace UI (129 tests) |
 | **Phase 6**: NL Scheduler | Complete | NLP time parser, LLM interpreter, APScheduler, confirmation flow (76 tests) |
 | **Phase 6**: Multi-Agent System | Complete | Parallel orchestrator, A2A protocol, MCP client/server, task decomposer, researcher + coder agents (148 tests) |
 | **Phase 6**: Webhooks & Workflows | Complete | Pluggable verification, inbound/outbound webhooks, DAG workflow engine, NL interpreter, templates + import/export, Flutter automation UI (486 tests) |
@@ -142,13 +142,14 @@ nobla-agent/
 │   ├── agents/         # Multi-agent orchestrator, A2A protocol, MCP client/server (Phase 6)
 │   ├── skills/         # Skill runtime — universal adapter, security scanner, tool bridge (Phase 5)
 │   ├── learning/       # Self-improving agent — feedback, patterns, auto-skills, A/B testing (Phase 5B.1)
+│   ├── marketplace/    # Skills marketplace — registry, discovery, packager, stats, service (Phase 5B.2)
 │   ├── security/       # Auth, sandbox, audit, encryption
 │   ├── persona/        # Emotion detection + persona engine
 │   ├── config/         # Centralized settings
 │   └── db/             # Database models + repos
 ├── app/lib/
 │   ├── core/           # Theme, routing, DI (Riverpod)
-│   ├── features/       # auth, chat, dashboard, voice, persona, memory, security, tools, automation, learning, settings
+│   ├── features/       # auth, chat, dashboard, voice, persona, memory, security, tools, automation, learning, marketplace, settings
 │   └── shared/         # Shared widgets, utils
 ├── backend/tests/      # 95 test files
 ├── docs/superpowers/   # Design specs + implementation plans

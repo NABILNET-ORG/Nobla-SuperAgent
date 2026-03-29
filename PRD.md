@@ -650,7 +650,7 @@ Telegram, Discord, WhatsApp, Slack, Signal, iMessage, Microsoft Teams, Google Ch
 - Procedural memory (successful workflows saved and reused)
 - Skill auto-creation (task repeated 3x → reusable skill)
 - A/B model routing (test approaches, keep the better one)
-- Community skill marketplace (vetted + scanned)
+- Community skill marketplace (vetted + scanned) — ✅ Phase 5B.2: MarketplaceRegistry, SkillPackager, SkillDiscovery, UsageTracker, 15 REST routes, Flutter UI
 
 ### 9.8 Proactive Intelligence
 

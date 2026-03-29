@@ -6,16 +6,28 @@ Built by [NABILNET.AI](https://nabilnet.ai)
 
 ---
 
-## [Unreleased] — Phase 5B.2: Universal Skills Marketplace
+## [0.5.2] — 2026-03-29 — Phase 5B.2: Universal Skills Marketplace
 
-### Planned
-- Marketplace registry with tiered publishing (community auto-approve, verified manual review)
-- Dual package format: `.nobla` archive + manifest-pointer (MCP, OpenClaw, Claude, LangChain)
-- Discovery: keyword search (PostgreSQL FTS) + semantic search (ChromaDB) + recommendations
-- SemVer versioning with update notifications
-- Star ratings + usage stats + security scan badge
-- 15 REST API routes
-- Flutter marketplace screen under Tools tab with search, grid, skill detail
+### Added
+- **MarketplaceRegistry** — tiered publishing pipeline (community auto-approve after security scan, verified badge via manual admin review), SemVer versioning with update checks, star ratings (upsert + running average), unpublish support
+- **SkillPackager** — dual package format: `.nobla` zip archive (nobla-skill.json manifest + skill.py + optional deps) + manifest-pointer for external skills (MCP, OpenClaw, Claude, LangChain), SHA-256 integrity hashing, archive size enforcement
+- **SkillDiscovery** — keyword search (case-insensitive on name/description/tags), category/tags/trust_tier/source_format filters, pagination, sort by install_count/avg_rating/created_at, pattern-based recommendations (via Phase 5B.1 PatternDetector), similar-to-installed recommendations (same-category matching)
+- **UsageTracker** — event-driven stats tracking: install_count and active_users via `skill.installed`/`skill.uninstalled` events, success_rate via `tool.executed`/`tool.failed` events correlated by `skill_id` payload
+- **MarketplaceService** orchestrator — start/stop lifecycle with event subscriptions stored as `(event_type, handler)` tuples, install/uninstall delegation to SkillRuntime, delegates to registry/discovery/stats for all other operations
+- **MarketplaceSettings** — `enabled`, `max_skills_per_author` (50), `max_archive_size_mb` (10), `storage_dir`
+- **15 REST API routes** under `/api/marketplace/` — search, skill detail, versions, ratings, publish, publish version, rate, install, uninstall, updates, recommendations, categories, unpublish, request verification, admin review
+- **Gateway wiring** — MarketplaceService initialized in lifespan after LearningService, kill switch integration, cleanup on shutdown
+- **ToolExecutor enhancement** — `skill_id` field added to `tool.executed`/`tool.failed` event payloads for SkillToolBridge tools
+- **Flutter MarketplaceScreen** — search bar with submit, category FilterChip row (9 categories), recommendation horizontal ScrollViews ("Based on your patterns", "Similar to installed"), GridView of SkillCards with responsive layout
+- **Flutter SkillDetailScreen** — header with display name/author/trust badge, Install button, description + tag Chips, 4-stat row (installs/active/rating/success), VersionListWidget (expandable with changelog), RatingWidget + reviews list
+- **Flutter widgets** — SkillCard (name, author, stars, install count, trust badge, Install/Installed button), RatingWidget (5 tappable stars), VersionListWidget (ExpansionTile with scan badge)
+- **Flutter models** — MarketplaceSkill, SkillVersion, SkillRating, UpdateNotification, SearchResults with fromJson/toJson, enums (PackageType, TrustTier, VerificationStatus)
+- **Riverpod providers** — marketplaceSearchProvider (state-driven), skillDetailProvider, skillRatingsProvider, updateListProvider, recommendationsProvider, categoryListProvider
+- **Router wiring** — `/home/tools/marketplace` and `/home/tools/marketplace/:id` routes under ShellRoute
+
+### Tests
+- 97 backend tests + 32 Flutter tests = 129 new tests
+- Total project: 1,321 tests (1,048 backend + 273 Flutter)
 
 ---
 
