@@ -230,3 +230,143 @@ class TestFormatResponse:
         result = format_response(ChannelResponse(content="Just text"))
         card = result["attachments"][0]["content"]
         assert card["actions"] == []
+
+
+# ── Media ───────────────────────────────────────────────────
+
+from unittest.mock import AsyncMock, MagicMock
+
+
+class TestDetectAttachmentType:
+    def test_image_png(self):
+        from nobla.channels.teams.media import detect_attachment_type
+        from nobla.channels.base import AttachmentType
+        assert detect_attachment_type("image/png") == AttachmentType.IMAGE
+
+    def test_audio_mpeg(self):
+        from nobla.channels.teams.media import detect_attachment_type
+        from nobla.channels.base import AttachmentType
+        assert detect_attachment_type("audio/mpeg") == AttachmentType.AUDIO
+
+    def test_video_mp4(self):
+        from nobla.channels.teams.media import detect_attachment_type
+        from nobla.channels.base import AttachmentType
+        assert detect_attachment_type("video/mp4") == AttachmentType.VIDEO
+
+    def test_unknown_defaults_document(self):
+        from nobla.channels.teams.media import detect_attachment_type
+        from nobla.channels.base import AttachmentType
+        assert detect_attachment_type("application/x-unknown") == AttachmentType.DOCUMENT
+
+
+@pytest.mark.asyncio
+class TestDownloadAttachment:
+    async def test_download_content_url(self):
+        from nobla.channels.teams.media import download_attachment
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.content = b"filedata"
+        mock_resp.headers = {"Content-Length": "8", "Content-Type": "image/png"}
+        mock_resp.raise_for_status = MagicMock()
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_resp)
+        result = await download_attachment(
+            {"contentType": "image/png", "contentUrl": "https://teams.cdn/file.png", "name": "file.png"},
+            "token-123", mock_client,
+        )
+        assert result is not None
+        assert result.data == b"filedata"
+        assert result.mime_type == "image/png"
+
+    async def test_download_direct_url(self):
+        from nobla.channels.teams.media import download_attachment
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.content = b"filedata"
+        mock_resp.headers = {"Content-Length": "8", "Content-Type": "application/pdf"}
+        mock_resp.raise_for_status = MagicMock()
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_resp)
+        result = await download_attachment(
+            {"contentType": "application/vnd.microsoft.teams.file.download.info",
+             "content": {"downloadUrl": "https://direct/file.pdf"}, "name": "file.pdf"},
+            "token-123", mock_client,
+        )
+        assert result is not None
+
+    async def test_download_size_exceeded(self):
+        from nobla.channels.teams.media import download_attachment
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.content = b""
+        mock_resp.headers = {"Content-Length": "999999999", "Content-Type": "video/mp4"}
+        mock_resp.raise_for_status = MagicMock()
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_resp)
+        result = await download_attachment(
+            {"contentType": "video/mp4", "contentUrl": "https://teams.cdn/big.mp4", "name": "big.mp4"},
+            "token", mock_client, max_size_bytes=1000,
+        )
+        assert result is None
+
+    async def test_download_error_returns_none(self):
+        from nobla.channels.teams.media import download_attachment
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(side_effect=Exception("network error"))
+        result = await download_attachment(
+            {"contentType": "image/png", "contentUrl": "https://teams.cdn/file.png", "name": "file.png"},
+            "token", mock_client,
+        )
+        assert result is None
+
+
+@pytest.mark.asyncio
+class TestSendAttachment:
+    async def test_send_small_inline_base64(self):
+        from nobla.channels.teams.media import send_attachment
+        from nobla.channels.base import Attachment, AttachmentType
+        att = Attachment(type=AttachmentType.IMAGE, filename="small.png", mime_type="image/png",
+                         size_bytes=100, data=b"\x89PNG" + b"\x00" * 96)
+        mock_client = AsyncMock()
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.raise_for_status = MagicMock()
+        mock_client.post = AsyncMock(return_value=mock_resp)
+        result = await send_attachment(
+            "https://smba.trafficmanager.net/teams/", "conv-1", att, "token", mock_client
+        )
+        assert result is True
+
+    async def test_send_large_with_url_as_hero_card(self):
+        from nobla.channels.teams.media import send_attachment
+        from nobla.channels.base import Attachment, AttachmentType
+        att = Attachment(type=AttachmentType.DOCUMENT, filename="big.zip", mime_type="application/zip",
+                         size_bytes=500_000, url="https://example.com/big.zip")
+        mock_client = AsyncMock()
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.raise_for_status = MagicMock()
+        mock_client.post = AsyncMock(return_value=mock_resp)
+        result = await send_attachment(
+            "https://smba.trafficmanager.net/teams/", "conv-1", att, "token", mock_client
+        )
+        assert result is True
+
+    async def test_send_large_no_url_returns_false(self):
+        from nobla.channels.teams.media import send_attachment
+        from nobla.channels.base import Attachment, AttachmentType
+        att = Attachment(type=AttachmentType.VIDEO, filename="big.mp4", mime_type="video/mp4",
+                         size_bytes=500_000, data=b"\x00" * 500_000)
+        result = await send_attachment(
+            "https://smba.trafficmanager.net/teams/", "conv-1", att, "token", AsyncMock()
+        )
+        assert result is False
+
+    async def test_send_no_data_no_url_returns_false(self):
+        from nobla.channels.teams.media import send_attachment
+        from nobla.channels.base import Attachment, AttachmentType
+        att = Attachment(type=AttachmentType.DOCUMENT, filename="empty.txt", mime_type="text/plain", size_bytes=0)
+        result = await send_attachment(
+            "https://smba.trafficmanager.net/teams/", "conv-1", att, "token", AsyncMock()
+        )
+        assert result is False
