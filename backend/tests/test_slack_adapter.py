@@ -331,3 +331,214 @@ class TestFormatResponse:
         result = format_response(resp)
         types = [b["type"] for b in result["blocks"]]
         assert "header" in types
+
+
+# =====================================================================
+# Task 3: Media (v2 upload pipeline)
+# =====================================================================
+
+from nobla.channels.slack.media import (
+    detect_attachment_type,
+    guess_mime_type,
+    upload_file_v2,
+    download_file,
+    send_attachment,
+)
+
+
+class TestSlackDetectAttachmentType:
+    def test_image_types(self):
+        assert detect_attachment_type("image/jpeg") == AttachmentType.IMAGE
+        assert detect_attachment_type("image/png") == AttachmentType.IMAGE
+
+    def test_audio_types(self):
+        assert detect_attachment_type("audio/ogg") == AttachmentType.AUDIO
+        assert detect_attachment_type("audio/mpeg") == AttachmentType.AUDIO
+
+    def test_video_types(self):
+        assert detect_attachment_type("video/mp4") == AttachmentType.VIDEO
+
+    def test_document_types(self):
+        assert detect_attachment_type("application/pdf") == AttachmentType.DOCUMENT
+        assert detect_attachment_type("text/plain") == AttachmentType.DOCUMENT
+
+    def test_unknown_defaults_to_document(self):
+        assert detect_attachment_type("application/x-unknown") == AttachmentType.DOCUMENT
+
+
+class TestSlackGuessMimeType:
+    def test_known_extension(self):
+        assert guess_mime_type("photo.jpg") in ("image/jpeg",)
+        assert guess_mime_type("doc.pdf") == "application/pdf"
+
+    def test_unknown_extension(self):
+        assert guess_mime_type("file.xyz123") == "application/octet-stream"
+
+
+class TestUploadFileV2:
+    @pytest.mark.asyncio
+    async def test_upload_success(self):
+        mock_client = AsyncMock()
+        # Step 1: get upload URL
+        mock_resp1 = MagicMock()
+        mock_resp1.status_code = 200
+        mock_resp1.raise_for_status = MagicMock()
+        mock_resp1.json.return_value = {
+            "ok": True,
+            "upload_url": "https://files.slack.com/upload/v2/abc",
+            "file_id": "F_TEST",
+        }
+        # Step 2: upload file content
+        mock_resp2 = MagicMock()
+        mock_resp2.status_code = 200
+        mock_resp2.raise_for_status = MagicMock()
+        # Step 3: complete upload
+        mock_resp3 = MagicMock()
+        mock_resp3.status_code = 200
+        mock_resp3.raise_for_status = MagicMock()
+        mock_resp3.json.return_value = {"ok": True}
+
+        mock_client.post = AsyncMock(side_effect=[mock_resp1, mock_resp2, mock_resp3])
+
+        file_id = await upload_file_v2(
+            bot_token="xoxb-test",
+            data=b"file-content",
+            filename="test.txt",
+            channel_id="C123",
+            client=mock_client,
+        )
+        assert file_id == "F_TEST"
+        assert mock_client.post.call_count == 3
+
+    @pytest.mark.asyncio
+    async def test_upload_get_url_fails(self):
+        mock_client = AsyncMock()
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.raise_for_status = MagicMock()
+        mock_resp.json.return_value = {"ok": False, "error": "not_authed"}
+        mock_client.post = AsyncMock(return_value=mock_resp)
+
+        file_id = await upload_file_v2(
+            bot_token="xoxb-bad",
+            data=b"data",
+            filename="f.txt",
+            channel_id="C123",
+            client=mock_client,
+        )
+        assert file_id is None
+
+    @pytest.mark.asyncio
+    async def test_upload_exception(self):
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(side_effect=Exception("network error"))
+
+        file_id = await upload_file_v2(
+            bot_token="xoxb-test",
+            data=b"data",
+            filename="f.txt",
+            channel_id="C123",
+            client=mock_client,
+        )
+        assert file_id is None
+
+
+class TestDownloadFile:
+    @pytest.mark.asyncio
+    async def test_download_success(self):
+        mock_client = AsyncMock()
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.raise_for_status = MagicMock()
+        mock_resp.content = b"file-bytes"
+        mock_client.get = AsyncMock(return_value=mock_resp)
+
+        data = await download_file(
+            url="https://files.slack.com/file.jpg",
+            bot_token="xoxb-test",
+            client=mock_client,
+        )
+        assert data == b"file-bytes"
+
+    @pytest.mark.asyncio
+    async def test_download_failure(self):
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(side_effect=Exception("timeout"))
+
+        data = await download_file(
+            url="https://files.slack.com/file.jpg",
+            bot_token="xoxb-test",
+            client=mock_client,
+        )
+        assert data is None
+
+    @pytest.mark.asyncio
+    async def test_download_too_large(self):
+        mock_client = AsyncMock()
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.raise_for_status = MagicMock()
+        mock_resp.content = b"x" * 200
+        mock_client.get = AsyncMock(return_value=mock_resp)
+
+        data = await download_file(
+            url="https://files.slack.com/file.jpg",
+            bot_token="xoxb-test",
+            client=mock_client,
+            max_size_bytes=100,
+        )
+        assert data is None
+
+
+class TestSendAttachment:
+    @pytest.mark.asyncio
+    async def test_send_success(self):
+        mock_client = AsyncMock()
+        # upload_file_v2 responses (3 calls)
+        mock_resp1 = MagicMock()
+        mock_resp1.status_code = 200
+        mock_resp1.raise_for_status = MagicMock()
+        mock_resp1.json.return_value = {
+            "ok": True,
+            "upload_url": "https://files.slack.com/upload/v2/abc",
+            "file_id": "F_TEST",
+        }
+        mock_resp2 = MagicMock()
+        mock_resp2.status_code = 200
+        mock_resp2.raise_for_status = MagicMock()
+        mock_resp3 = MagicMock()
+        mock_resp3.status_code = 200
+        mock_resp3.raise_for_status = MagicMock()
+        mock_resp3.json.return_value = {"ok": True}
+        mock_client.post = AsyncMock(side_effect=[mock_resp1, mock_resp2, mock_resp3])
+
+        attachment = Attachment(
+            type=AttachmentType.IMAGE,
+            filename="photo.jpg",
+            mime_type="image/jpeg",
+            size_bytes=1024,
+            data=b"fake-image",
+        )
+        result = await send_attachment(
+            bot_token="xoxb-test",
+            channel_id="C123",
+            attachment=attachment,
+            client=mock_client,
+        )
+        assert result is True
+
+    @pytest.mark.asyncio
+    async def test_send_no_data(self):
+        attachment = Attachment(
+            type=AttachmentType.IMAGE,
+            filename="photo.jpg",
+            mime_type="image/jpeg",
+            size_bytes=0,
+            data=None,
+        )
+        result = await send_attachment(
+            bot_token="xoxb-test",
+            channel_id="C123",
+            attachment=attachment,
+        )
+        assert result is False
