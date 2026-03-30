@@ -6,6 +6,34 @@ Built by [NABILNET.AI](https://nabilnet.ai)
 
 ---
 
+## [0.6.1] — 2026-03-30 — Phase 5-Channels: Microsoft Teams Adapter
+
+### Added
+- **Microsoft Teams adapter** (90 tests) — Bot Framework REST API with webhook-only inbound transport
+  - OAuth2 `client_credentials` TokenManager with auto-refresh, `asyncio.Lock` for concurrent safety, configurable refresh margin
+  - JWT validation — RS256 via cached JWKS from Microsoft OpenID config, 24h key refresh, security-first reject-when-unavailable (no bypass)
+  - Adaptive Cards formatter — full markdown-to-card conversion (h1/h2/h3 headings → TextBlock sizes, code fences → Monospace, `---` → ColumnSet separator, blockquotes → accent Container, action buttons → Action.Submit with style mapping)
+  - Media handling — inline base64 for ≤256KB files, hero card with download link for >256KB with URL, size-gated download with Bearer auth
+  - Keyword commands: `!start`, `!link`, `!unlink`, `!status` (consistent with all other adapters)
+  - Mention-only channel policy — responds only when @mentioned in channels, always in DMs (personal chats)
+  - `<at>BotName</at>` XML tag stripping from message text before processing
+  - Conversation reference capture for proactive messaging (`service_url`, `conversation_id`, `tenant_id`)
+  - Multi-tenant support — accepts any valid Azure AD tenant by default, optional `tenant_id` restriction
+  - Activity dispatch: message, invoke (Action.Submit callbacks), conversationUpdate (bot added welcome), messageReaction
+  - Rate limit handling with `Retry-After` header backoff
+  - `TeamsSettings` with `app_id`/`app_password` validation + gateway wiring in `_init_channels()`
+
+### Security
+- JWT validation mandatory — JWKS unavailable = reject ALL requests (HTTP 503), background retry with exponential backoff
+- Bearer token auth for all outbound API calls (auto-refreshed, never exposed)
+- Multi-tenant JWT issuer/audience/expiry/tenant claim validation
+
+### Tests
+- 90 new tests: 8 models, 21 formatter, 12 media, 20 handlers, 29 adapter (TokenManager + JWT + lifecycle)
+- Total project: 1,723 tests (1,450 backend + 273 Flutter)
+
+---
+
 ## [0.6.0] — 2026-03-29 — Phase 5-Channels: Slack + Signal Adapters
 
 ### Added
