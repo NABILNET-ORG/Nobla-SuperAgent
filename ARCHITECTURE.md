@@ -1072,174 +1072,182 @@ flowchart TD
   n442 --> n443
   n444["docs/"]
   n0 --> n444
-  n445["superpowers/"]
+  n445["scm-memory/"]
   n444 --> n445
-  n446["plans/"]
+  n446["legacy_claude.md"]
   n445 --> n446
-  n447["2026-03-17-phase1a-backend-foundation.md"]
-  n446 --> n447
-  n448["2026-03-17-phase1b-security-auth.md"]
-  n446 --> n448
-  n449["2026-03-17-phase1c-flutter-app.md"]
-  n446 --> n449
-  n450["2026-03-17-phase1d-integration-deployment.md"]
-  n446 --> n450
-  n451["2026-03-19-phase2a-memory-implementation.md"]
-  n446 --> n451
-  n452["2026-03-20-phase2b1-streaming-auth-circuit-breaker.md"]
-  n446 --> n452
-  n453["2026-03-20-phase2b2-search-polish.md"]
-  n446 --> n453
-  n454["2026-03-21-phase3a-voice-pipeline.md"]
-  n446 --> n454
-  n455["2026-03-21-phase3b1-persona-engine.md"]
-  n446 --> n455
-  n456["2026-03-21-phase3b2-personaplex-integration.md"]
-  n446 --> n456
-  n457["2026-03-23-phase3b3a-persona-management-ui.md"]
-  n446 --> n457
-  n458["2026-03-23-phase4-pre-tool-platform.md"]
-  n446 --> n458
-  n459["2026-03-24-phase4a-screen-vision.md"]
-  n446 --> n459
-  n460["2026-03-24-phase4c-code-execution.md"]
-  n446 --> n460
-  n461["2026-03-25-phase4b-computer-control.md"]
-  n446 --> n461
-  n462["2026-03-25-phase4d-remote-control.md"]
-  n446 --> n462
-  n463["2026-03-25-phase4e-flutter-tool-ui.md"]
-  n446 --> n463
-  n464["2026-03-27-multi-agent-system.md"]
-  n446 --> n464
-  n465["2026-03-28-self-improving-agent.md"]
-  n446 --> n465
-  n466["2026-03-28-webhooks-workflows.md"]
-  n446 --> n466
-  n467["2026-03-29-skills-marketplace.md"]
-  n446 --> n467
-  n468["2026-03-29-slack-signal-adapters.md"]
-  n446 --> n468
-  n469["2026-03-29-teams-adapter.md"]
-  n446 --> n469
-  n470["prompts/"]
-  n445 --> n470
-  n471["research/"]
-  n470 --> n471
-  n472["continue-after-multiagent-design.md"]
-  n470 --> n472
-  n473["continue-after-multiagent-implementation.md"]
-  n470 --> n473
-  n474["continue-after-phase4e-implementation.md"]
-  n470 --> n474
-  n475["continue-after-phase5-slack-signal.md"]
-  n470 --> n475
-  n476["continue-after-phase5-teams.md"]
-  n470 --> n476
-  n477["continue-after-phase5-whatsapp.md"]
-  n470 --> n477
-  n478["continue-after-phase5a-6-scheduler.md"]
-  n470 --> n478
-  n479["continue-after-phase5b1-learning.md"]
-  n470 --> n479
-  n480["continue-after-phase5b2-marketplace.md"]
-  n470 --> n480
-  n481["continue-after-phase6-templates.md"]
-  n470 --> n481
-  n482["continue-after-phase6-webhooks-workflows.md"]
-  n470 --> n482
-  n483["continue-after-phase6v2-implementation.md"]
-  n470 --> n483
-  n484["phase4a-continuation-prompt.md"]
-  n470 --> n484
-  n485["phase4b-continuation-prompt.md"]
-  n470 --> n485
-  n486["phase4c-continuation-prompt.md"]
-  n470 --> n486
-  n487["phase4c-implementation-prompt.md"]
-  n470 --> n487
-  n488["phase4d-continuation-prompt.md"]
-  n470 --> n488
-  n489["phase4d-implementation-prompt.md"]
-  n470 --> n489
-  n490["phase4e-continuation-prompt.md"]
-  n470 --> n490
-  n491["phase5-channels-continuation-prompt.md"]
-  n470 --> n491
-  n492["specs/"]
-  n445 --> n492
-  n493["2026-03-17-phase1a-backend-foundation-design.md"]
-  n492 --> n493
-  n494["2026-03-17-phase1b-security-auth-design.md"]
-  n492 --> n494
-  n495["2026-03-17-phase1c-flutter-app-design.md"]
-  n492 --> n495
-  n496["2026-03-19-phase2a-memory-conversation-design.md"]
-  n492 --> n496
-  n497["2026-03-19-phase2b-router-search-design.md"]
-  n492 --> n497
-  n498["2026-03-21-phase3-voice-persona-design.md"]
-  n492 --> n498
-  n499["2026-03-21-phase3b-persona-engine-design.md"]
-  n492 --> n499
-  n500["2026-03-21-phase3b2-personaplex-integration-design.md"]
-  n492 --> n500
-  n501["2026-03-23-phase3b3a-persona-management-ui-design.md"]
-  n492 --> n501
-  n502["2026-03-23-phase4-computer-control-vision-design.md"]
-  n492 --> n502
-  n503["2026-03-24-phase4a-screen-vision-design.md"]
-  n492 --> n503
-  n504["2026-03-24-phase4c-code-execution-design.md"]
-  n492 --> n504
-  n505["2026-03-25-phase4b-computer-control-design.md"]
-  n492 --> n505
-  n506["2026-03-25-phase4d-remote-control-design.md"]
-  n492 --> n506
-  n507["2026-03-25-phase4e-flutter-tool-ui-design.md"]
-  n492 --> n507
-  n508["2026-03-26-phase5-redesign-design.md"]
-  n492 --> n508
-  n509["2026-03-27-multi-agent-system-design.md"]
-  n492 --> n509
-  n510["2026-03-28-self-improving-agent-design.md"]
-  n492 --> n510
-  n511["2026-03-28-webhooks-workflows-design.md"]
-  n492 --> n511
-  n512["2026-03-29-skills-marketplace-design.md"]
-  n492 --> n512
-  n513["2026-03-29-slack-signal-adapters-design.md"]
-  n492 --> n513
-  n514["2026-03-29-teams-adapter-design.md"]
-  n492 --> n514
-  n515[".env.example"]
-  n0 --> n515
-  n516[".gitignore"]
-  n0 --> n516
-  n517["Architecture-Prompt-Template.md"]
-  n0 --> n517
-  n518["ARCHITECTURE.md"]
-  n0 --> n518
-  n519["CHANGELOG.md"]
+  n447["legacy_memory.md"]
+  n445 --> n447
+  n448["session-reports/"]
+  n444 --> n448
+  n449["superpowers/"]
+  n444 --> n449
+  n450["plans/"]
+  n449 --> n450
+  n451["2026-03-17-phase1a-backend-foundation.md"]
+  n450 --> n451
+  n452["2026-03-17-phase1b-security-auth.md"]
+  n450 --> n452
+  n453["2026-03-17-phase1c-flutter-app.md"]
+  n450 --> n453
+  n454["2026-03-17-phase1d-integration-deployment.md"]
+  n450 --> n454
+  n455["2026-03-19-phase2a-memory-implementation.md"]
+  n450 --> n455
+  n456["2026-03-20-phase2b1-streaming-auth-circuit-breaker.md"]
+  n450 --> n456
+  n457["2026-03-20-phase2b2-search-polish.md"]
+  n450 --> n457
+  n458["2026-03-21-phase3a-voice-pipeline.md"]
+  n450 --> n458
+  n459["2026-03-21-phase3b1-persona-engine.md"]
+  n450 --> n459
+  n460["2026-03-21-phase3b2-personaplex-integration.md"]
+  n450 --> n460
+  n461["2026-03-23-phase3b3a-persona-management-ui.md"]
+  n450 --> n461
+  n462["2026-03-23-phase4-pre-tool-platform.md"]
+  n450 --> n462
+  n463["2026-03-24-phase4a-screen-vision.md"]
+  n450 --> n463
+  n464["2026-03-24-phase4c-code-execution.md"]
+  n450 --> n464
+  n465["2026-03-25-phase4b-computer-control.md"]
+  n450 --> n465
+  n466["2026-03-25-phase4d-remote-control.md"]
+  n450 --> n466
+  n467["2026-03-25-phase4e-flutter-tool-ui.md"]
+  n450 --> n467
+  n468["2026-03-27-multi-agent-system.md"]
+  n450 --> n468
+  n469["2026-03-28-self-improving-agent.md"]
+  n450 --> n469
+  n470["2026-03-28-webhooks-workflows.md"]
+  n450 --> n470
+  n471["2026-03-29-skills-marketplace.md"]
+  n450 --> n471
+  n472["2026-03-29-slack-signal-adapters.md"]
+  n450 --> n472
+  n473["2026-03-29-teams-adapter.md"]
+  n450 --> n473
+  n474["prompts/"]
+  n449 --> n474
+  n475["research/"]
+  n474 --> n475
+  n476["continue-after-multiagent-design.md"]
+  n474 --> n476
+  n477["continue-after-multiagent-implementation.md"]
+  n474 --> n477
+  n478["continue-after-phase4e-implementation.md"]
+  n474 --> n478
+  n479["continue-after-phase5-slack-signal.md"]
+  n474 --> n479
+  n480["continue-after-phase5-teams.md"]
+  n474 --> n480
+  n481["continue-after-phase5-whatsapp.md"]
+  n474 --> n481
+  n482["continue-after-phase5a-6-scheduler.md"]
+  n474 --> n482
+  n483["continue-after-phase5b1-learning.md"]
+  n474 --> n483
+  n484["continue-after-phase5b2-marketplace.md"]
+  n474 --> n484
+  n485["continue-after-phase6-templates.md"]
+  n474 --> n485
+  n486["continue-after-phase6-webhooks-workflows.md"]
+  n474 --> n486
+  n487["continue-after-phase6v2-implementation.md"]
+  n474 --> n487
+  n488["phase4a-continuation-prompt.md"]
+  n474 --> n488
+  n489["phase4b-continuation-prompt.md"]
+  n474 --> n489
+  n490["phase4c-continuation-prompt.md"]
+  n474 --> n490
+  n491["phase4c-implementation-prompt.md"]
+  n474 --> n491
+  n492["phase4d-continuation-prompt.md"]
+  n474 --> n492
+  n493["phase4d-implementation-prompt.md"]
+  n474 --> n493
+  n494["phase4e-continuation-prompt.md"]
+  n474 --> n494
+  n495["phase5-channels-continuation-prompt.md"]
+  n474 --> n495
+  n496["specs/"]
+  n449 --> n496
+  n497["2026-03-17-phase1a-backend-foundation-design.md"]
+  n496 --> n497
+  n498["2026-03-17-phase1b-security-auth-design.md"]
+  n496 --> n498
+  n499["2026-03-17-phase1c-flutter-app-design.md"]
+  n496 --> n499
+  n500["2026-03-19-phase2a-memory-conversation-design.md"]
+  n496 --> n500
+  n501["2026-03-19-phase2b-router-search-design.md"]
+  n496 --> n501
+  n502["2026-03-21-phase3-voice-persona-design.md"]
+  n496 --> n502
+  n503["2026-03-21-phase3b-persona-engine-design.md"]
+  n496 --> n503
+  n504["2026-03-21-phase3b2-personaplex-integration-design.md"]
+  n496 --> n504
+  n505["2026-03-23-phase3b3a-persona-management-ui-design.md"]
+  n496 --> n505
+  n506["2026-03-23-phase4-computer-control-vision-design.md"]
+  n496 --> n506
+  n507["2026-03-24-phase4a-screen-vision-design.md"]
+  n496 --> n507
+  n508["2026-03-24-phase4c-code-execution-design.md"]
+  n496 --> n508
+  n509["2026-03-25-phase4b-computer-control-design.md"]
+  n496 --> n509
+  n510["2026-03-25-phase4d-remote-control-design.md"]
+  n496 --> n510
+  n511["2026-03-25-phase4e-flutter-tool-ui-design.md"]
+  n496 --> n511
+  n512["2026-03-26-phase5-redesign-design.md"]
+  n496 --> n512
+  n513["2026-03-27-multi-agent-system-design.md"]
+  n496 --> n513
+  n514["2026-03-28-self-improving-agent-design.md"]
+  n496 --> n514
+  n515["2026-03-28-webhooks-workflows-design.md"]
+  n496 --> n515
+  n516["2026-03-29-skills-marketplace-design.md"]
+  n496 --> n516
+  n517["2026-03-29-slack-signal-adapters-design.md"]
+  n496 --> n517
+  n518["2026-03-29-teams-adapter-design.md"]
+  n496 --> n518
+  n519[".env.example"]
   n0 --> n519
-  n520["CLAUDE.md"]
+  n520[".gitignore"]
   n0 --> n520
-  n521["docker-compose.yml"]
+  n521["Architecture-Prompt-Template.md"]
   n0 --> n521
-  n522["ggml-levantine-large-v3.bin"]
+  n522["ARCHITECTURE.md"]
   n0 --> n522
-  n523["Nobla-Agent-Architecture.html"]
+  n523["CHANGELOG.md"]
   n0 --> n523
-  n524["Nobla-Agent-Architecture.pdf"]
+  n524["CLAUDE.md"]
   n0 --> n524
-  n525["Plan.md"]
+  n525["docker-compose.yml"]
   n0 --> n525
-  n526["PRD.md"]
+  n526["ggml-levantine-large-v3.bin"]
   n0 --> n526
-  n527["project_file_architecture.md"]
+  n527["Nobla-Agent-Architecture.html"]
   n0 --> n527
-  n528["README.md"]
+  n528["Nobla-Agent-Architecture.pdf"]
   n0 --> n528
+  n529["Plan.md"]
+  n0 --> n529
+  n530["PRD.md"]
+  n0 --> n530
+  n531["project_file_architecture.md"]
+  n0 --> n531
+  n532["README.md"]
+  n0 --> n532
 ```
 
 <!-- MEMORY:ARCH:END -->

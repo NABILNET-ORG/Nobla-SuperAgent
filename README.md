@@ -234,9 +234,11 @@ class MyTool(BaseTool):
 |----------|-------------|
 | `PRD.md` | Full product requirements, competitive analysis |
 | `Plan.md` | 7-phase development roadmap |
-| `CLAUDE.md` | AI assistant development guide |
+| `ARCHITECTURE.md` | Authoritative module map, data-store stack, Mermaid diagrams (Core 3) |
+| `CLAUDE.md` | AI assistant development guide — Sovereign Memory Protocol v2.1 (Core 3) |
 | `docs/superpowers/specs/` | Approved design specifications |
 | `docs/superpowers/plans/` | Step-by-step implementation plans |
+| `docs/scm-memory/` | Archived legacy Core 3 snapshots (gitignored, recoverable via `search_memory`) |
 
 ## Contributing
 

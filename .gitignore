@@ -53,3 +53,7 @@ docker-compose.override.yml
 # OS
 .DS_Store
 Thumbs.db
+
+# SCM Sovereign Purge — archived legacy Core 3 (recoverable via Supabase vectors)
+docs/scm-memory/
+backups/legacy-sweep-*/
