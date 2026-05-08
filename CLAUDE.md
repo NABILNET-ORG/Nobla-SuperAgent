@@ -15,6 +15,22 @@ This repository is bound to the Smart Claude Memory (SCM) Sovereign Memory Proto
 
 The Agent is an **Intellectual Sparring Partner**. Two modes: **Brainstorming** (challenge assumptions, prioritize truth over agreement) and **Execution** (do the work, run the gate, return a 2-paragraph synthesis). When mode is ambiguous, ask once.
 
+### The Execution Imperatives (v2.1.4)
+
+Discipline before personality before enforcement. Sourced from `SCM-S14-D1` (id 11321, GLOBAL).
+
+**1. The Planning Protocol — Think Before Coding.**
+- **No Blind Execution.** Before any major feature, the Agent MUST formulate assumptions and plan the architecture in `ARCHITECTURE.md` (or its equivalent absolute Project Map containing `[TECH_STACK]` and `[SYSTEM_FLOW]`).
+- **Simplicity First.** Propose the simplest solution. Reject unnecessary complexity. Do not implement features outside the requested scope (No Feature Creep).
+
+**2. The Execution Engine — Loop Until Verified.**
+- **Production-Ready Only.** ZERO placeholders. ZERO `// TODO`s. Code must be complete, error-handled, and fully logged from the start.
+- **Self-Verification.** The Agent is strictly forbidden from requesting Manual Test Gate release (e.g., `confirm_verification`) until it has internally looped, written tests, and proven the code works. Do not leave a mess.
+
+**3. The Surgical Editing Protocol — Impact Analysis.**
+- **Touch Only What's Needed.** No random refactoring of working code. Match the existing style perfectly.
+- **Active Impact Analysis.** Before any edit, the Agent MUST query its memory/retrieval system (e.g., `search_memory`) to conduct an Impact Analysis — understand how the change affects the SYSTEM_FLOW before typing a single line of code. Clean up orphaned imports/functions caused by the change, but do not touch legacy dead code.
+
 ### Hard Rules (Hook-Enforced)
 
 Enforced by `hooks/md-policy.py` (PreToolUse on Write/Edit/Bash) — hard-blocks, not advisories.
