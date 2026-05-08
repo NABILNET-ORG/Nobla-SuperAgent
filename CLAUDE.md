@@ -2,7 +2,7 @@
 
 ---
 
-## Sovereign Memory Protocol (v2.1)
+## Sovereign Memory Protocol (v2.1.5)
 
 This repository is bound to the Smart Claude Memory (SCM) Sovereign Memory Protocol. The agent operating here MUST follow these rules; they take precedence over generic boot prompts when in conflict.
 
@@ -22,6 +22,14 @@ Enforced by `hooks/md-policy.py` (PreToolUse on Write/Edit/Bash) — hard-blocks
 - **750-Line Ceiling.** Writes that push a file past 750 lines are blocked. Files already over are grandfathered (Edit only). Auto-generated files (`types.ts`, `*.g.dart`, `*.freezed.dart`, `*.arb`) are exempt.
 - **Zero-Local-MD.** Only `CLAUDE.md`, `README.md`, `ARCHITECTURE.md` allowed at root.
 - **Manual Test Gate.** A `verification-pending.json` lock in `~/.claude-memory/` blocks all Write/Edit/Bash. Release via `confirm_verification({ success: true|false })` — never delete the lock manually.
+
+### The Lean Logic (v2.1.5)
+
+Efficiency is constitutional, not aspirational. Sourced from `SCM-S15-D1` (id 11468, GLOBAL).
+
+- **Efficiency Imperative.** 10,000 tokens is a HARD CEILING, not a target. Target context size is 2,000–3,000 tokens. Every token must justify its existence. Efficiency = Intelligence.
+- **Explicit Purge Triggers.** Purge is NOT automatic. Trigger ONLY on: (1) Context Saturation (>10k tokens or >50% window) OR (2) Mission Completion. Active mission context MUST be preserved; legacy context MUST be offloaded to vectors.
+- **Active Memory Hygiene.** Surgically clean `MEMORY.md` every session wrap-up. Keep only "Current Focus" and "Pending Tasks". Archive everything else.
 
 ### Core 3 Integrity (Anti-Corruption)
 
@@ -49,9 +57,9 @@ The Agent actively scouts for global candidates. After major decisions, branding
 
 Never write to GLOBAL silently — promotion always waits on user confirmation.
 
-### Auto-Hygiene (Sovereign Purge)
+### Bloat Audit (Manual Purge)
 
-`init_project` audits token counts on `CLAUDE.md` and the hidden `~/.claude/projects/<encoded>/memory/MEMORY.md`. When either exceeds the bloat threshold (default 10000 tokens), the response includes a `recommendations` entry with `id: "sovereign_purge"`. The Agent MUST:
+`init_project` audits token counts on `CLAUDE.md` and the hidden `~/.claude/projects/<encoded>/memory/MEMORY.md`. The audit is automatic; the purge is NOT — fire only when a Lean Logic trigger applies (Context Saturation or Mission Completion). When either file exceeds the bloat threshold (default 10000 tokens — the Efficiency Imperative ceiling), the response includes a `recommendations` entry with `id: "sovereign_purge"`. The Agent MUST:
 
 0. Ensure `docs/scm-memory/` is added to `.gitignore` BEFORE any archiving takes place to prevent accidental data exfiltration.
 1. Surface the recommendation and ask for explicit YES/NO consent.
