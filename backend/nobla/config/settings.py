@@ -361,6 +361,32 @@ class WhatsAppSettings(BaseModel):
         return self
 
 
+class MessengerSettings(BaseModel):
+    """Facebook Messenger Send/Receive API adapter configuration (Phase 5-Channels)."""
+
+    enabled: bool = False
+    page_access_token: str = ""  # Page-scoped access token
+    page_id: str = ""  # Facebook Page ID for the bot
+    app_secret: str = ""  # For webhook signature verification (HMAC-SHA256)
+    verify_token: str = ""  # Webhook subscription verification token
+    webhook_path: str = "/webhook/messenger"
+    api_version: str = "v21.0"
+    group_activation: str = "mention"
+    max_file_size_mb: int = 25  # Messenger platform cap (image/video/audio/file)
+    download_timeout: int = 30
+    message_ttl_days: int = 30
+
+    @model_validator(mode="after")
+    def validate_secrets(self):
+        if self.enabled and not self.page_access_token:
+            raise ValueError(
+                "page_access_token is required when Messenger is enabled"
+            )
+        if self.enabled and not self.page_id:
+            raise ValueError("page_id is required when Messenger is enabled")
+        return self
+
+
 class SlackSettings(BaseModel):
     """Slack adapter configuration (Phase 5-Channels)."""
 
@@ -545,6 +571,7 @@ class Settings(BaseSettings):
     telegram: TelegramSettings = Field(default_factory=TelegramSettings)
     discord: DiscordSettings = Field(default_factory=DiscordSettings)
     whatsapp: WhatsAppSettings = Field(default_factory=WhatsAppSettings)
+    messenger: MessengerSettings = Field(default_factory=MessengerSettings)
     slack: SlackSettings = Field(default_factory=SlackSettings)
     signal: SignalSettings = Field(default_factory=SignalSettings)
     teams: TeamsSettings = Field(default_factory=TeamsSettings)
