@@ -53,3 +53,17 @@ docker-compose.override.yml
 # OS
 .DS_Store
 Thumbs.db
+
+# SCM Sovereign Purge — archived legacy Core 3 (recoverable via Supabase vectors)
+docs/scm-memory/
+backups/legacy-sweep-*/
+
+# Tool sandboxes — local-only research/scratch dirs from Firecrawl, Superpowers, Serena memories
+.firecrawl/
+.superpowers/
+.serena/memories/
+
+# Root-level architecture exports & prompt templates (not Core 3 — Zero-Local-MD policy)
+Architecture-Prompt-Template.md
+Nobla-Agent-Architecture.html
+Nobla-Agent-Architecture.pdf
