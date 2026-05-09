@@ -207,7 +207,7 @@ class _WebhookRegisterSheetState extends State<WebhookRegisterSheet> {
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
             key: const ValueKey('scheme_picker'),
-            value: _scheme,
+            initialValue: _scheme,
             decoration: const InputDecoration(
               labelText: 'Signature scheme',
               border: OutlineInputBorder(),

@@ -28,7 +28,6 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final selectedCategory = ref.watch(marketplaceCategoryProvider);
     final searchAsync = ref.watch(marketplaceSearchProvider);
     final recsAsync = ref.watch(recommendationsProvider);

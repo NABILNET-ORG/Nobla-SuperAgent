@@ -21,7 +21,7 @@ final webhookHealthProvider =
   final rpc = ref.watch(jsonRpcProvider);
   final result =
       await rpc.call('webhook.health', {'webhook_id': webhookId});
-  return WebhookHealth.fromJson(result as Map<String, dynamic>);
+  return WebhookHealth.fromJson(result);
 });
 
 /// Fetches recent events for a webhook.
