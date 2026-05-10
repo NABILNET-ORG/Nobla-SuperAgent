@@ -157,3 +157,113 @@ class TestEnterpriseGridStartAndHealth:
         # Non-grid: only one auth.test call
         assert mock_post.await_count == 1
         await a.stop()
+
+
+# -- Lifespan + integration ------------------------------------------
+
+
+from nobla.channels.slack.models import SlackUserContext
+from tests._slack_grid_helpers import make_slack_event
+
+
+class TestEnterpriseGridIntegration:
+    """End-to-end Grid scenarios: lifespan-style wiring + cross-workspace flows."""
+
+    def test_lifespan_style_handlers_kwargs_smoke(self, linking, event_bus):
+        # Foundation regression guard: mirrors backend/nobla/gateway/lifespan.py:239
+        h = SlackHandlers(
+            linking=linking,
+            event_bus=event_bus,
+            bot_user_id="",
+            bot_token="xoxb-x",
+            enterprise_grid=True,
+            team_ids=["T_ALPHA", "T_BETA"],
+        )
+        assert h._bot_token == "xoxb-x"
+        assert h._enterprise_grid is True
+        assert h._team_ids == ["T_ALPHA", "T_BETA"]
+
+    def test_real_slack_settings_propagates_to_handlers(self):
+        from nobla.config.settings import SlackSettings
+        s = SlackSettings(
+            enabled=True, bot_token="xoxb-x", app_token="xapp-x",
+            mode="socket", enterprise_grid=True,
+            org_token="xoxa-org", team_ids=["T1", "T2"],
+        )
+        h = SlackHandlers(
+            linking=AsyncMock(), event_bus=AsyncMock(),
+            bot_token=s.bot_token, bot_user_id="",
+            enterprise_grid=s.enterprise_grid, team_ids=s.team_ids,
+        )
+        assert h._enterprise_grid is True
+        assert h._team_ids == ["T1", "T2"]
+
+    @pytest.mark.asyncio
+    async def test_event_dispatch_end_to_end_allowed_team(self, linking, event_bus):
+        h = SlackHandlers(
+            linking=linking, event_bus=event_bus,
+            bot_token="xoxb-x", bot_user_id="U_BOT",
+            enterprise_grid=True, team_ids=["T_ALLOWED"],
+        )
+        h.set_send_fn(AsyncMock())
+        captured: list[SlackUserContext] = []
+        async def _spy(ctx, text, raw_event):
+            captured.append(ctx)
+        h._handle_message = _spy
+
+        payload = make_slack_event(text="hi", channel="D1", channel_type="im")
+        payload["team_id"] = "T_ALLOWED"
+        payload["enterprise_id"] = "E_ORG"
+        await h.handle_event(payload)
+
+        assert len(captured) == 1
+        assert captured[0].team_id == "T_ALLOWED"
+        assert captured[0].enterprise_id == "E_ORG"
+
+    @pytest.mark.asyncio
+    async def test_event_dispatch_end_to_end_blocked_team(self, linking, event_bus):
+        h = SlackHandlers(
+            linking=linking, event_bus=event_bus,
+            bot_token="xoxb-x", bot_user_id="U_BOT",
+            enterprise_grid=True, team_ids=["T_ALLOWED"],
+        )
+        h.set_send_fn(AsyncMock())
+        captured: list[SlackUserContext] = []
+        async def _spy(ctx, text, raw_event):
+            captured.append(ctx)
+        h._handle_message = _spy
+
+        payload = make_slack_event(text="hi", channel="D1", channel_type="im")
+        payload["team_id"] = "T_ROGUE"
+        payload["enterprise_id"] = "E_ORG"
+        await h.handle_event(payload)
+
+        assert captured == []
+        linking.resolve.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_full_adapter_grid_admin_users_call(self, handlers):
+        a = _grid_adapter(handlers, org_token="xoxa-prod", team_ids=["T_PRIMARY"])
+        await a.start()
+        a._client.post = AsyncMock(return_value=ok_response({
+            "members": [{"id": "U_A"}, {"id": "U_B"}, {"id": "U_C"}],
+            "response_metadata": {"next_cursor": ""},
+        }))
+        result = await a.list_admin_users(team_id="T_PRIMARY")
+        assert len(result["members"]) == 3
+        assert a._running is True
+        await a.stop()
+
+    @pytest.mark.asyncio
+    async def test_full_adapter_grid_admin_conversations_call(self, handlers):
+        a = _grid_adapter(handlers, org_token="xoxa-prod", team_ids=["T_PRIMARY"])
+        await a.start()
+        a._client.post = AsyncMock(return_value=ok_response({
+            "conversations": [{"id": "C_X"}, {"id": "C_Y"}],
+            "next_cursor": "",
+        }))
+        result = await a.list_admin_conversations(team_id="T_PRIMARY", query="release")
+        assert len(result["conversations"]) == 2
+        body = a._client.post.call_args.kwargs["json"]
+        assert body["query"] == "release"
+        await a.stop()

@@ -241,6 +241,8 @@ async def _init_channels(settings, linking_service, channel_manager, event_bus):
                 event_bus=event_bus,
                 bot_user_id="",  # Resolved during start() via auth.test
                 bot_token=settings.slack.bot_token,
+                enterprise_grid=settings.slack.enterprise_grid,
+                team_ids=settings.slack.team_ids,
             )
             slack_adapter = SlackAdapter(
                 settings=settings.slack,
