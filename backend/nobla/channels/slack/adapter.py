@@ -294,6 +294,40 @@ class SlackAdapter(BaseChannelAdapter):
             logger.exception("Slack health check failed")
             return False
 
+    # -- Enterprise Grid admin.* helpers -----------------------------
+
+    async def list_admin_users(
+        self,
+        team_id: str,
+        cursor: str | None = None,
+        limit: int = 100,
+    ) -> dict[str, Any]:
+        """List members of a Grid workspace via admin.users.list.
+
+        Requires enterprise_grid mode and an org-level admin token.
+        Returns the parsed JSON envelope (members, response_metadata, etc.).
+        """
+        if not self._settings.enterprise_grid:
+            raise RuntimeError("list_admin_users requires enterprise_grid mode")
+        if not self._client:
+            raise RuntimeError("Slack adapter client not started")
+
+        body: dict[str, Any] = {"team_id": team_id, "limit": limit}
+        if cursor:
+            body["cursor"] = cursor
+
+        resp = await self._client.post(
+            f"{SLACK_API_BASE}/admin.users.list",
+            headers={"Authorization": f"Bearer {self._settings.org_token}"},
+            json=body,
+        )
+        data = resp.json()
+        if not data.get("ok"):
+            raise RuntimeError(
+                f"admin.users.list failed: {data.get('error', 'unknown')}"
+            )
+        return data
+
     # -- Private helpers ---------------------------------------------
 
     async def _send_raw_text(
