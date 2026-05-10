@@ -237,7 +237,7 @@ async def _init_channels(settings, linking_service, channel_manager, event_bus):
             from nobla.channels.slack.adapter import SlackAdapter
 
             slack_handlers = SlackHandlers(
-                linking_service=linking_service,
+                linking=linking_service,
                 event_bus=event_bus,
                 bot_user_id="",  # Resolved during start() via auth.test
                 bot_token=settings.slack.bot_token,
