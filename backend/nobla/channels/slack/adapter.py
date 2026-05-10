@@ -79,6 +79,17 @@ class SlackAdapter(BaseChannelAdapter):
         if not self._settings.bot_token:
             raise ValueError("Slack bot_token is required")
 
+        # Enterprise Grid defense-in-depth: catch settings drift / fakes
+        if getattr(self._settings, "enterprise_grid", False):
+            if not getattr(self._settings, "org_token", ""):
+                raise ValueError(
+                    "Slack org_token is required when enterprise_grid is enabled"
+                )
+            if not getattr(self._settings, "team_ids", None):
+                raise ValueError(
+                    "Slack team_ids must list at least one workspace when enterprise_grid is enabled"
+                )
+
         self._client = httpx.AsyncClient(
             timeout=float(self._settings.download_timeout),
             headers={
@@ -281,15 +292,22 @@ class SlackAdapter(BaseChannelAdapter):
         return str(raw_callback), {}
 
     async def health_check(self) -> bool:
-        """Check connectivity by calling auth.test."""
+        """Check connectivity by calling auth.test (both bot and org tokens in Grid mode)."""
         if not self._client:
             return False
         try:
             resp = await self._client.post(
                 f"{SLACK_API_BASE}/auth.test"
             )
-            data = resp.json()
-            return data.get("ok", False) is True
+            if resp.json().get("ok", False) is not True:
+                return False
+            if getattr(self._settings, "enterprise_grid", False):
+                org_resp = await self._client.post(
+                    f"{SLACK_API_BASE}/auth.test",
+                    headers={"Authorization": f"Bearer {self._settings.org_token}"},
+                )
+                return org_resp.json().get("ok", False) is True
+            return True
         except Exception:
             logger.exception("Slack health check failed")
             return False
