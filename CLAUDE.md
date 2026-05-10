@@ -2,7 +2,7 @@
 
 ---
 
-## Sovereign Memory Protocol (v2.1.5)
+## Sovereign Memory Protocol (v2.1.6)
 
 This repository is bound to the Smart Claude Memory (SCM) Sovereign Memory Protocol. The agent operating here MUST follow these rules; they take precedence over generic boot prompts when in conflict.
 
@@ -46,6 +46,19 @@ Efficiency is constitutional, not aspirational. Sourced from `SCM-S15-D1` (id 11
 - **Efficiency Imperative.** 10,000 tokens is a HARD CEILING, not a target. Target context size is 2,000–3,000 tokens. Every token must justify its existence. Efficiency = Intelligence.
 - **Explicit Purge Triggers.** Purge is NOT automatic. Trigger ONLY on: (1) Context Saturation (>10k tokens or >50% window) OR (2) Mission Completion. Active mission context MUST be preserved; legacy context MUST be offloaded to vectors.
 - **Active Memory Hygiene.** Surgically clean `MEMORY.md` every session wrap-up. Keep only "Current Focus" and "Pending Tasks". Archive everything else.
+
+### The Foundation First Protocol (v2.1.6)
+
+No new feature on a broken foundation (No Broken Windows). Sourced from `SCM-S16-D1` (id 11491, GLOBAL).
+
+**Verification Gate (every mission start).** Before writing the first line of any new feature: do tests pass on the dependency I'm about to extend? Are imports resolvable? Does the immediate caller compile? Are required packages installed? If any answer is no, the foundation is broken — HALT.
+
+**Mandatory Sequence on Broken Foundation.**
+1. **HALT** the requested work. Do not push forward "and clean up later."
+2. **Foundation Fix Commit.** Execute ONE isolated, strictly-scoped preceding commit that ONLY repairs the broken dependency. No drive-by refactors, no scope creep.
+3. **Resume** the original feature work in a SEPARATE commit on top of the foundation fix.
+
+**Companion Principle.** Foundation First is the *temporal* version of Surgical Editing's Active Impact Analysis (which is the *spatial* version): fix the past before building the future; understand the SYSTEM_FLOW before editing the present. Diagnostic ambiguity, polluted git history, and broken bisect are the predictable cost of skipping the gate.
 
 ### Core 3 Integrity (Anti-Corruption)
 
