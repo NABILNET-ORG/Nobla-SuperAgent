@@ -149,6 +149,8 @@ class SlackHandlers:
         ts = event.get("ts", "")
         thread_ts = event.get("thread_ts")
         team_id = payload.get("team_id", "")
+        # Enterprise Grid: top-level enterprise_id wins; fall back to nested enterprise.id
+        enterprise_id = payload.get("enterprise_id") or (payload.get("enterprise") or {}).get("id")
 
         is_dm = channel_type == "im"
         is_mention = f"<@{self._bot_user_id}>" in text
@@ -172,6 +174,7 @@ class SlackHandlers:
             is_dm=is_dm,
             is_thread=thread_ts is not None,
             is_bot_mentioned=is_mention or is_app_mention,
+            enterprise_id=enterprise_id,
         )
 
         await self._handle_message(ctx, text, event)
