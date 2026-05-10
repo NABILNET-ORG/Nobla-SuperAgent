@@ -16,7 +16,7 @@ def test_settings_provider_config():
     settings = Settings()
     assert settings.llm.providers["gemini"].enabled is True
     assert settings.llm.providers["gemini"].model == "gemini-2.0-flash"
-    assert settings.llm.fallback_chain == ["gemini", "groq", "ollama"]
+    assert settings.llm.fallback_chain == ["gemini", "groq", "ollama", "openai", "anthropic", "deepseek"]
 
 
 def test_settings_env_override(monkeypatch):
