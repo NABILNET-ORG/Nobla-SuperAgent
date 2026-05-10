@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import pytest
 
+from nobla.channels.slack.models import SlackUserContext
 from nobla.config.settings import SlackSettings
 
 
@@ -84,3 +85,32 @@ class TestSlackEnterpriseGridSettings:
             team_ids=["T1", "T2", "T3", "T4"],
         )
         assert len(s.team_ids) == 4
+
+
+class TestSlackUserContextEnterpriseId:
+    def test_enterprise_id_default_none(self):
+        ctx = SlackUserContext(
+            user_id="U123", display_name="Gus",
+            team_id="T456", channel_id="C789",
+            message_ts="1700000000.000100",
+        )
+        assert ctx.enterprise_id is None
+
+    def test_enterprise_id_explicit(self):
+        ctx = SlackUserContext(
+            user_id="U123", display_name="Hal",
+            team_id="T456", channel_id="C789",
+            message_ts="1700000000.000100",
+            enterprise_id="E0ABCDEF",
+        )
+        assert ctx.enterprise_id == "E0ABCDEF"
+
+    def test_enterprise_id_independent_of_team_id(self):
+        ctx = SlackUserContext(
+            user_id="U123", display_name="Iris",
+            team_id="T_PRIMARY", channel_id="C789",
+            message_ts="1700000000.000100",
+            enterprise_id="E_ORG",
+        )
+        assert ctx.team_id == "T_PRIMARY"
+        assert ctx.enterprise_id == "E_ORG"
