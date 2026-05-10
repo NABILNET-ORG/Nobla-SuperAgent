@@ -328,6 +328,45 @@ class SlackAdapter(BaseChannelAdapter):
             )
         return data
 
+    async def list_admin_conversations(
+        self,
+        team_id: str,
+        cursor: str | None = None,
+        limit: int = 100,
+        query: str = "",
+    ) -> dict[str, Any]:
+        """Search channels in a Grid workspace via admin.conversations.search.
+
+        Requires enterprise_grid mode and an org-level admin token.
+        Returns the parsed JSON envelope (conversations, next_cursor, etc.).
+        """
+        if not self._settings.enterprise_grid:
+            raise RuntimeError(
+                "list_admin_conversations requires enterprise_grid mode"
+            )
+        if not self._client:
+            raise RuntimeError("Slack adapter client not started")
+
+        body: dict[str, Any] = {
+            "team_ids": [team_id],
+            "limit": limit,
+            "query": query,
+        }
+        if cursor:
+            body["cursor"] = cursor
+
+        resp = await self._client.post(
+            f"{SLACK_API_BASE}/admin.conversations.search",
+            headers={"Authorization": f"Bearer {self._settings.org_token}"},
+            json=body,
+        )
+        data = resp.json()
+        if not data.get("ok"):
+            raise RuntimeError(
+                f"admin.conversations.search failed: {data.get('error', 'unknown')}"
+            )
+        return data
+
     # -- Private helpers ---------------------------------------------
 
     async def _send_raw_text(

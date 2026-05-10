@@ -152,3 +152,106 @@ class TestAdapterAdminUsersList:
         with pytest.raises(RuntimeError, match="invalid_auth"):
             await a.list_admin_users(team_id="T1")
         await a.stop()
+
+
+# -- admin.conversations.search --------------------------------------
+
+
+class TestAdapterAdminConversationsList:
+    @pytest.mark.asyncio
+    async def test_returns_conversations_payload(self, handlers):
+        a = _grid_adapter(handlers)
+        await a.start()
+        a._client.post = AsyncMock(return_value=ok_response({
+            "conversations": [{"id": "C1"}, {"id": "C2"}],
+            "next_cursor": "",
+        }))
+        out = await a.list_admin_conversations(team_id="T1")
+        assert out["conversations"] == [{"id": "C1"}, {"id": "C2"}]
+        await a.stop()
+
+    @pytest.mark.asyncio
+    async def test_uses_org_token_not_bot_token(self, handlers):
+        a = _grid_adapter(handlers, org_token="xoxa-ORG-CONV")
+        await a.start()
+        a._client.post = AsyncMock(return_value=ok_response({"conversations": []}))
+        await a.list_admin_conversations(team_id="T1")
+        headers = a._client.post.call_args.kwargs.get("headers", {})
+        assert headers.get("Authorization") == "Bearer xoxa-ORG-CONV"
+        await a.stop()
+
+    @pytest.mark.asyncio
+    async def test_passes_team_ids_filter(self, handlers):
+        a = _grid_adapter(handlers)
+        await a.start()
+        a._client.post = AsyncMock(return_value=ok_response({"conversations": []}))
+        await a.list_admin_conversations(team_id="T_ALPHA")
+        body = a._client.post.call_args.kwargs.get("json", {})
+        assert body.get("team_ids") == ["T_ALPHA"]
+        await a.stop()
+
+    @pytest.mark.asyncio
+    async def test_passes_cursor_for_pagination(self, handlers):
+        a = _grid_adapter(handlers)
+        await a.start()
+        a._client.post = AsyncMock(return_value=ok_response({"conversations": []}))
+        await a.list_admin_conversations(team_id="T1", cursor="Y29udi0xMA==")
+        body = a._client.post.call_args.kwargs.get("json", {})
+        assert body.get("cursor") == "Y29udi0xMA=="
+        await a.stop()
+
+    @pytest.mark.asyncio
+    async def test_passes_query_filter_when_supplied(self, handlers):
+        a = _grid_adapter(handlers)
+        await a.start()
+        a._client.post = AsyncMock(return_value=ok_response({"conversations": []}))
+        await a.list_admin_conversations(team_id="T1", query="release-")
+        body = a._client.post.call_args.kwargs.get("json", {})
+        assert body.get("query") == "release-"
+        await a.stop()
+
+    @pytest.mark.asyncio
+    async def test_targets_admin_conversations_search_endpoint(self, handlers):
+        a = _grid_adapter(handlers)
+        await a.start()
+        a._client.post = AsyncMock(return_value=ok_response({"conversations": []}))
+        await a.list_admin_conversations(team_id="T1")
+        url = a._client.post.call_args.args[0]
+        assert url.endswith("/admin.conversations.search")
+        await a.stop()
+
+    @pytest.mark.asyncio
+    async def test_passes_limit_default_and_override(self, handlers):
+        a = _grid_adapter(handlers)
+        await a.start()
+        a._client.post = AsyncMock(return_value=ok_response({"conversations": []}))
+        await a.list_admin_conversations(team_id="T1")
+        assert a._client.post.call_args.kwargs["json"]["limit"] == 100
+        await a.list_admin_conversations(team_id="T1", limit=10)
+        assert a._client.post.call_args.kwargs["json"]["limit"] == 10
+        await a.stop()
+
+    @pytest.mark.asyncio
+    async def test_raises_when_grid_disabled(self, handlers):
+        s = FakeSlackSettings(enterprise_grid=False)
+        s.socket_mode = False
+        a = SlackAdapter(settings=s, handlers=handlers)
+        await a.start()
+        with pytest.raises(RuntimeError):
+            await a.list_admin_conversations(team_id="T1")
+        await a.stop()
+
+    @pytest.mark.asyncio
+    async def test_raises_when_client_not_started(self, handlers):
+        a = _grid_adapter(handlers)
+        with pytest.raises(RuntimeError):
+            await a.list_admin_conversations(team_id="T1")
+
+    @pytest.mark.asyncio
+    async def test_raises_on_slack_api_error(self, handlers):
+        a = _grid_adapter(handlers)
+        await a.start()
+        a._client.post = AsyncMock(return_value=err_response("not_authed"))
+        with pytest.raises(RuntimeError, match="not_authed"):
+            await a.list_admin_conversations(team_id="T1")
+        await a.stop()
