@@ -97,3 +97,90 @@ class TestHandlerEnterpriseIdExtraction:
         handlers._handle_message = _spy
         await handlers.handle_event(payload)
         assert captured[0].enterprise_id == "E_TOP"
+
+
+def _grid_handlers(linking, event_bus, *, team_ids, enterprise_grid=True):
+    h = SlackHandlers(
+        linking=linking,
+        event_bus=event_bus,
+        bot_token="xoxb-test-token",
+        bot_user_id="U_BOT",
+        max_file_size_mb=100,
+        enterprise_grid=enterprise_grid,
+        team_ids=team_ids,
+    )
+    h.set_send_fn(AsyncMock())
+    return h
+
+
+class TestEnterpriseGridRouting:
+    @pytest.mark.asyncio
+    async def test_grid_drops_event_from_non_allowlisted_team(self, linking, event_bus):
+        h = _grid_handlers(linking, event_bus, team_ids=["T_OK_1", "T_OK_2"])
+        captured: list[SlackUserContext] = []
+        async def _spy(ctx, text, raw_event):
+            captured.append(ctx)
+        h._handle_message = _spy
+        payload = make_slack_event(text="hello", channel="D789", channel_type="im")
+        payload["team_id"] = "T_BAD"
+        await h.handle_event(payload)
+        assert captured == []
+        linking.resolve.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_grid_allows_event_from_allowlisted_team(self, linking, event_bus):
+        h = _grid_handlers(linking, event_bus, team_ids=["T_OK_1", "T_OK_2"])
+        captured: list[SlackUserContext] = []
+        async def _spy(ctx, text, raw_event):
+            captured.append(ctx)
+        h._handle_message = _spy
+        payload = make_slack_event(text="hello", channel="D789", channel_type="im")
+        payload["team_id"] = "T_OK_1"
+        await h.handle_event(payload)
+        assert len(captured) == 1
+        assert captured[0].team_id == "T_OK_1"
+
+    @pytest.mark.asyncio
+    async def test_grid_disabled_does_not_filter_team_ids(self, linking, event_bus):
+        h = _grid_handlers(linking, event_bus, team_ids=["T_OK_1"], enterprise_grid=False)
+        captured: list[SlackUserContext] = []
+        async def _spy(ctx, text, raw_event):
+            captured.append(ctx)
+        h._handle_message = _spy
+        payload = make_slack_event(text="hello", channel="D789", channel_type="im")
+        payload["team_id"] = "T_NOT_IN_LIST"
+        await h.handle_event(payload)
+        assert len(captured) == 1
+
+    @pytest.mark.asyncio
+    async def test_grid_empty_team_ids_does_not_filter(self, linking, event_bus):
+        h = _grid_handlers(linking, event_bus, team_ids=[])
+        captured: list[SlackUserContext] = []
+        async def _spy(ctx, text, raw_event):
+            captured.append(ctx)
+        h._handle_message = _spy
+        payload = make_slack_event(text="hello", channel="D789", channel_type="im")
+        payload["team_id"] = "T_ANY"
+        await h.handle_event(payload)
+        assert len(captured) == 1
+
+    @pytest.mark.asyncio
+    async def test_grid_allowlist_is_exact_match(self, linking, event_bus):
+        h = _grid_handlers(linking, event_bus, team_ids=["T1"])
+        captured: list[SlackUserContext] = []
+        async def _spy(ctx, text, raw_event):
+            captured.append(ctx)
+        h._handle_message = _spy
+        payload = make_slack_event(text="hello", channel="D789", channel_type="im")
+        payload["team_id"] = "T1X"  # prefix match must NOT count
+        await h.handle_event(payload)
+        assert captured == []
+
+    def test_grid_default_kwargs_back_compat(self, linking, event_bus):
+        h = SlackHandlers(
+            linking=linking, event_bus=event_bus,
+            bot_token="xoxb-x", bot_user_id="U_BOT",
+            max_file_size_mb=100,
+        )
+        assert h._enterprise_grid is False
+        assert h._team_ids == []
