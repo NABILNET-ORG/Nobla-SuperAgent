@@ -35,16 +35,16 @@ class SuggestionCard extends StatelessWidget {
               children: [
                 TextButton(onPressed: onAccept, child: const Text('Accept')),
                 PopupMenuButton<int>(
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    child: Text('Snooze'),
-                  ),
                   onSelected: onSnooze,
                   itemBuilder: (context) => [
                     const PopupMenuItem(value: 1, child: Text('1 day')),
                     const PopupMenuItem(value: 3, child: Text('3 days')),
                     const PopupMenuItem(value: 7, child: Text('7 days')),
                   ],
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    child: Text('Snooze'),
+                  ),
                 ),
                 TextButton(onPressed: onDismiss, child: const Text('Dismiss')),
               ],

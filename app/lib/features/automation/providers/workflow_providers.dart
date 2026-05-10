@@ -20,7 +20,7 @@ final workflowDetailProvider =
     FutureProvider.family<WorkflowDefinition, String>((ref, workflowId) async {
   final rpc = ref.watch(jsonRpcProvider);
   final result = await rpc.call('workflow.get', {'workflow_id': workflowId});
-  return WorkflowDefinition.fromJson(result as Map<String, dynamic>);
+  return WorkflowDefinition.fromJson(result);
 });
 
 /// Live execution state for a workflow — updated via WebSocket events.
@@ -42,7 +42,7 @@ class WorkflowExecutionNotifier extends StateNotifier<WorkflowExecution?> {
     final rpc = _ref.read(jsonRpcProvider);
     final result =
         await rpc.call('workflow.trigger', {'workflow_id': workflowId});
-    state = WorkflowExecution.fromJson(result as Map<String, dynamic>);
+    state = WorkflowExecution.fromJson(result);
   }
 
   /// Update from a WebSocket event payload.

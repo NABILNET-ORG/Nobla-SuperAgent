@@ -139,7 +139,7 @@ def _init_providers(llm_config) -> dict:
 
 
 async def _init_channels(settings, linking_service, channel_manager, event_bus):
-    """Initialize channel adapters (Telegram, Discord, WhatsApp)."""
+    """Initialize channel adapters (Telegram, Discord, WhatsApp, Messenger, Slack, Signal, Teams)."""
     # --- Telegram Adapter (Phase 5A) ---
     if settings.telegram.enabled and settings.telegram.bot_token:
         from nobla.channels.telegram.handlers import TelegramHandlers
@@ -206,6 +206,29 @@ async def _init_channels(settings, linking_service, channel_manager, event_bus):
         logger.info("whatsapp_adapter_started")
     else:
         logger.info("whatsapp_adapter_disabled")
+
+    # --- Messenger Adapter (Phase 5-Channels) ---
+    if settings.messenger.enabled and settings.messenger.page_access_token:
+        from nobla.channels.messenger.handlers import MessengerHandlers
+        from nobla.channels.messenger.adapter import MessengerAdapter
+
+        messenger_handlers = MessengerHandlers(
+            linking=linking_service,
+            event_bus=event_bus,
+            page_access_token=settings.messenger.page_access_token,
+            page_id=settings.messenger.page_id,
+            api_version=settings.messenger.api_version,
+            max_file_size_mb=settings.messenger.max_file_size_mb,
+        )
+        messenger_adapter = MessengerAdapter(
+            settings=settings.messenger,
+            handlers=messenger_handlers,
+        )
+        channel_manager.register(messenger_adapter)
+        await messenger_adapter.start()
+        logger.info("messenger_adapter_started")
+    else:
+        logger.info("messenger_adapter_disabled")
 
     # --- Slack Adapter (Phase 5-Channels) ---
     if settings.slack.enabled and settings.slack.bot_token:

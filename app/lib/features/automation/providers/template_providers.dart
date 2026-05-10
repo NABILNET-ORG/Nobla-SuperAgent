@@ -27,7 +27,7 @@ final templateDetailProvider =
   final rpc = ref.watch(jsonRpcProvider);
   final result =
       await rpc.call('template.get', {'template_id': templateId});
-  return WorkflowTemplateDetail.fromJson(result as Map<String, dynamic>);
+  return WorkflowTemplateDetail.fromJson(result);
 });
 
 /// Fetches available categories with counts.

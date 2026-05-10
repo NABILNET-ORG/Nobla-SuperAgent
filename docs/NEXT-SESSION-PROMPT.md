@@ -1,8 +1,8 @@
-# Session 3 — Plan
+# Session 4 — Plan
 
-**Generated:** end of Session 2 (2026-05-08)
-**Predecessor branch:** `docs/add-architecture-md` — needs to land on `main` before Session 3 mission work
-**Mission family:** Phase 5 — Channels (Tier 1 adapters)
+**Generated:** end of Session 3 (2026-05-09)
+**Predecessor branch:** `feat/5-channels-messenger` — needs to land on `main` (PR #7) before Session 4 mission work
+**Mission family:** Phase 5 — Channels (Tier 1 close-out OR cross-channel infrastructure)
 
 ## Boot
 
@@ -12,65 +12,68 @@ Run the standard boot string (already in CLAUDE.md Session Handoff Protocol):
 init_project()
 check_system_health()
 search_memory({ query: "Active Backlog", project_id: "nobla-agent", k: 10 })
-# Then read docs/NEXT-SESSION-PROMPT.md for the full Session 3 plan.
+# Then read docs/NEXT-SESSION-PROMPT.md for the full Session 4 plan.
 ```
 
 ## Pre-Mission Hygiene (5-10 min)
 
-1. **Branch state.** Verify `docs/add-architecture-md` was merged into `main`. If not, finish the merge before starting any new work — Session 3 mission belongs on a fresh feature branch.
-2. **Start clean branch.** From `main`: `git switch -c feat/5-channels-messenger` (or `feat/5-channels-slack-grid` depending on pick below).
+1. **Branch state.** Verify PR #7 (`feat/5-channels-messenger`) was merged into `main`. If not, finish the merge before starting any new work — Session 4 mission belongs on a fresh feature branch.
+2. **Start clean branch.** From `main`: `git switch -c <branch-from-mission-pick>` (see Mission section below).
 3. **Constitution check.** Confirm CLAUDE.md is at v2.1.5 with both `### The Execution Imperatives (v2.1.4)` and `### The Lean Logic (v2.1.5)` sections present. If `init_project` reports drift, abort and re-sync.
 
-## Mission — Pick One Tier 1 Adapter
+## Mission — Pick One
 
-| Option | Cost | Pattern reference | Notes |
-|---|---|---|---|
-| **(A) Facebook Messenger** | ~3-5 hrs | `backend/nobla/channels/whatsapp/` (HMAC + webhook-only) | Greenfield. Send/Receive API, X-Hub-Signature-256, message templates, quick replies, persistent menu. ~75-100 tests target. |
-| **(B) Slack Enterprise Grid** | ~2-3 hrs | `backend/nobla/channels/slack/` (extension, not greenfield) | Smaller surface. Org-level features: Enterprise Grid API, cross-workspace messaging. |
+| Option | Cost | Branch | Notes |
+|--------|------|--------|-------|
+| **(A) Slack Enterprise Grid** ⭐ | ~2-3 hrs | `feat/5-channels-slack-grid` | Extension of existing `backend/nobla/channels/slack/`. Org-level features: Enterprise Grid API, cross-workspace messaging, multi-team OAuth. Closes Tier 1. |
+| **(B) Cross-channel webhook dispatcher** | ~3-4 hrs | `refactor/5-channels-webhook-dispatcher` | Closes SCM-S3-D3 deferral. Single FastAPI route that resolves channel from URL slug and delegates to `channel_manager.get(slug).handle_webhook_payload(...)`. Unblocks live channel ingest end-to-end. |
+| **(C) Phase 5 housekeeping** | ~1-2 hrs | `chore/5-channels-housekeeping` | Lifespan try/except graceful failure for all 7 channel inits + channel test file size audit (split slack/messenger if team agrees with SCM-S3-D2 follow-up). |
 
-**Recommended: (A) Messenger** — closes a Tier 1 platform with broader reach; greenfield gives a clean reference for the Tier 2 adapters that follow.
+**Recommended: (A) Slack Enterprise Grid** — completes the Tier 1 channels sweep started in Session 3. Smallest surface, predictable cost, leaves Tier 2 work fully scoped.
 
-If session token budget is tight at start, pick **(B)** instead.
+If priorities shift toward making any channel actually receive webhooks live, pick (B). If the team wants stability before adding more channels, pick (C).
 
-## Adapter Contract (6 files per channel)
+## Adapter Contract Reference (for Option A — Slack Grid extension)
 
-Under `backend/nobla/channels/<name>/`:
+The Slack base adapter already exists at `backend/nobla/channels/slack/`. Grid extension is mostly:
 
-| File | Purpose |
-|------|---------|
-| `__init__.py` | Lazy import wrapper (`__getattr__`) |
-| `models.py` | `<Name>UserContext` dataclass + API constants |
-| `formatter.py` | Platform formatting → `format_response()` returning `list[FormattedMessage]` |
-| `media.py` | Platform media upload/download → unified `Attachment` |
-| `handlers.py` | `<Name>Handlers` — `set_send_fn()` wiring, message routing, commands, linking, event bus emission |
-| `adapter.py` | `<Name>Adapter(BaseChannelAdapter)` — 7 ABC methods: name, start, stop, send, send_notification, parse_callback, health_check |
-
-Plus:
-- Add `<Name>Settings` to `backend/nobla/config/settings.py` (with `@model_validator` for required fields when enabled)
-- Add init block to `backend/nobla/gateway/lifespan.py` → `_init_channels()` (with `try/except` for graceful failure)
-- Create `backend/tests/test_<name>_adapter.py` (~75-100 tests)
+| Concern | Files to touch |
+|---------|---------------|
+| Org-level OAuth scope (`admin.users:read`, `admin.conversations:read`) | `slack/adapter.py` (token-validation block); `config/settings.py` (add `enterprise_grid: bool`, `org_token: str`, `team_ids: list[str]`) |
+| Cross-workspace message routing | `slack/handlers.py` (resolve `team_id` per event, route to correct workspace) |
+| Enterprise Grid `admin.*` API calls | `slack/api.py` (new helper module if needed — verify existing `slack/` shape first) |
+| Tests | `backend/tests/test_slack_adapter.py` (extend) — target +30-50 tests for Grid paths |
 
 ## Constraints (from refreshed constitution)
 
-- **750-line ceiling per file.** Hook-blocked.
+- **750-line ceiling per file.** Hook-blocked on Writes. Existing over-ceiling files (slack=1,499 test) are grandfathered for Edits per SCM-S3-D2.
 - **Production-Ready Only (v2.1.4).** ZERO placeholders. ZERO `// TODO`s. Code complete + error-handled + logged from the start.
-- **Active Impact Analysis (v2.1.4).** Before any non-trivial edit: `search_memory` first to understand SYSTEM_FLOW impact.
+- **Active Impact Analysis (v2.1.4).** Before any non-trivial edit: `search_memory` first to understand SYSTEM_FLOW impact. Specifically check SCM-S3-D1..D3 for Phase 5 channel context.
 - **Self-Verification (v2.1.4).** Do NOT request `confirm_verification` release until tests are written, run, and green.
 - **Efficiency Imperative (v2.1.5).** 10k context HARD CEILING; target 2-3k. Delegate read-heavy work via `delegate_task` per Strategic Context Policy.
+- **Surgical Editing.** Match existing slack/ style exactly. No random refactoring of working channel code.
 
-## Carryover Risks (from Sessions 1-2)
+## Carryover Risks (from Sessions 1-3)
 
-Low priority — pick up if the housekeeping window opens at session end:
-- README test-count totals don't sum cleanly across phase rows (likely double-counting in the Webhooks row).
+Documented but not acted on — pick up if the housekeeping window opens at session end:
+
+- **Per-channel webhook routes** missing in `gateway/` for ALL channels (SCM-S3-D3). When picking Option (B), this is the mission.
+- **Lifespan try/except graceful failure** missing for all 7 channel inits — would be a single-PR uniform refactor (Option C scope).
+- **Channel test file size precedent** (SCM-S3-D2) — slack=1,499, messenger=1,583. Optional cleanup if team prefers strict 750 conformance.
+- README test-count totals don't sum cleanly across phase rows (likely double-counting in the Webhooks row — flagged in Session 2 carryover).
 - ARCHITECTURE.md Mermaid diagrams auto-synced but not visually verified.
 - `docs/superpowers/specs/` and `docs/superpowers/plans/` referenced in README but not audited for currency.
-- No automated detection of constitution-version drift between local CLAUDE.md and latest GLOBAL `SCM-S<N>` DECISION rows. Worth proposing as an `init_project` enhancement.
+- 6 backend tests blocked by missing `sklearn` dependency in venv (`nobla.memory.extraction`) — `pip install scikit-learn` resolves locally, but the requirements file may be missing it. Worth a 5-min audit.
+- 3 pre-existing test failures unrelated to channels: `test_config.py::test_settings_provider_config` (provider chain drift), `test_tool_models.py::test_all_categories_exist` (enum drift). Worth fixing in a `chore/` PR.
 
 ## Decision Memos to Reference
 
 - `SCM-S1-D1..D4` (Session 1) — Sovereign Purge + README sync + .gitignore for archives
 - `SCM-S2-D1` (id 11481) — v2.1.5 Lean Logic sync
 - `SCM-S2-D2` (id 11482) — v2.1.4 Execution Imperatives backfill
+- `SCM-S3-D1` (id 11485) — Messenger Tier 1 adapter
+- `SCM-S3-D2` (id 11486) — Channel test file size precedent
+- `SCM-S3-D3` (id 11487) — Per-channel webhook route deferral
 - `SCM-S14-D1` (id 11321, GLOBAL) — Execution Imperatives source
 - `SCM-S15-D1` (id 11468, GLOBAL) — Lean Logic source
 

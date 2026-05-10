@@ -63,7 +63,7 @@ FastAPI Gateway (Python 3.12+)
 
 ## Current Status
 
-Nobla Agent is in **active development**. Phases 1-6 + Phase 5B.1-5B.2 + WhatsApp/Slack/Signal/Teams adapters complete. **1,723 tests passing** (273 Flutter + 1,450 backend).
+Nobla Agent is in **active development**. Phases 1-6 + Phase 5B.1-5B.2 + WhatsApp/Slack/Signal/Teams/Messenger adapters complete. **1,916 tests passing** (273 Flutter + 1,643 backend).
 
 | Phase | Status | Scope |
 |-------|--------|-------|
@@ -77,12 +77,13 @@ Nobla Agent is in **active development**. Phases 1-6 + Phase 5B.1-5B.2 + WhatsAp
 | **Phase 5-Channels**: Slack | Complete | Dual Socket Mode/Events API, Block Kit formatter, v2 file upload, slash + keyword commands, RateLimitQueue, thread-aware replies, HMAC-SHA256 verification (142 tests) |
 | **Phase 5-Channels**: Signal | Complete | JSON-RPC daemon (signal-cli), plain text, file-path media, disappearing messages, read receipts, exponential backoff reconnect (72 tests) |
 | **Phase 5-Channels**: Teams | Complete | Bot Framework REST API, OAuth2 token management, JWT validation (RS256 JWKS), Adaptive Cards formatter, inline/hero card media, keyword commands, multi-tenant (90 tests) |
+| **Phase 5-Channels**: Messenger | Complete | Facebook Send/Receive API on Graph v21.0, X-Hub-Signature-256 HMAC verification, PSID-based user context, quick replies (cap 13) + button templates (cap 3), reusable attachment uploads, keyword commands (193 tests) |
 | **Phase 5B.1**: Self-Improving Agent | Complete | FeedbackCollector, PatternDetector, SkillGenerator (macro→skill→publishable), ABTestManager (epsilon-greedy), ProactiveEngine (snooze/dismiss/auto-expire), 22 REST routes, Flutter Agent Intelligence screen (130 tests) |
 | **Phase 5B.2**: Skills Marketplace | Complete | MarketplaceRegistry (tiered publishing), SkillPackager (.nobla + manifest-pointer), SkillDiscovery (keyword search + recommendations), UsageTracker, 15 REST routes, Flutter marketplace UI (129 tests) |
 | **Phase 6**: NL Scheduler | Complete | NLP time parser, LLM interpreter, APScheduler, confirmation flow (76 tests) |
 | **Phase 6**: Multi-Agent System | Complete | Parallel orchestrator, A2A protocol, MCP client/server, task decomposer, researcher + coder agents (148 tests) |
 | **Phase 6**: Webhooks & Workflows | Complete | Pluggable verification, inbound/outbound webhooks, DAG workflow engine, NL interpreter, templates + import/export, Flutter automation UI (486 tests) |
-| **Phase 5**: Remaining Channels | In Progress | 11 platform adapters (Messenger, LINE, Viber, etc.) |
+| **Phase 5**: Remaining Channels | In Progress | 10 platform adapters (LINE, Viber, etc.) |
 | **Phase 7**: Full Feature Set | Planned | Media, finance, health, social, smart home tools |
 
 ## Quick Start

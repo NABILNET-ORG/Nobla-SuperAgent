@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nobla_agent/features/automation/models/workflow_models.dart';
 import 'package:nobla_agent/features/automation/widgets/workflow_dag_view.dart';
 import 'package:nobla_agent/features/automation/widgets/nl_source_chip.dart';
-import 'package:nobla_agent/features/automation/widgets/step_node_widget.dart';
 
 /// Full-screen NL workflow creator with preview.
 ///

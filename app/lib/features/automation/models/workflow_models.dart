@@ -383,7 +383,6 @@ DagLayout computeDagLayout(List<WorkflowStep> steps,
     {double nodeWidth = 140, double nodeHeight = 60, double hGap = 40, double vGap = 30}) {
   if (steps.isEmpty) return const DagLayout();
 
-  final byId = {for (final s in steps) s.stepId: s};
   final inDegree = {for (final s in steps) s.stepId: 0};
   final dependents = {for (final s in steps) s.stepId: <String>[]};
 
