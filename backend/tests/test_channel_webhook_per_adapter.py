@@ -360,3 +360,115 @@ class TestSlackDispatchWebhook:
         with pytest.raises(HTTPException) as exc:
             await adapter.dispatch_webhook(req)
         assert exc.value.status_code == 405
+
+
+# ── Teams (Bot Framework JWT auth) ──────────────────────────────────
+
+
+@dataclass
+class _FakeTeamsSettings:
+    app_id: str = "teams-app"
+    app_password: str = "teams-pass"
+    tenant_id: str = ""
+    token_refresh_margin_seconds: int = 300
+
+
+class TestTeamsDispatchWebhook:
+    @pytest.fixture
+    def adapter(self):
+        from nobla.channels.teams.adapter import TeamsAdapter
+        h = MagicMock()
+        h.handle_activity = AsyncMock()
+        h.set_send_fn = MagicMock()
+        a = TeamsAdapter(settings=_FakeTeamsSettings(), handlers=h)
+        # Inject a fake JWT validator post-construction (start() would fetch JWKS)
+        a._jwt_validator = MagicMock()
+        return a
+
+    def test_webhook_signature_headers_set(self, adapter):
+        assert adapter.webhook_signature_headers == ("Authorization",)
+
+    @pytest.mark.asyncio
+    async def test_get_returns_405(self, adapter):
+        req = MagicMock(method="GET")
+        with pytest.raises(HTTPException) as exc:
+            await adapter.dispatch_webhook(req)
+        assert exc.value.status_code == 405
+
+    @pytest.mark.asyncio
+    async def test_post_valid_jwt_returns_200(self, adapter):
+        adapter._jwt_validator.validate_token = MagicMock(
+            return_value={"appid": "teams-app", "iss": "valid"}
+        )
+        body = b'{"type":"message","text":"hi","from":{"id":"u1"}}'
+        req = MagicMock(method="POST")
+        req.body = AsyncMock(return_value=body)
+        req.headers = {"Authorization": "Bearer valid.jwt.token"}
+        resp = await adapter.dispatch_webhook(req)
+        assert resp.status_code == 200
+        adapter._handlers.handle_activity.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_post_invalid_jwt_returns_401(self, adapter):
+        adapter._jwt_validator.validate_token = MagicMock(return_value=None)
+        body = b'{"type":"message"}'
+        req = MagicMock(method="POST")
+        req.body = AsyncMock(return_value=body)
+        req.headers = {"Authorization": "Bearer bad.jwt"}
+        with pytest.raises(HTTPException) as exc:
+            await adapter.dispatch_webhook(req)
+        assert exc.value.status_code == 401
+        adapter._handlers.handle_activity.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_post_jwt_validator_uninitialized_returns_401(self, adapter):
+        adapter._jwt_validator = None
+        req = MagicMock(method="POST")
+        req.body = AsyncMock(return_value=b'{}')
+        req.headers = {"Authorization": "Bearer any"}
+        with pytest.raises(HTTPException) as exc:
+            await adapter.dispatch_webhook(req)
+        assert exc.value.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_post_invalid_json_returns_401(self, adapter):
+        adapter._jwt_validator.validate_token = MagicMock(
+            return_value={"appid": "teams-app"}
+        )
+        req = MagicMock(method="POST")
+        req.body = AsyncMock(return_value=b'NOT JSON')
+        req.headers = {"Authorization": "Bearer ok"}
+        with pytest.raises(HTTPException) as exc:
+            await adapter.dispatch_webhook(req)
+        assert exc.value.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_other_method_returns_405(self, adapter):
+        req = MagicMock(method="OPTIONS")
+        with pytest.raises(HTTPException) as exc:
+            await adapter.dispatch_webhook(req)
+        assert exc.value.status_code == 405
+
+
+# ── Telegram carve-out (NOT implemented — see Mission B DECISION) ──
+#
+# Telegram self-serves via python-telegram-bot's internal aiohttp server,
+# which binds its OWN routes using settings.webhook_path +
+# settings.webhook_secret (X-Telegram-Bot-Api-Secret-Token header).
+# Wedging Telegram into the unified dispatcher would fight the framework.
+#
+# The TelegramAdapter intentionally does NOT override dispatch_webhook;
+# the base default raises NotImplementedError, which the dispatcher route
+# translates to 405. Source-level grep guard (no Telegram import needed):
+
+
+def test_telegram_adapter_does_not_override_dispatch_webhook():
+    import pathlib
+    src = pathlib.Path(__file__).parent.parent / "nobla" / "channels" / "telegram" / "adapter.py"
+    content = src.read_text(encoding="utf-8")
+    # Pins the carve-out so future agents don't silently add it without
+    # revisiting the DECISION. If you're here because this test failed,
+    # read Mission B's SCM-S5-D1 DECISION first.
+    assert "async def dispatch_webhook" not in content, (
+        "Telegram should NOT override dispatch_webhook — see Mission B DECISION"
+    )
