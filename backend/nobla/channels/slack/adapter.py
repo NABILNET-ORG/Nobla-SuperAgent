@@ -49,6 +49,8 @@ class SlackAdapter(BaseChannelAdapter):
         handlers: Pre-built ``SlackHandlers`` with linking + event bus.
     """
 
+    webhook_signature_headers = ("X-Slack-Signature", "X-Slack-Request-Timestamp")
+
     def __init__(
         self,
         settings: Any,
@@ -214,6 +216,36 @@ class SlackAdapter(BaseChannelAdapter):
             return  # Handled by handle_url_verification
         if event_type == "event_callback":
             await self._handlers.handle_event(payload)
+
+    async def dispatch_webhook(self, request: Any) -> Any:
+        """Dispatch a Slack inbound webhook (POST-only; URL verification in body)."""
+        import json as _json
+        from fastapi import HTTPException
+        from fastapi.responses import PlainTextResponse, Response
+
+        if request.method != "POST":
+            raise HTTPException(
+                status_code=405, detail=f"{request.method} not supported for slack"
+            )
+
+        body = await request.body()
+        timestamp = request.headers.get("X-Slack-Request-Timestamp", "")
+        signature = request.headers.get("X-Slack-Signature", "")
+
+        if not self.verify_request_signature(body, timestamp, signature):
+            raise HTTPException(status_code=401, detail="Invalid Slack signature")
+
+        try:
+            payload = _json.loads(body)
+        except _json.JSONDecodeError:
+            raise HTTPException(status_code=400, detail="Invalid JSON in Slack webhook body")
+
+        if payload.get("type") == "url_verification":
+            challenge = self.handle_url_verification(payload)
+            return PlainTextResponse(challenge)
+
+        await self.handle_events_api(payload)
+        return Response(status_code=200)
 
     # -- Socket Mode support -----------------------------------------
 

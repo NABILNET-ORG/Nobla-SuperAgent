@@ -232,3 +232,131 @@ class TestMessengerDispatchWebhook:
         with pytest.raises(HTTPException) as exc:
             await adapter.dispatch_webhook(req)
         assert exc.value.status_code == 405
+
+
+# ── Slack (POST-only: signing-secret HMAC + URL verification in body) ─
+
+
+@dataclass
+class _FakeSlackSettings:
+    bot_token: str = "xoxb-test"
+    app_token: str = ""
+    signing_secret: str = "slack-secret"
+    bot_user_id: str = "U_BOT"
+    socket_mode: bool = False
+    download_timeout: int = 30
+    enterprise_grid: bool = False
+    org_token: str = ""
+    team_ids: list[str] = field(default_factory=list)
+
+
+def _slack_signature(secret: bytes, timestamp: str, body: bytes) -> str:
+    sig_basestring = f"v0:{timestamp}:{body.decode()}".encode()
+    return "v0=" + hmac.new(secret, sig_basestring, hashlib.sha256).hexdigest()
+
+
+class TestSlackDispatchWebhook:
+    @pytest.fixture
+    def adapter(self):
+        from nobla.channels.slack.adapter import SlackAdapter
+        from nobla.channels.slack.handlers import SlackHandlers
+        h = SlackHandlers(
+            linking=AsyncMock(), event_bus=AsyncMock(),
+            bot_token="xoxb-test", bot_user_id="U_BOT",
+        )
+        h.set_send_fn(AsyncMock())
+        h.handle_event = AsyncMock()
+        return SlackAdapter(settings=_FakeSlackSettings(), handlers=h)
+
+    def test_webhook_signature_headers_set(self, adapter):
+        assert adapter.webhook_signature_headers == (
+            "X-Slack-Signature", "X-Slack-Request-Timestamp",
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_returns_405(self, adapter):
+        req = MagicMock(method="GET")
+        with pytest.raises(HTTPException) as exc:
+            await adapter.dispatch_webhook(req)
+        assert exc.value.status_code == 405
+
+    @pytest.mark.asyncio
+    async def test_post_url_verification_returns_challenge(self, adapter):
+        import time
+        body = b'{"type":"url_verification","challenge":"slack-challenge-XYZ"}'
+        ts = str(int(time.time()))
+        sig = _slack_signature(b"slack-secret", ts, body)
+        req = MagicMock(method="POST")
+        req.body = AsyncMock(return_value=body)
+        req.headers = {"X-Slack-Signature": sig, "X-Slack-Request-Timestamp": ts}
+        resp = await adapter.dispatch_webhook(req)
+        assert resp.status_code == 200
+        assert resp.body == b"slack-challenge-XYZ"
+
+    @pytest.mark.asyncio
+    async def test_post_event_callback_returns_200(self, adapter):
+        import time
+        body = b'{"type":"event_callback","event":{"type":"message","text":"hi"}}'
+        ts = str(int(time.time()))
+        sig = _slack_signature(b"slack-secret", ts, body)
+        req = MagicMock(method="POST")
+        req.body = AsyncMock(return_value=body)
+        req.headers = {"X-Slack-Signature": sig, "X-Slack-Request-Timestamp": ts}
+        resp = await adapter.dispatch_webhook(req)
+        assert resp.status_code == 200
+        adapter._handlers.handle_event.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_post_invalid_signature_returns_401(self, adapter):
+        import time
+        body = b'{"type":"event_callback","event":{}}'
+        ts = str(int(time.time()))
+        req = MagicMock(method="POST")
+        req.body = AsyncMock(return_value=body)
+        req.headers = {"X-Slack-Signature": "v0=BADSIG", "X-Slack-Request-Timestamp": ts}
+        with pytest.raises(HTTPException) as exc:
+            await adapter.dispatch_webhook(req)
+        assert exc.value.status_code == 401
+        adapter._handlers.handle_event.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_post_missing_timestamp_returns_401(self, adapter):
+        body = b'{"type":"event_callback"}'
+        req = MagicMock(method="POST")
+        req.body = AsyncMock(return_value=body)
+        req.headers = {"X-Slack-Signature": "v0=anything"}
+        with pytest.raises(HTTPException) as exc:
+            await adapter.dispatch_webhook(req)
+        assert exc.value.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_post_old_timestamp_returns_401(self, adapter):
+        body = b'{"type":"event_callback"}'
+        ts = "1000000000"  # ~year 2001, far past 300s replay window
+        sig = _slack_signature(b"slack-secret", ts, body)
+        req = MagicMock(method="POST")
+        req.body = AsyncMock(return_value=body)
+        req.headers = {"X-Slack-Signature": sig, "X-Slack-Request-Timestamp": ts}
+        with pytest.raises(HTTPException) as exc:
+            await adapter.dispatch_webhook(req)
+        assert exc.value.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_post_invalid_json_returns_400(self, adapter):
+        import time
+        body = b'NOT JSON'
+        ts = str(int(time.time()))
+        sig = _slack_signature(b"slack-secret", ts, body)
+        req = MagicMock(method="POST")
+        req.body = AsyncMock(return_value=body)
+        req.headers = {"X-Slack-Signature": sig, "X-Slack-Request-Timestamp": ts}
+        with pytest.raises(HTTPException) as exc:
+            await adapter.dispatch_webhook(req)
+        assert exc.value.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_other_method_returns_405(self, adapter):
+        req = MagicMock(method="PATCH")
+        with pytest.raises(HTTPException) as exc:
+            await adapter.dispatch_webhook(req)
+        assert exc.value.status_code == 405
