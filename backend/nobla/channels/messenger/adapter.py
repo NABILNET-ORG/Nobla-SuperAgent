@@ -42,6 +42,8 @@ class MessengerAdapter(BaseChannelAdapter):
         handlers: Pre-built ``MessengerHandlers`` with linking + event bus.
     """
 
+    webhook_signature_headers = ("X-Hub-Signature-256",)
+
     def __init__(
         self,
         settings: "MessengerSettings",
@@ -177,6 +179,36 @@ class MessengerAdapter(BaseChannelAdapter):
             logger.exception("Messenger webhook dispatch failed")
             return False
         return True
+
+    async def dispatch_webhook(self, request: Any) -> Any:
+        """Dispatch a Meta-style inbound webhook (GET verify / POST signed)."""
+        from fastapi import HTTPException
+        from fastapi.responses import PlainTextResponse, Response
+
+        if request.method == "GET":
+            params = request.query_params
+            echo = self.verify_webhook_challenge(
+                params.get("hub.mode", ""),
+                params.get("hub.verify_token", ""),
+                params.get("hub.challenge", ""),
+            )
+            if echo is None:
+                raise HTTPException(status_code=403, detail="Webhook verification failed")
+            return PlainTextResponse(echo)
+
+        if request.method == "POST":
+            body = await request.body()
+            signature = request.headers.get("X-Hub-Signature-256", "")
+            ok = await self.handle_webhook_payload(body, signature)
+            if not ok:
+                raise HTTPException(
+                    status_code=401, detail="Invalid webhook payload or signature"
+                )
+            return Response(status_code=200)
+
+        raise HTTPException(
+            status_code=405, detail=f"{request.method} not supported for messenger"
+        )
 
     # ── Outbound messaging ────────────────────────────────
 
