@@ -103,6 +103,12 @@ class BaseChannelAdapter(ABC):
     handles registration, lifecycle, and delivery routing.
     """
 
+    # Header names this adapter inspects for signature verification.
+    # Override in webhook-mode adapters (e.g. ('X-Hub-Signature-256',) for Meta;
+    # ('X-Slack-Signature', 'X-Slack-Request-Timestamp') for Slack). Empty tuple
+    # signals the dispatcher that signature lookup is not applicable.
+    webhook_signature_headers: tuple[str, ...] = ()
+
     @property
     @abstractmethod
     def name(self) -> str:
@@ -138,3 +144,18 @@ class BaseChannelAdapter(ABC):
     async def health_check(self) -> bool:
         """Return True if the adapter is healthy and connected."""
         ...
+
+    async def dispatch_webhook(self, request: Any) -> Any:
+        """Handle an inbound webhook request end-to-end (verify + delegate + reply).
+
+        Optional. Webhook-mode adapters override; gateway-mode adapters
+        (Discord/Signal/etc.) leave the default in place. The dispatcher route
+        catches NotImplementedError and returns 405 Method Not Allowed.
+
+        Implementations MUST verify the signature (using
+        ``self.webhook_signature_headers`` to find the right header(s)) BEFORE
+        dispatching the payload, and return a framework-native Response.
+        """
+        raise NotImplementedError(
+            f"{self.name!r} channel does not support webhook dispatch"
+        )
