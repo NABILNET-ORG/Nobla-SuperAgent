@@ -79,6 +79,17 @@ class SlackAdapter(BaseChannelAdapter):
         if not self._settings.bot_token:
             raise ValueError("Slack bot_token is required")
 
+        # Enterprise Grid defense-in-depth: catch settings drift / fakes
+        if getattr(self._settings, "enterprise_grid", False):
+            if not getattr(self._settings, "org_token", ""):
+                raise ValueError(
+                    "Slack org_token is required when enterprise_grid is enabled"
+                )
+            if not getattr(self._settings, "team_ids", None):
+                raise ValueError(
+                    "Slack team_ids must list at least one workspace when enterprise_grid is enabled"
+                )
+
         self._client = httpx.AsyncClient(
             timeout=float(self._settings.download_timeout),
             headers={
@@ -281,18 +292,98 @@ class SlackAdapter(BaseChannelAdapter):
         return str(raw_callback), {}
 
     async def health_check(self) -> bool:
-        """Check connectivity by calling auth.test."""
+        """Check connectivity by calling auth.test (both bot and org tokens in Grid mode)."""
         if not self._client:
             return False
         try:
             resp = await self._client.post(
                 f"{SLACK_API_BASE}/auth.test"
             )
-            data = resp.json()
-            return data.get("ok", False) is True
+            if resp.json().get("ok", False) is not True:
+                return False
+            if getattr(self._settings, "enterprise_grid", False):
+                org_resp = await self._client.post(
+                    f"{SLACK_API_BASE}/auth.test",
+                    headers={"Authorization": f"Bearer {self._settings.org_token}"},
+                )
+                return org_resp.json().get("ok", False) is True
+            return True
         except Exception:
             logger.exception("Slack health check failed")
             return False
+
+    # -- Enterprise Grid admin.* helpers -----------------------------
+
+    async def list_admin_users(
+        self,
+        team_id: str,
+        cursor: str | None = None,
+        limit: int = 100,
+    ) -> dict[str, Any]:
+        """List members of a Grid workspace via admin.users.list.
+
+        Requires enterprise_grid mode and an org-level admin token.
+        Returns the parsed JSON envelope (members, response_metadata, etc.).
+        """
+        if not self._settings.enterprise_grid:
+            raise RuntimeError("list_admin_users requires enterprise_grid mode")
+        if not self._client:
+            raise RuntimeError("Slack adapter client not started")
+
+        body: dict[str, Any] = {"team_id": team_id, "limit": limit}
+        if cursor:
+            body["cursor"] = cursor
+
+        resp = await self._client.post(
+            f"{SLACK_API_BASE}/admin.users.list",
+            headers={"Authorization": f"Bearer {self._settings.org_token}"},
+            json=body,
+        )
+        data = resp.json()
+        if not data.get("ok"):
+            raise RuntimeError(
+                f"admin.users.list failed: {data.get('error', 'unknown')}"
+            )
+        return data
+
+    async def list_admin_conversations(
+        self,
+        team_id: str,
+        cursor: str | None = None,
+        limit: int = 100,
+        query: str = "",
+    ) -> dict[str, Any]:
+        """Search channels in a Grid workspace via admin.conversations.search.
+
+        Requires enterprise_grid mode and an org-level admin token.
+        Returns the parsed JSON envelope (conversations, next_cursor, etc.).
+        """
+        if not self._settings.enterprise_grid:
+            raise RuntimeError(
+                "list_admin_conversations requires enterprise_grid mode"
+            )
+        if not self._client:
+            raise RuntimeError("Slack adapter client not started")
+
+        body: dict[str, Any] = {
+            "team_ids": [team_id],
+            "limit": limit,
+            "query": query,
+        }
+        if cursor:
+            body["cursor"] = cursor
+
+        resp = await self._client.post(
+            f"{SLACK_API_BASE}/admin.conversations.search",
+            headers={"Authorization": f"Bearer {self._settings.org_token}"},
+            json=body,
+        )
+        data = resp.json()
+        if not data.get("ok"):
+            raise RuntimeError(
+                f"admin.conversations.search failed: {data.get('error', 'unknown')}"
+            )
+        return data
 
     # -- Private helpers ---------------------------------------------
 

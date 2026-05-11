@@ -109,6 +109,8 @@ class SlackHandlers:
         bot_token: str = "",
         bot_user_id: str = "",
         max_file_size_mb: int = 100,
+        enterprise_grid: bool = False,
+        team_ids: list[str] | None = None,
     ) -> None:
         self._linking = linking
         self._event_bus = event_bus
@@ -116,6 +118,8 @@ class SlackHandlers:
         self._bot_user_id = bot_user_id
         self._max_file_size_bytes = max_file_size_mb * 1024 * 1024
         self._send_text_fn: Any = None
+        self._enterprise_grid = enterprise_grid
+        self._team_ids: list[str] = list(team_ids) if team_ids else []
 
     def set_send_fn(self, fn: Any) -> None:
         """Register the adapter's raw send function for handler replies."""
@@ -149,6 +153,13 @@ class SlackHandlers:
         ts = event.get("ts", "")
         thread_ts = event.get("thread_ts")
         team_id = payload.get("team_id", "")
+        # Enterprise Grid: top-level enterprise_id wins; fall back to nested enterprise.id
+        enterprise_id = payload.get("enterprise_id") or (payload.get("enterprise") or {}).get("id")
+
+        # Enterprise Grid allowlist: drop events from workspaces outside the configured team_ids
+        if self._enterprise_grid and self._team_ids and team_id not in self._team_ids:
+            logger.warning("slack_grid_dropping_event_non_allowlisted_team team_id=%s", team_id)
+            return
 
         is_dm = channel_type == "im"
         is_mention = f"<@{self._bot_user_id}>" in text
@@ -172,6 +183,7 @@ class SlackHandlers:
             is_dm=is_dm,
             is_thread=thread_ts is not None,
             is_bot_mentioned=is_mention or is_app_mention,
+            enterprise_id=enterprise_id,
         )
 
         await self._handle_message(ctx, text, event)

@@ -399,6 +399,9 @@ class SlackSettings(BaseModel):
     webhook_path: str = "/webhook/slack"
     group_activation: str = "mention"
     max_file_size_mb: int = 100
+    enterprise_grid: bool = False  # Org-level Grid mode (cross-workspace)
+    org_token: str = ""  # xoxa-*/xoxe-* org-level admin token (Grid mode)
+    team_ids: list[str] = []  # Allowlisted workspace ids when Grid mode active
 
     @model_validator(mode="after")
     def validate_tokens(self):
@@ -408,6 +411,10 @@ class SlackSettings(BaseModel):
             raise ValueError("app_token is required for Socket Mode")
         if self.enabled and self.mode == "events" and not self.signing_secret:
             raise ValueError("signing_secret is required for Events API mode")
+        if self.enabled and self.enterprise_grid and not self.org_token:
+            raise ValueError("org_token is required when enterprise_grid is enabled")
+        if self.enabled and self.enterprise_grid and not self.team_ids:
+            raise ValueError("team_ids must list at least one workspace when enterprise_grid is enabled")
         return self
 
 

@@ -60,6 +60,7 @@ class SlackUserContext:
         is_dm: Whether this message is a direct message.
         is_thread: Whether this message is in a thread.
         is_bot_mentioned: Whether the bot was @mentioned.
+        enterprise_id: Enterprise Grid org ID (E...) when delivered as part of an org-level event; None for non-Grid workspaces.
         raw_extras: Catch-all for platform-specific fields.
     """
 
@@ -72,6 +73,7 @@ class SlackUserContext:
     is_dm: bool = False
     is_thread: bool = False
     is_bot_mentioned: bool = False
+    enterprise_id: str | None = None
     raw_extras: dict[str, Any] = field(default_factory=dict)
 
     @property
