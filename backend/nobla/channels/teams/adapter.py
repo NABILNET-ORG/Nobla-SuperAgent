@@ -143,6 +143,8 @@ class JWTValidator:
 class TeamsAdapter(BaseChannelAdapter):
     """Microsoft Teams adapter using Bot Framework REST API."""
 
+    webhook_signature_headers = ("Authorization",)
+
     def __init__(self, settings: Any, handlers: TeamsHandlers) -> None:
         self._settings = settings
         self._handlers = handlers
@@ -224,6 +226,25 @@ class TeamsAdapter(BaseChannelAdapter):
             return None
         await self._handlers.handle_activity(activity)
         return activity
+
+    async def dispatch_webhook(self, request: Any) -> Any:
+        """Dispatch a Teams Bot Framework webhook (POST with JWT Bearer auth)."""
+        from fastapi import HTTPException
+        from fastapi.responses import Response
+
+        if request.method != "POST":
+            raise HTTPException(
+                status_code=405, detail=f"{request.method} not supported for teams"
+            )
+
+        body = await request.body()
+        auth_header = request.headers.get("Authorization", "")
+        activity = await self.handle_webhook(body, auth_header)
+        if activity is None:
+            raise HTTPException(
+                status_code=401, detail="Invalid Teams JWT or payload"
+            )
+        return Response(status_code=200)
 
     async def send(self, channel_user_id: str, response: ChannelResponse) -> None:
         if not self._client or not self._token_manager:

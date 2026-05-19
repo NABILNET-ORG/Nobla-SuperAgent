@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from nobla.gateway.lifespan import lifespan
 from nobla.gateway.routes import router as rest_router
+from nobla.gateway.channel_webhook_dispatcher import router as channel_webhook_router
 from nobla.gateway.websocket import websocket_endpoint, get_kill_switch
 import nobla.gateway.memory_handlers  # noqa: F401 — registers memory RPC methods
 import nobla.gateway.provider_handlers  # noqa: F401
@@ -34,6 +35,7 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(rest_router)
+    app.include_router(channel_webhook_router)
     app.add_api_websocket_route("/ws", websocket_endpoint)
 
     # Emergency kill endpoint (localhost only)
