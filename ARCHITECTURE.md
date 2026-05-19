@@ -644,620 +644,622 @@ flowchart TD
   n227 --> n229
   n230["channel_handlers.py"]
   n227 --> n230
-  n231["code_handlers.py"]
+  n231["channel_webhook_dispatcher.py"]
   n227 --> n231
-  n232["learning_handlers.py"]
+  n232["code_handlers.py"]
   n227 --> n232
-  n233["lifespan.py"]
+  n233["learning_handlers.py"]
   n227 --> n233
-  n234["marketplace_handlers.py"]
+  n234["lifespan.py"]
   n227 --> n234
-  n235["memory_handlers.py"]
+  n235["marketplace_handlers.py"]
   n227 --> n235
-  n236["mirror_handlers.py"]
+  n236["memory_handlers.py"]
   n227 --> n236
-  n237["persona_routes.py"]
+  n237["mirror_handlers.py"]
   n227 --> n237
-  n238["protocol.py"]
+  n238["persona_routes.py"]
   n227 --> n238
-  n239["provider_handlers.py"]
+  n239["protocol.py"]
   n227 --> n239
-  n240["routes.py"]
+  n240["provider_handlers.py"]
   n227 --> n240
-  n241["search_handlers.py"]
+  n241["routes.py"]
   n227 --> n241
-  n242["template_handlers.py"]
+  n242["search_handlers.py"]
   n227 --> n242
-  n243["tool_handlers.py"]
+  n243["template_handlers.py"]
   n227 --> n243
-  n244["voice_handlers.py"]
+  n244["tool_handlers.py"]
   n227 --> n244
-  n245["webhook_handlers.py"]
+  n245["voice_handlers.py"]
   n227 --> n245
-  n246["websocket.py"]
+  n246["webhook_handlers.py"]
   n227 --> n246
-  n247["workflow_handlers.py"]
+  n247["websocket.py"]
   n227 --> n247
-  n248["learning/"]
-  n164 --> n248
-  n249["__init__.py"]
-  n248 --> n249
-  n250["ab_testing.py"]
-  n248 --> n250
-  n251["feedback.py"]
-  n248 --> n251
-  n252["generator.py"]
-  n248 --> n252
-  n253["models.py"]
-  n248 --> n253
-  n254["patterns.py"]
-  n248 --> n254
-  n255["proactive.py"]
-  n248 --> n255
-  n256["service.py"]
-  n248 --> n256
-  n257["marketplace/"]
-  n164 --> n257
-  n258["__init__.py"]
-  n257 --> n258
-  n259["discovery.py"]
-  n257 --> n259
-  n260["models.py"]
-  n257 --> n260
-  n261["packager.py"]
-  n257 --> n261
-  n262["registry.py"]
-  n257 --> n262
-  n263["service.py"]
-  n257 --> n263
-  n264["stats.py"]
-  n257 --> n264
-  n265["memory/"]
-  n164 --> n265
-  n266["__init__.py"]
-  n265 --> n266
-  n267["consolidation.py"]
-  n265 --> n267
-  n268["episodic.py"]
-  n265 --> n268
-  n269["extraction.py"]
-  n265 --> n269
-  n270["graph_builder.py"]
-  n265 --> n270
-  n271["graph_persistence.py"]
-  n265 --> n271
-  n272["graph_queries.py"]
-  n265 --> n272
-  n273["maintenance.py"]
-  n265 --> n273
-  n274["orchestrator.py"]
-  n265 --> n274
-  n275["procedural.py"]
-  n265 --> n275
-  n276["retrieval_sources.py"]
-  n265 --> n276
-  n277["retrieval.py"]
-  n265 --> n277
-  n278["semantic.py"]
-  n265 --> n278
-  n279["working.py"]
-  n265 --> n279
-  n280["persona/"]
-  n164 --> n280
-  n281["__init__.py"]
-  n280 --> n281
-  n282["manager.py"]
-  n280 --> n282
-  n283["models.py"]
-  n280 --> n283
-  n284["presets.py"]
-  n280 --> n284
-  n285["prompt.py"]
-  n280 --> n285
-  n286["repository.py"]
-  n280 --> n286
-  n287["service.py"]
-  n280 --> n287
-  n288["security/"]
-  n164 --> n288
-  n289["__init__.py"]
-  n288 --> n289
-  n290["audit.py"]
-  n288 --> n290
-  n291["auth.py"]
-  n288 --> n291
-  n292["costs.py"]
-  n288 --> n292
-  n293["killswitch.py"]
-  n288 --> n293
-  n294["permissions.py"]
-  n288 --> n294
-  n295["sandbox.py"]
-  n288 --> n295
-  n296["skills/"]
-  n164 --> n296
-  n297["adapters/"]
-  n296 --> n297
-  n298["store/"]
-  n296 --> n298
-  n299["__init__.py"]
-  n296 --> n299
-  n300["adapter.py"]
-  n296 --> n300
-  n301["bridge.py"]
-  n296 --> n301
-  n302["models.py"]
-  n296 --> n302
-  n303["runtime.py"]
-  n296 --> n303
-  n304["security.py"]
-  n296 --> n304
-  n305["tools/"]
-  n164 --> n305
-  n306["code/"]
-  n305 --> n306
-  n307["control/"]
-  n305 --> n307
-  n308["remote/"]
-  n305 --> n308
-  n309["search/"]
-  n305 --> n309
-  n310["vision/"]
-  n305 --> n310
-  n311["__init__.py"]
-  n305 --> n311
-  n312["approval.py"]
-  n305 --> n312
-  n313["base.py"]
-  n305 --> n313
-  n314["executor.py"]
-  n305 --> n314
-  n315["models.py"]
-  n305 --> n315
-  n316["registry.py"]
-  n305 --> n316
-  n317["voice/"]
-  n164 --> n317
-  n318["emotion/"]
-  n317 --> n318
-  n319["stt/"]
-  n317 --> n319
-  n320["tts/"]
-  n317 --> n320
-  n321["__init__.py"]
-  n317 --> n321
-  n322["models.py"]
-  n317 --> n322
-  n323["pipeline.py"]
-  n317 --> n323
-  n324["vad.py"]
-  n317 --> n324
-  n325["__init__.py"]
-  n164 --> n325
-  n326["main.py"]
+  n248["workflow_handlers.py"]
+  n227 --> n248
+  n249["learning/"]
+  n164 --> n249
+  n250["__init__.py"]
+  n249 --> n250
+  n251["ab_testing.py"]
+  n249 --> n251
+  n252["feedback.py"]
+  n249 --> n252
+  n253["generator.py"]
+  n249 --> n253
+  n254["models.py"]
+  n249 --> n254
+  n255["patterns.py"]
+  n249 --> n255
+  n256["proactive.py"]
+  n249 --> n256
+  n257["service.py"]
+  n249 --> n257
+  n258["marketplace/"]
+  n164 --> n258
+  n259["__init__.py"]
+  n258 --> n259
+  n260["discovery.py"]
+  n258 --> n260
+  n261["models.py"]
+  n258 --> n261
+  n262["packager.py"]
+  n258 --> n262
+  n263["registry.py"]
+  n258 --> n263
+  n264["service.py"]
+  n258 --> n264
+  n265["stats.py"]
+  n258 --> n265
+  n266["memory/"]
+  n164 --> n266
+  n267["__init__.py"]
+  n266 --> n267
+  n268["consolidation.py"]
+  n266 --> n268
+  n269["episodic.py"]
+  n266 --> n269
+  n270["extraction.py"]
+  n266 --> n270
+  n271["graph_builder.py"]
+  n266 --> n271
+  n272["graph_persistence.py"]
+  n266 --> n272
+  n273["graph_queries.py"]
+  n266 --> n273
+  n274["maintenance.py"]
+  n266 --> n274
+  n275["orchestrator.py"]
+  n266 --> n275
+  n276["procedural.py"]
+  n266 --> n276
+  n277["retrieval_sources.py"]
+  n266 --> n277
+  n278["retrieval.py"]
+  n266 --> n278
+  n279["semantic.py"]
+  n266 --> n279
+  n280["working.py"]
+  n266 --> n280
+  n281["persona/"]
+  n164 --> n281
+  n282["__init__.py"]
+  n281 --> n282
+  n283["manager.py"]
+  n281 --> n283
+  n284["models.py"]
+  n281 --> n284
+  n285["presets.py"]
+  n281 --> n285
+  n286["prompt.py"]
+  n281 --> n286
+  n287["repository.py"]
+  n281 --> n287
+  n288["service.py"]
+  n281 --> n288
+  n289["security/"]
+  n164 --> n289
+  n290["__init__.py"]
+  n289 --> n290
+  n291["audit.py"]
+  n289 --> n291
+  n292["auth.py"]
+  n289 --> n292
+  n293["costs.py"]
+  n289 --> n293
+  n294["killswitch.py"]
+  n289 --> n294
+  n295["permissions.py"]
+  n289 --> n295
+  n296["sandbox.py"]
+  n289 --> n296
+  n297["skills/"]
+  n164 --> n297
+  n298["adapters/"]
+  n297 --> n298
+  n299["store/"]
+  n297 --> n299
+  n300["__init__.py"]
+  n297 --> n300
+  n301["adapter.py"]
+  n297 --> n301
+  n302["bridge.py"]
+  n297 --> n302
+  n303["models.py"]
+  n297 --> n303
+  n304["runtime.py"]
+  n297 --> n304
+  n305["security.py"]
+  n297 --> n305
+  n306["tools/"]
+  n164 --> n306
+  n307["code/"]
+  n306 --> n307
+  n308["control/"]
+  n306 --> n308
+  n309["remote/"]
+  n306 --> n309
+  n310["search/"]
+  n306 --> n310
+  n311["vision/"]
+  n306 --> n311
+  n312["__init__.py"]
+  n306 --> n312
+  n313["approval.py"]
+  n306 --> n313
+  n314["base.py"]
+  n306 --> n314
+  n315["executor.py"]
+  n306 --> n315
+  n316["models.py"]
+  n306 --> n316
+  n317["registry.py"]
+  n306 --> n317
+  n318["voice/"]
+  n164 --> n318
+  n319["emotion/"]
+  n318 --> n319
+  n320["stt/"]
+  n318 --> n320
+  n321["tts/"]
+  n318 --> n321
+  n322["__init__.py"]
+  n318 --> n322
+  n323["models.py"]
+  n318 --> n323
+  n324["pipeline.py"]
+  n318 --> n324
+  n325["vad.py"]
+  n318 --> n325
+  n326["__init__.py"]
   n164 --> n326
-  n327["nobla_agent.egg-info/"]
-  n163 --> n327
-  n328["dependency_links.txt"]
-  n327 --> n328
-  n329["PKG-INFO"]
-  n327 --> n329
-  n330["requires.txt"]
-  n327 --> n330
-  n331["SOURCES.txt"]
-  n327 --> n331
-  n332["top_level.txt"]
-  n327 --> n332
-  n333["test/"]
-  n163 --> n333
-  n334["chroma.sqlite3"]
-  n333 --> n334
-  n335["test_chromadb/"]
-  n163 --> n335
-  n336["bf372e00-db18-46d7-8b87-00e6237453d2/"]
-  n335 --> n336
-  n337["data_level0.bin"]
+  n327["main.py"]
+  n164 --> n327
+  n328["nobla_agent.egg-info/"]
+  n163 --> n328
+  n329["dependency_links.txt"]
+  n328 --> n329
+  n330["PKG-INFO"]
+  n328 --> n330
+  n331["requires.txt"]
+  n328 --> n331
+  n332["SOURCES.txt"]
+  n328 --> n332
+  n333["top_level.txt"]
+  n328 --> n333
+  n334["test/"]
+  n163 --> n334
+  n335["chroma.sqlite3"]
+  n334 --> n335
+  n336["test_chromadb/"]
+  n163 --> n336
+  n337["bf372e00-db18-46d7-8b87-00e6237453d2/"]
   n336 --> n337
-  n338["header.bin"]
-  n336 --> n338
-  n339["length.bin"]
-  n336 --> n339
-  n340["link_lists.bin"]
-  n336 --> n340
-  n341["chroma.sqlite3"]
-  n335 --> n341
-  n342["tests/"]
-  n163 --> n342
-  n343["gateway/"]
-  n342 --> n343
-  n344["__init__.py"]
+  n338["data_level0.bin"]
+  n337 --> n338
+  n339["header.bin"]
+  n337 --> n339
+  n340["length.bin"]
+  n337 --> n340
+  n341["link_lists.bin"]
+  n337 --> n341
+  n342["chroma.sqlite3"]
+  n336 --> n342
+  n343["tests/"]
+  n163 --> n343
+  n344["gateway/"]
   n343 --> n344
-  n345["test_mirror_handlers.py"]
-  n343 --> n345
-  n346["integration/"]
-  n342 --> n346
-  n347["__init__.py"]
-  n346 --> n347
-  n348["conftest.py"]
-  n346 --> n348
-  n349["test_auth_flow.py"]
-  n346 --> n349
-  n350["test_chat_flow.py"]
-  n346 --> n350
-  n351["test_chat_send_memory.py"]
-  n346 --> n351
-  n352["test_code_flow.py"]
-  n346 --> n352
-  n353["test_concurrent.py"]
-  n346 --> n353
-  n354["test_persona_flow.py"]
-  n346 --> n354
-  n355["test_phase5_foundation.py"]
-  n346 --> n355
-  n356["test_security_flow.py"]
-  n346 --> n356
-  n357["test_tool_flow.py"]
-  n346 --> n357
-  n358["test_vision_flow.py"]
-  n346 --> n358
-  n359["tools/"]
-  n342 --> n359
-  n360["control/"]
-  n359 --> n360
-  n361["remote/"]
-  n359 --> n361
-  n362["__init__.py"]
-  n359 --> n362
-  n363["test_executor_mirror.py"]
-  n359 --> n363
-  n364["voice/"]
-  n342 --> n364
-  n365["__init__.py"]
-  n364 --> n365
-  n366["conftest.py"]
-  n364 --> n366
-  n367["test_cosyvoice.py"]
-  n364 --> n367
-  n368["test_detector.py"]
-  n364 --> n368
-  n369["test_fish_speech.py"]
-  n364 --> n369
-  n370["test_integration.py"]
-  n364 --> n370
-  n371["test_levantine.py"]
-  n364 --> n371
-  n372["test_models.py"]
-  n364 --> n372
-  n373["test_pipeline.py"]
-  n364 --> n373
-  n374["test_stt_base.py"]
-  n364 --> n374
-  n375["test_tts_base.py"]
-  n364 --> n375
-  n376["test_vad.py"]
-  n364 --> n376
-  n377["test_voice_handlers.py"]
-  n364 --> n377
-  n378["test_whisper.py"]
-  n364 --> n378
-  n379["test_academic.py"]
-  n342 --> n379
-  n380["test_agents_advanced.py"]
-  n342 --> n380
-  n381["test_agents_phase6v2.py"]
-  n342 --> n381
-  n382["test_agents.py"]
-  n342 --> n382
-  n383["test_audit.py"]
-  n342 --> n383
-  n384["test_auth_api_key.py"]
-  n342 --> n384
-  n385["test_auth_local.py"]
-  n342 --> n385
-  n386["test_auth_oauth.py"]
-  n342 --> n386
-  n387["test_auth.py"]
-  n342 --> n387
-  n388["test_brave.py"]
-  n342 --> n388
-  n389["test_channels.py"]
-  n342 --> n389
-  n390["test_chat_flow.py"]
-  n342 --> n390
-  n391["test_circuit_breaker.py"]
-  n342 --> n391
-  n392["test_code_codegen.py"]
-  n342 --> n392
-  n393["test_code_debug.py"]
-  n342 --> n393
-  n394["test_code_git.py"]
-  n342 --> n394
-  n395["test_code_packages.py"]
-  n342 --> n395
-  n396["test_code_runner.py"]
-  n342 --> n396
-  n397["test_code_settings.py"]
-  n342 --> n397
-  n398["test_compression.py"]
-  n342 --> n398
-  n399["test_config.py"]
-  n342 --> n399
-  n400["… (88 more)"]
-  n342 --> n400
-  n401["venv/"]
-  n163 --> n401
-  n402["Include/"]
-  n401 --> n402
-  n403["site/"]
+  n345["__init__.py"]
+  n344 --> n345
+  n346["test_mirror_handlers.py"]
+  n344 --> n346
+  n347["integration/"]
+  n343 --> n347
+  n348["__init__.py"]
+  n347 --> n348
+  n349["conftest.py"]
+  n347 --> n349
+  n350["test_auth_flow.py"]
+  n347 --> n350
+  n351["test_chat_flow.py"]
+  n347 --> n351
+  n352["test_chat_send_memory.py"]
+  n347 --> n352
+  n353["test_code_flow.py"]
+  n347 --> n353
+  n354["test_concurrent.py"]
+  n347 --> n354
+  n355["test_persona_flow.py"]
+  n347 --> n355
+  n356["test_phase5_foundation.py"]
+  n347 --> n356
+  n357["test_security_flow.py"]
+  n347 --> n357
+  n358["test_tool_flow.py"]
+  n347 --> n358
+  n359["test_vision_flow.py"]
+  n347 --> n359
+  n360["tools/"]
+  n343 --> n360
+  n361["control/"]
+  n360 --> n361
+  n362["remote/"]
+  n360 --> n362
+  n363["__init__.py"]
+  n360 --> n363
+  n364["test_executor_mirror.py"]
+  n360 --> n364
+  n365["voice/"]
+  n343 --> n365
+  n366["__init__.py"]
+  n365 --> n366
+  n367["conftest.py"]
+  n365 --> n367
+  n368["test_cosyvoice.py"]
+  n365 --> n368
+  n369["test_detector.py"]
+  n365 --> n369
+  n370["test_fish_speech.py"]
+  n365 --> n370
+  n371["test_integration.py"]
+  n365 --> n371
+  n372["test_levantine.py"]
+  n365 --> n372
+  n373["test_models.py"]
+  n365 --> n373
+  n374["test_pipeline.py"]
+  n365 --> n374
+  n375["test_stt_base.py"]
+  n365 --> n375
+  n376["test_tts_base.py"]
+  n365 --> n376
+  n377["test_vad.py"]
+  n365 --> n377
+  n378["test_voice_handlers.py"]
+  n365 --> n378
+  n379["test_whisper.py"]
+  n365 --> n379
+  n380["__init__.py"]
+  n343 --> n380
+  n381["_slack_grid_helpers.py"]
+  n343 --> n381
+  n382["test_academic.py"]
+  n343 --> n382
+  n383["test_agents_advanced.py"]
+  n343 --> n383
+  n384["test_agents_phase6v2.py"]
+  n343 --> n384
+  n385["test_agents.py"]
+  n343 --> n385
+  n386["test_audit.py"]
+  n343 --> n386
+  n387["test_auth_api_key.py"]
+  n343 --> n387
+  n388["test_auth_local.py"]
+  n343 --> n388
+  n389["test_auth_oauth.py"]
+  n343 --> n389
+  n390["test_auth.py"]
+  n343 --> n390
+  n391["test_brave.py"]
+  n343 --> n391
+  n392["test_channel_webhook_dispatcher.py"]
+  n343 --> n392
+  n393["test_channel_webhook_per_adapter.py"]
+  n343 --> n393
+  n394["test_channels.py"]
+  n343 --> n394
+  n395["test_chat_flow.py"]
+  n343 --> n395
+  n396["test_circuit_breaker.py"]
+  n343 --> n396
+  n397["test_code_codegen.py"]
+  n343 --> n397
+  n398["test_code_debug.py"]
+  n343 --> n398
+  n399["test_code_git.py"]
+  n343 --> n399
+  n400["test_code_packages.py"]
+  n343 --> n400
+  n401["… (96 more)"]
+  n343 --> n401
+  n402["venv/"]
+  n163 --> n402
+  n403["Include/"]
   n402 --> n403
-  n404["Lib/"]
-  n401 --> n404
-  n405["site-packages/"]
-  n404 --> n405
-  n406["Scripts/"]
-  n401 --> n406
-  n407["activate"]
-  n406 --> n407
-  n408["activate.bat"]
-  n406 --> n408
-  n409["Activate.ps1"]
-  n406 --> n409
-  n410["alembic.exe"]
-  n406 --> n410
-  n411["chroma.exe"]
-  n406 --> n411
-  n412["coverage-3.12.exe"]
-  n406 --> n412
-  n413["coverage.exe"]
-  n406 --> n413
-  n414["coverage3.exe"]
-  n406 --> n414
-  n415["deactivate.bat"]
-  n406 --> n415
-  n416["distro.exe"]
-  n406 --> n416
-  n417["dmypy.exe"]
-  n406 --> n417
-  n418["dotenv.exe"]
-  n406 --> n418
-  n419["f2py.exe"]
-  n406 --> n419
-  n420["fastapi.exe"]
-  n406 --> n420
-  n421["hf.exe"]
-  n406 --> n421
-  n422["httpx.exe"]
-  n406 --> n422
-  n423["isympy.exe"]
-  n406 --> n423
-  n424["jsonschema.exe"]
-  n406 --> n424
-  n425["mako-render.exe"]
-  n406 --> n425
-  n426["markdown-it.exe"]
-  n406 --> n426
-  n427["mypy.exe"]
-  n406 --> n427
-  n428["mypyc.exe"]
-  n406 --> n428
-  n429["normalizer.exe"]
-  n406 --> n429
-  n430["numpy-config.exe"]
-  n406 --> n430
-  n431["onnxruntime_test.exe"]
-  n406 --> n431
-  n432["… (29 more)"]
-  n406 --> n432
-  n433["share/"]
-  n401 --> n433
-  n434["man/"]
-  n433 --> n434
-  n435["pyvenv.cfg"]
-  n401 --> n435
-  n436[".env.example"]
-  n163 --> n436
-  n437["alembic.ini"]
+  n404["site/"]
+  n403 --> n404
+  n405["Lib/"]
+  n402 --> n405
+  n406["site-packages/"]
+  n405 --> n406
+  n407["Scripts/"]
+  n402 --> n407
+  n408["activate"]
+  n407 --> n408
+  n409["activate.bat"]
+  n407 --> n409
+  n410["Activate.ps1"]
+  n407 --> n410
+  n411["alembic.exe"]
+  n407 --> n411
+  n412["chroma.exe"]
+  n407 --> n412
+  n413["coverage-3.12.exe"]
+  n407 --> n413
+  n414["coverage.exe"]
+  n407 --> n414
+  n415["coverage3.exe"]
+  n407 --> n415
+  n416["deactivate.bat"]
+  n407 --> n416
+  n417["distro.exe"]
+  n407 --> n417
+  n418["dmypy.exe"]
+  n407 --> n418
+  n419["dotenv.exe"]
+  n407 --> n419
+  n420["f2py.exe"]
+  n407 --> n420
+  n421["fastapi.exe"]
+  n407 --> n421
+  n422["hf.exe"]
+  n407 --> n422
+  n423["httpx.exe"]
+  n407 --> n423
+  n424["isympy.exe"]
+  n407 --> n424
+  n425["jsonschema.exe"]
+  n407 --> n425
+  n426["mako-render.exe"]
+  n407 --> n426
+  n427["markdown-it.exe"]
+  n407 --> n427
+  n428["mypy.exe"]
+  n407 --> n428
+  n429["mypyc.exe"]
+  n407 --> n429
+  n430["normalizer.exe"]
+  n407 --> n430
+  n431["numpy-config.exe"]
+  n407 --> n431
+  n432["onnxruntime_test.exe"]
+  n407 --> n432
+  n433["… (29 more)"]
+  n407 --> n433
+  n434["share/"]
+  n402 --> n434
+  n435["man/"]
+  n434 --> n435
+  n436["pyvenv.cfg"]
+  n402 --> n436
+  n437[".env.example"]
   n163 --> n437
-  n438["config.yaml"]
+  n438["alembic.ini"]
   n163 --> n438
-  n439["Dockerfile"]
+  n439["config.yaml"]
   n163 --> n439
-  n440["pyproject.toml"]
+  n440["Dockerfile"]
   n163 --> n440
-  n441["README.md"]
+  n441["pyproject.toml"]
   n163 --> n441
-  n442["docker/"]
-  n0 --> n442
-  n443["personaplex/"]
-  n442 --> n443
-  n444["docker-compose.yml"]
+  n442["README.md"]
+  n163 --> n442
+  n443["docker/"]
+  n0 --> n443
+  n444["personaplex/"]
   n443 --> n444
-  n445["docs/"]
-  n0 --> n445
-  n446["scm-memory/"]
-  n445 --> n446
-  n447["legacy_claude.md"]
+  n445["docker-compose.yml"]
+  n444 --> n445
+  n446["docs/"]
+  n0 --> n446
+  n447["scm-memory/"]
   n446 --> n447
-  n448["legacy_memory.md"]
-  n446 --> n448
-  n449["session-reports/"]
-  n445 --> n449
-  n450["SESSION-1-REPORT.md"]
-  n449 --> n450
-  n451["SESSION-2-REPORT.md"]
-  n449 --> n451
-  n452["SESSION-3-REPORT.md"]
-  n449 --> n452
-  n453["superpowers/"]
-  n445 --> n453
-  n454["plans/"]
-  n453 --> n454
-  n455["2026-03-17-phase1a-backend-foundation.md"]
+  n448["legacy_claude.md"]
+  n447 --> n448
+  n449["legacy_memory.md"]
+  n447 --> n449
+  n450["session-reports/"]
+  n446 --> n450
+  n451["SESSION-1-REPORT.md"]
+  n450 --> n451
+  n452["SESSION-2-REPORT.md"]
+  n450 --> n452
+  n453["SESSION-3-REPORT.md"]
+  n450 --> n453
+  n454["superpowers/"]
+  n446 --> n454
+  n455["plans/"]
   n454 --> n455
-  n456["2026-03-17-phase1b-security-auth.md"]
-  n454 --> n456
-  n457["2026-03-17-phase1c-flutter-app.md"]
-  n454 --> n457
-  n458["2026-03-17-phase1d-integration-deployment.md"]
-  n454 --> n458
-  n459["2026-03-19-phase2a-memory-implementation.md"]
-  n454 --> n459
-  n460["2026-03-20-phase2b1-streaming-auth-circuit-breaker.md"]
-  n454 --> n460
-  n461["2026-03-20-phase2b2-search-polish.md"]
-  n454 --> n461
-  n462["2026-03-21-phase3a-voice-pipeline.md"]
-  n454 --> n462
-  n463["2026-03-21-phase3b1-persona-engine.md"]
-  n454 --> n463
-  n464["2026-03-21-phase3b2-personaplex-integration.md"]
-  n454 --> n464
-  n465["2026-03-23-phase3b3a-persona-management-ui.md"]
-  n454 --> n465
-  n466["2026-03-23-phase4-pre-tool-platform.md"]
-  n454 --> n466
-  n467["2026-03-24-phase4a-screen-vision.md"]
-  n454 --> n467
-  n468["2026-03-24-phase4c-code-execution.md"]
-  n454 --> n468
-  n469["2026-03-25-phase4b-computer-control.md"]
-  n454 --> n469
-  n470["2026-03-25-phase4d-remote-control.md"]
-  n454 --> n470
-  n471["2026-03-25-phase4e-flutter-tool-ui.md"]
-  n454 --> n471
-  n472["2026-03-27-multi-agent-system.md"]
-  n454 --> n472
-  n473["2026-03-28-self-improving-agent.md"]
-  n454 --> n473
-  n474["2026-03-28-webhooks-workflows.md"]
-  n454 --> n474
-  n475["2026-03-29-skills-marketplace.md"]
-  n454 --> n475
-  n476["2026-03-29-slack-signal-adapters.md"]
-  n454 --> n476
-  n477["2026-03-29-teams-adapter.md"]
-  n454 --> n477
-  n478["prompts/"]
-  n453 --> n478
-  n479["research/"]
-  n478 --> n479
-  n480["continue-after-multiagent-design.md"]
-  n478 --> n480
-  n481["continue-after-multiagent-implementation.md"]
-  n478 --> n481
-  n482["continue-after-phase4e-implementation.md"]
-  n478 --> n482
-  n483["continue-after-phase5-slack-signal.md"]
-  n478 --> n483
-  n484["continue-after-phase5-teams.md"]
-  n478 --> n484
-  n485["continue-after-phase5-whatsapp.md"]
-  n478 --> n485
-  n486["continue-after-phase5a-6-scheduler.md"]
-  n478 --> n486
-  n487["continue-after-phase5b1-learning.md"]
-  n478 --> n487
-  n488["continue-after-phase5b2-marketplace.md"]
-  n478 --> n488
-  n489["continue-after-phase6-templates.md"]
-  n478 --> n489
-  n490["continue-after-phase6-webhooks-workflows.md"]
-  n478 --> n490
-  n491["continue-after-phase6v2-implementation.md"]
-  n478 --> n491
-  n492["phase4a-continuation-prompt.md"]
-  n478 --> n492
-  n493["phase4b-continuation-prompt.md"]
-  n478 --> n493
-  n494["phase4c-continuation-prompt.md"]
-  n478 --> n494
-  n495["phase4c-implementation-prompt.md"]
-  n478 --> n495
-  n496["phase4d-continuation-prompt.md"]
-  n478 --> n496
-  n497["phase4d-implementation-prompt.md"]
-  n478 --> n497
-  n498["phase4e-continuation-prompt.md"]
-  n478 --> n498
-  n499["phase5-channels-continuation-prompt.md"]
-  n478 --> n499
-  n500["specs/"]
-  n453 --> n500
-  n501["2026-03-17-phase1a-backend-foundation-design.md"]
-  n500 --> n501
-  n502["2026-03-17-phase1b-security-auth-design.md"]
-  n500 --> n502
-  n503["2026-03-17-phase1c-flutter-app-design.md"]
-  n500 --> n503
-  n504["2026-03-19-phase2a-memory-conversation-design.md"]
-  n500 --> n504
-  n505["2026-03-19-phase2b-router-search-design.md"]
-  n500 --> n505
-  n506["2026-03-21-phase3-voice-persona-design.md"]
-  n500 --> n506
-  n507["2026-03-21-phase3b-persona-engine-design.md"]
-  n500 --> n507
-  n508["2026-03-21-phase3b2-personaplex-integration-design.md"]
-  n500 --> n508
-  n509["2026-03-23-phase3b3a-persona-management-ui-design.md"]
-  n500 --> n509
-  n510["2026-03-23-phase4-computer-control-vision-design.md"]
-  n500 --> n510
-  n511["2026-03-24-phase4a-screen-vision-design.md"]
-  n500 --> n511
-  n512["2026-03-24-phase4c-code-execution-design.md"]
-  n500 --> n512
-  n513["2026-03-25-phase4b-computer-control-design.md"]
-  n500 --> n513
-  n514["2026-03-25-phase4d-remote-control-design.md"]
-  n500 --> n514
-  n515["2026-03-25-phase4e-flutter-tool-ui-design.md"]
-  n500 --> n515
-  n516["2026-03-26-phase5-redesign-design.md"]
-  n500 --> n516
-  n517["2026-03-27-multi-agent-system-design.md"]
-  n500 --> n517
-  n518["2026-03-28-self-improving-agent-design.md"]
-  n500 --> n518
-  n519["2026-03-28-webhooks-workflows-design.md"]
-  n500 --> n519
-  n520["2026-03-29-skills-marketplace-design.md"]
-  n500 --> n520
-  n521["2026-03-29-slack-signal-adapters-design.md"]
-  n500 --> n521
-  n522["2026-03-29-teams-adapter-design.md"]
-  n500 --> n522
-  n523["NEXT-SESSION-PROMPT.md"]
-  n445 --> n523
-  n524[".env.example"]
-  n0 --> n524
-  n525[".gitignore"]
+  n456["2026-03-17-phase1a-backend-foundation.md"]
+  n455 --> n456
+  n457["2026-03-17-phase1b-security-auth.md"]
+  n455 --> n457
+  n458["2026-03-17-phase1c-flutter-app.md"]
+  n455 --> n458
+  n459["2026-03-17-phase1d-integration-deployment.md"]
+  n455 --> n459
+  n460["2026-03-19-phase2a-memory-implementation.md"]
+  n455 --> n460
+  n461["2026-03-20-phase2b1-streaming-auth-circuit-breaker.md"]
+  n455 --> n461
+  n462["2026-03-20-phase2b2-search-polish.md"]
+  n455 --> n462
+  n463["2026-03-21-phase3a-voice-pipeline.md"]
+  n455 --> n463
+  n464["2026-03-21-phase3b1-persona-engine.md"]
+  n455 --> n464
+  n465["2026-03-21-phase3b2-personaplex-integration.md"]
+  n455 --> n465
+  n466["2026-03-23-phase3b3a-persona-management-ui.md"]
+  n455 --> n466
+  n467["2026-03-23-phase4-pre-tool-platform.md"]
+  n455 --> n467
+  n468["2026-03-24-phase4a-screen-vision.md"]
+  n455 --> n468
+  n469["2026-03-24-phase4c-code-execution.md"]
+  n455 --> n469
+  n470["2026-03-25-phase4b-computer-control.md"]
+  n455 --> n470
+  n471["2026-03-25-phase4d-remote-control.md"]
+  n455 --> n471
+  n472["2026-03-25-phase4e-flutter-tool-ui.md"]
+  n455 --> n472
+  n473["2026-03-27-multi-agent-system.md"]
+  n455 --> n473
+  n474["2026-03-28-self-improving-agent.md"]
+  n455 --> n474
+  n475["2026-03-28-webhooks-workflows.md"]
+  n455 --> n475
+  n476["2026-03-29-skills-marketplace.md"]
+  n455 --> n476
+  n477["2026-03-29-slack-signal-adapters.md"]
+  n455 --> n477
+  n478["2026-03-29-teams-adapter.md"]
+  n455 --> n478
+  n479["prompts/"]
+  n454 --> n479
+  n480["research/"]
+  n479 --> n480
+  n481["continue-after-multiagent-design.md"]
+  n479 --> n481
+  n482["continue-after-multiagent-implementation.md"]
+  n479 --> n482
+  n483["continue-after-phase4e-implementation.md"]
+  n479 --> n483
+  n484["continue-after-phase5-slack-signal.md"]
+  n479 --> n484
+  n485["continue-after-phase5-teams.md"]
+  n479 --> n485
+  n486["continue-after-phase5-whatsapp.md"]
+  n479 --> n486
+  n487["continue-after-phase5a-6-scheduler.md"]
+  n479 --> n487
+  n488["continue-after-phase5b1-learning.md"]
+  n479 --> n488
+  n489["continue-after-phase5b2-marketplace.md"]
+  n479 --> n489
+  n490["continue-after-phase6-templates.md"]
+  n479 --> n490
+  n491["continue-after-phase6-webhooks-workflows.md"]
+  n479 --> n491
+  n492["continue-after-phase6v2-implementation.md"]
+  n479 --> n492
+  n493["phase4a-continuation-prompt.md"]
+  n479 --> n493
+  n494["phase4b-continuation-prompt.md"]
+  n479 --> n494
+  n495["phase4c-continuation-prompt.md"]
+  n479 --> n495
+  n496["phase4c-implementation-prompt.md"]
+  n479 --> n496
+  n497["phase4d-continuation-prompt.md"]
+  n479 --> n497
+  n498["phase4d-implementation-prompt.md"]
+  n479 --> n498
+  n499["phase4e-continuation-prompt.md"]
+  n479 --> n499
+  n500["phase5-channels-continuation-prompt.md"]
+  n479 --> n500
+  n501["specs/"]
+  n454 --> n501
+  n502["2026-03-17-phase1a-backend-foundation-design.md"]
+  n501 --> n502
+  n503["2026-03-17-phase1b-security-auth-design.md"]
+  n501 --> n503
+  n504["2026-03-17-phase1c-flutter-app-design.md"]
+  n501 --> n504
+  n505["2026-03-19-phase2a-memory-conversation-design.md"]
+  n501 --> n505
+  n506["2026-03-19-phase2b-router-search-design.md"]
+  n501 --> n506
+  n507["2026-03-21-phase3-voice-persona-design.md"]
+  n501 --> n507
+  n508["2026-03-21-phase3b-persona-engine-design.md"]
+  n501 --> n508
+  n509["2026-03-21-phase3b2-personaplex-integration-design.md"]
+  n501 --> n509
+  n510["2026-03-23-phase3b3a-persona-management-ui-design.md"]
+  n501 --> n510
+  n511["2026-03-23-phase4-computer-control-vision-design.md"]
+  n501 --> n511
+  n512["2026-03-24-phase4a-screen-vision-design.md"]
+  n501 --> n512
+  n513["2026-03-24-phase4c-code-execution-design.md"]
+  n501 --> n513
+  n514["2026-03-25-phase4b-computer-control-design.md"]
+  n501 --> n514
+  n515["2026-03-25-phase4d-remote-control-design.md"]
+  n501 --> n515
+  n516["2026-03-25-phase4e-flutter-tool-ui-design.md"]
+  n501 --> n516
+  n517["2026-03-26-phase5-redesign-design.md"]
+  n501 --> n517
+  n518["2026-03-27-multi-agent-system-design.md"]
+  n501 --> n518
+  n519["2026-03-28-self-improving-agent-design.md"]
+  n501 --> n519
+  n520["2026-03-28-webhooks-workflows-design.md"]
+  n501 --> n520
+  n521["2026-03-29-skills-marketplace-design.md"]
+  n501 --> n521
+  n522["2026-03-29-slack-signal-adapters-design.md"]
+  n501 --> n522
+  n523["2026-03-29-teams-adapter-design.md"]
+  n501 --> n523
+  n524["NEXT-SESSION-PROMPT.md"]
+  n446 --> n524
+  n525[".env.example"]
   n0 --> n525
-  n526["Architecture-Prompt-Template.md"]
+  n526[".gitignore"]
   n0 --> n526
-  n527["ARCHITECTURE.md"]
+  n527["Architecture-Prompt-Template.md"]
   n0 --> n527
-  n528["CHANGELOG.md"]
+  n528["ARCHITECTURE.md"]
   n0 --> n528
-  n529["CLAUDE.md"]
+  n529["CHANGELOG.md"]
   n0 --> n529
-  n530["docker-compose.yml"]
+  n530["CLAUDE.md"]
   n0 --> n530
-  n531["ggml-levantine-large-v3.bin"]
+  n531["docker-compose.yml"]
   n0 --> n531
-  n532["Nobla-Agent-Architecture.html"]
+  n532["ggml-levantine-large-v3.bin"]
   n0 --> n532
-  n533["Nobla-Agent-Architecture.pdf"]
+  n533["Nobla-Agent-Architecture.html"]
   n0 --> n533
-  n534["Plan.md"]
+  n534["Nobla-Agent-Architecture.pdf"]
   n0 --> n534
-  n535["PRD.md"]
+  n535["Plan.md"]
   n0 --> n535
-  n536["project_file_architecture.md"]
+  n536["PRD.md"]
   n0 --> n536
-  n537["README.md"]
+  n537["project_file_architecture.md"]
   n0 --> n537
+  n538["README.md"]
+  n0 --> n538
 ```
 
 <!-- MEMORY:ARCH:END -->
